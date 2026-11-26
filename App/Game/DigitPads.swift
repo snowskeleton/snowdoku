@@ -38,29 +38,36 @@ struct DigitPads: View {
         }
     }
 
+    /// One set of digits with the mode keys as a fourth column (or, when wide, three more keys at the
+    /// end of the row), all the same size. Keys keep one height in every mode so nothing jumps, and
+    /// skip the remaining counts.
     var onePad: some View {
-        ViewThatFits(in: .horizontal) {
-            VStack(spacing: 8) {
-                row(small: game.padMode != .digits, centered: game.padMode == .centerNotes)
-                HStack(spacing: 6) { modeKeys }
-                    .frame(height: noteRowKeyHeight)
+        let small = game.padMode != .digits, centered = game.padMode == .centerNotes
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                ForEach(1...9, id: \.self) { d in
+                    DigitKey(game: game, digit: d, small: small, height: rowKeyHeight, centered: centered, showsRemaining: false)
+                }
+                Color.clear.frame(width: 6, height: 1)
+                ForEach(PadMode.allCases, id: \.self) { modeKey($0, height: rowKeyHeight) }
             }
             .frame(minWidth: 600)
-            HStack(spacing: 14) {
-                grid(small: game.padMode != .digits, centered: game.padMode == .centerNotes)
-                VStack(spacing: 6) { modeKeys }
-                    .frame(maxWidth: 110)
-                    // As tall as the three rows of digits beside it.
-                    .frame(height: gridKeyHeight * 3 + 12)
+            Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+                ForEach(0..<3, id: \.self) { r in
+                    GridRow {
+                        ForEach(1...3, id: \.self) { k in
+                            DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight, centered: centered, showsRemaining: false)
+                        }
+                        modeKey(PadMode.allCases[r], height: gridKeyHeight)
+                    }
+                }
             }
         }
     }
 
-    /// The Digits / Notes / Center switch of the one-pad layout.
-    @ViewBuilder var modeKeys: some View {
-        ModeKey(title: "Digits", mode: .digits, on: game.padMode == .digits) { game.choosePadMode(.digits) }
-        ModeKey(title: "Notes", mode: .notes, on: game.padMode == .notes) { game.choosePadMode(.notes) }
-        ModeKey(title: "Center", mode: .centerNotes, on: game.padMode == .centerNotes) { game.choosePadMode(.centerNotes) }
+    /// A key of the Digits / Notes / Center switch.
+    func modeKey(_ m: PadMode, height: Double) -> some View {
+        ModeKey(title: m.title, mode: m, on: game.padMode == m, height: height) { game.choosePadMode(m) }
     }
 
     func row(small: Bool, centered: Bool = false) -> some View {

@@ -9,6 +9,14 @@ enum PadMode: CaseIterable {
     /// Notes drawn centered in the cell.
     case centerNotes
 
+    var title: String {
+        switch self {
+        case .digits: "Digits"
+        case .notes: "Notes"
+        case .centerNotes: "Center"
+        }
+    }
+
     var next: PadMode {
         let all = Self.allCases
         return all[(all.firstIndex(of: self)! + 1) % all.count]

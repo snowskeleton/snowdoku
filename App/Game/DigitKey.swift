@@ -8,6 +8,8 @@ struct DigitKey: View {
     let height: Double
     /// A centered-note key (one-pad Center mode): the digit sits in the middle.
     var centered = false
+    /// The count of this digit still to place, under a big digit.
+    var showsRemaining = true
     @ScaledMetric(relativeTo: .title) private var digitSize = 28.0
     @ScaledMetric(relativeTo: .body) private var noteSize = 15.0
 
@@ -24,7 +26,7 @@ struct DigitKey: View {
                 } else {
                     VStack(spacing: 0) {
                         Text("\(digit)").font(.system(size: digitSize, weight: .medium, design: .rounded))
-                        if left > 0 { Text("\(left)").font(.caption2).foregroundStyle(.secondary) }
+                        if showsRemaining && left > 0 { Text("\(left)").font(.caption2).foregroundStyle(.secondary) }
                     }
                 }
             }
