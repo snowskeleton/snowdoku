@@ -76,21 +76,17 @@ struct GameView: View {
     }
 
     @ViewBuilder var hintArea: some View {
-        if let a = game.armed, game.hint == nil {
-            HStack {
-                Image(systemName: a.small ? "pencil" : "hand.tap")
-                Text(a.small ? "Tap cells to toggle note \(a.digit)" : "Tap cells to place \(a.digit)")
-                Spacer()
-                Button("Done") { game.armed = nil }
-            }
-            .font(.subheadline)
-            .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
-        }
         if game.hint != nil {
             HintPanel(game: game)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
         }
+    }
+
+    /// Arrow = one cell, Option+arrow = same spot in the next box, Command+arrow = board edge.
+    func moveKind(_ press: KeyPress) -> Game.MoveKind {
+        if press.modifiers.contains(.command) { return .edge }
+        if press.modifiers.contains(.option) { return .box }
+        return .cell
     }
 
     /// Shifted number-row symbols (US layout) map to small digits.
@@ -107,10 +103,10 @@ struct GameView: View {
             }
         }
         switch press.key {
-        case .upArrow: game.moveSelection(dr: -1, dc: 0)
-        case .downArrow: game.moveSelection(dr: 1, dc: 0)
-        case .leftArrow: game.moveSelection(dr: 0, dc: -1)
-        case .rightArrow: game.moveSelection(dr: 0, dc: 1)
+        case .upArrow: game.moveSelection(dr: -1, dc: 0, kind: moveKind(press))
+        case .downArrow: game.moveSelection(dr: 1, dc: 0, kind: moveKind(press))
+        case .leftArrow: game.moveSelection(dr: 0, dc: -1, kind: moveKind(press))
+        case .rightArrow: game.moveSelection(dr: 0, dc: 1, kind: moveKind(press))
         case .delete, .deleteForward: game.erase()
         case .escape: game.clearSelection()
         default:

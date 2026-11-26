@@ -10,14 +10,38 @@
 		10A70DE8D9B8D9E07B7BFA78 /* SudokuCore in Frameworks */ = {isa = PBXBuildFile; productRef = D6BCAF33BD2D12AF4F957F35 /* SudokuCore */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		031D29584C9DDB3AEE033B8B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A41EADC97C8C91248BBE8D4B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8703390953BBA4F20D7651D5;
+			remoteInfo = Snowdoku;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		1A5490CDF41D996F1EA029E7 /* Snowdoku.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Snowdoku.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D3F1FCFE5ED359508E5BBCAC /* Engine */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Engine; sourceTree = SOURCE_ROOT; };
+		165E4DFA071995C00EB4AAF1 /* SnowdokuUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SnowdokuUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A5490CDF41D996F1EA029E7 /* Snowdoku.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Snowdoku.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3F1FCFE5ED359508E5BBCAC /* Engine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Engine; path = Engine; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		6B54AE75B56E5DF090FAEBAF /* UITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
 		829DCDD18435DD9F8D26A0AA /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = App;
 			sourceTree = "<group>";
 		};
@@ -39,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				1A5490CDF41D996F1EA029E7 /* Snowdoku.app */,
+				165E4DFA071995C00EB4AAF1 /* SnowdokuUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +73,7 @@
 			children = (
 				829DCDD18435DD9F8D26A0AA /* App */,
 				D2268C9E44C66276BBD7F4A3 /* Packages */,
+				6B54AE75B56E5DF090FAEBAF /* UITests */,
 				8D592CB21077BB66D2DF68B7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -86,6 +112,28 @@
 			productReference = 1A5490CDF41D996F1EA029E7 /* Snowdoku.app */;
 			productType = "com.apple.product-type.application";
 		};
+		DA3163CC3A207C27423A965E /* SnowdokuUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7CB7AB552775652A8BAE275F /* Build configuration list for PBXNativeTarget "SnowdokuUITests" */;
+			buildPhases = (
+				7D19D7888A61DBB2B87AA27E /* Sources */,
+				C004EF6E6BFCCB9B7CF4C184 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9EB06B3160FCBC611D326E03 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				6B54AE75B56E5DF090FAEBAF /* UITests */,
+			);
+			name = SnowdokuUITests;
+			packageProductDependencies = (
+			);
+			productName = SnowdokuUITests;
+			productReference = 165E4DFA071995C00EB4AAF1 /* SnowdokuUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -93,10 +141,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2720;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					8703390953BBA4F20D7651D5 = {
 						ProvisioningStyle = Automatic;
+					};
+					DA3163CC3A207C27423A965E = {
+						TestTargetID = 8703390953BBA4F20D7651D5;
 					};
 				};
 			};
@@ -118,12 +169,20 @@
 			projectRoot = "";
 			targets = (
 				8703390953BBA4F20D7651D5 /* Snowdoku */,
+				DA3163CC3A207C27423A965E /* SnowdokuUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		112993CA451E2F98D1C13889 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C004EF6E6BFCCB9B7CF4C184 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -140,9 +199,42 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7D19D7888A61DBB2B87AA27E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		9EB06B3160FCBC611D326E03 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8703390953BBA4F20D7651D5 /* Snowdoku */;
+			targetProxy = 031D29584C9DDB3AEE033B8B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		3D16EDC235322CF2EDCB0A59 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = net.snowskeleton.snowdoku.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Snowdoku;
+			};
+			name = Debug;
+		};
 		96661D240684E521E163F646 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -150,7 +242,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -185,7 +276,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -247,12 +337,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = PK7HCG46US;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -266,11 +353,27 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		F5CAE18559456EE9177F7A30 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = net.snowskeleton.snowdoku.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Snowdoku;
 			};
 			name = Release;
 		};
@@ -308,12 +411,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = PK7HCG46US;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -334,8 +434,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -350,6 +448,15 @@
 			buildConfigurations = (
 				DBFB27A64092C75DA69F4E94 /* Debug */,
 				96661D240684E521E163F646 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7CB7AB552775652A8BAE275F /* Build configuration list for PBXNativeTarget "SnowdokuUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D16EDC235322CF2EDCB0A59 /* Debug */,
+				F5CAE18559456EE9177F7A30 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

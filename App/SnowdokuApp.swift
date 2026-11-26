@@ -36,6 +36,10 @@ struct RootView: View {
         .task {
             // Screenshot/demo hook: `-demo <difficulty> [hintLevel]`
             let args = ProcessInfo.processInfo.arguments
+            if let i = args.firstIndex(of: "-puzzle"), i + 1 < args.count, let grid = Grid(args[i + 1]) {
+                store.start(puzzle: grid)
+                return
+            }
             if let i = args.firstIndex(of: "-demo"), i + 1 < args.count,
                let d = Difficulty.allCases.first(where: { $0.name.lowercased() == args[i + 1] }) {
                 await store.newGame(d)

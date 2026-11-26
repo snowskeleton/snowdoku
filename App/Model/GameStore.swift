@@ -65,6 +65,12 @@ final class GameStore {
         save()
     }
 
+    /// Starts a specific puzzle (used by debug/test launch arguments; later by puzzle import).
+    func start(puzzle: Grid) {
+        guard case .unique(let solution) = BruteForce.analyze(puzzle) else { errorMessage = "That puzzle doesn't have a unique solution."; return }
+        start(GeneratedPuzzle(puzzle: puzzle, solution: solution, rating: Rater.rate(puzzle, solution: solution)))
+    }
+
     func newGame(_ difficulty: Difficulty) async {
         generating = "Building a \(difficulty.name.lowercased()) puzzle…"
         defer { generating = nil }

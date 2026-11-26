@@ -38,10 +38,24 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_APP_SANDBOX: YES
+  SnowdokuUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+        type: syncedFolder
+    dependencies:
+      - target: Snowdoku
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.snowskeleton.snowdoku.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        TEST_TARGET_NAME: Snowdoku
 schemes:
   Snowdoku:
     build:
       targets:
         Snowdoku: all
     test:
-      targets: []
+      targets: [SnowdokuUITests]

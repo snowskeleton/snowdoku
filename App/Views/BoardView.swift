@@ -65,12 +65,15 @@ struct BoardView: View {
             let side = min(geo.size.width, geo.size.height)
             let cell = side / 9
             ZStack(alignment: .topLeading) {
-                ForEach(0..<81, id: \.self) { c in
-                    CellView(game: game, cell: c, ctx: ctx, size: cell)
-                        .frame(width: cell, height: cell)
-                        .offset(x: CGFloat(c % 9) * cell, y: CGFloat(c / 9) * cell)
-                        .contentShape(Rectangle())
-                        .onTapGesture { game.tapCell(c) }
+                VStack(spacing: 0) {
+                    ForEach(0..<9, id: \.self) { r in
+                        HStack(spacing: 0) {
+                            ForEach(0..<9, id: \.self) { col in
+                                CellView(game: game, cell: r * 9 + col, ctx: ctx, size: cell)
+                                    .frame(width: cell, height: cell)
+                            }
+                        }
+                    }
                 }
                 GridLines()
                     .stroke(Color.primary.opacity(0.25), lineWidth: 0.5)
@@ -78,6 +81,12 @@ struct BoardView: View {
                     .stroke(Color.primary.opacity(0.85), lineWidth: 2)
             }
             .frame(width: side, height: side)
+            // One tap handler for the whole board, mapped from the tap location to a cell.
+            .contentShape(Rectangle())
+            .onTapGesture(coordinateSpace: .local) { p in
+                let r = min(8, max(0, Int(p.y / cell))), col = min(8, max(0, Int(p.x / cell)))
+                game.tapCell(r * 9 + col)
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .aspectRatio(1, contentMode: .fit)
@@ -121,7 +130,8 @@ struct CellView: View {
         }
         .accessibilityElement()
         .accessibilityLabel(accessibilityText(v))
-        .accessibilityAddTraits(ctx.selected == cell ? .isSelected : [])
+        .accessibilityAddTraits(ctx.selected == cell ? [.isSelected, .isButton] : .isButton)
+        .accessibilityAction { game.tapCell(cell) }
     }
 
     func background(_ v: Int) -> Color {

@@ -265,9 +265,22 @@ final class Game {
         }
     }
 
-    func moveSelection(dr: Int, dc: Int) {
+    enum MoveKind { case cell, box, edge }
+
+    /// Moves the selection one cell, one box (same position in the neighboring box), or to the edge.
+    /// Cell and box moves wrap around the board.
+    func moveSelection(dr: Int, dc: Int, kind: MoveKind = .cell) {
         let c = selected ?? lastCell ?? 40
-        let r = (c / 9 + dr + 9) % 9, col = (c % 9 + dc + 9) % 9
+        var r = c / 9, col = c % 9
+        switch kind {
+        case .cell:
+            r = (r + dr + 9) % 9; col = (col + dc + 9) % 9
+        case .box:
+            r = (r + 3 * dr + 9) % 9; col = (col + 3 * dc + 9) % 9
+        case .edge:
+            if dr != 0 { r = dr < 0 ? 0 : 8 }
+            if dc != 0 { col = dc < 0 ? 0 : 8 }
+        }
         selected = r * 9 + col
         lastCell = selected
         lastDigit = nil
