@@ -34,6 +34,11 @@ final class Game {
     /// True when the rest of the puzzle is obvious and the player may finish it with one tap.
     private(set) var canAutoComplete = false
     private(set) var autoCompleting = false
+    /// Per-cell flash counters: bumping one makes that cell flash on and fade out. Each cell has its
+    /// own so overlapping flashes (auto-complete's quick fills) fade independently.
+    private(set) var flashes = Array(repeating: 0, count: 81)
+    /// Bumped each time a digit is completed (for the haptic).
+    private(set) var digitsCompleted = 0
 
     private var accumulated: Double
     private var resumedAt: Date?
@@ -238,6 +243,7 @@ final class Game {
             for p in Geometry.peers[c] { notes[p] &= bit }
         }
         if d != solution[c] { mistakes += 1 }
+        flashIfCompleted(d)
         checkComplete()
     }
 
@@ -286,6 +292,18 @@ final class Game {
         lastDigit = nil
     }
 
+    /// Flashes `d` when all nine are on the board with no row, column or box repeated.
+    /// Judged from what the player sees, not the solution, so it never gives away a mistake.
+    private func flashIfCompleted(_ d: Int) {
+        let cells = (0..<81).filter { values[$0] == UInt8(d) }
+        guard cells.count == 9,
+              Set(cells.map { $0 / 9 }).count == 9,
+              Set(cells.map { $0 % 9 }).count == 9,
+              Set(cells.map { $0 / 27 * 3 + $0 % 9 / 3 }).count == 9 else { return }
+        for c in cells { flashes[c] += 1 }
+        digitsCompleted += 1
+    }
+
     private func checkComplete() {
         refreshAutoComplete()
         if values == solution.cells {
@@ -327,10 +345,13 @@ final class Game {
         canAutoComplete = false
         selected = nil
         armed = nil
+        lastDigit = nil
         for p in placements {
             values[p.cell] = UInt8(p.digit)
             notes[p.cell] = 0
-            lastDigit = p.digit
+            // Flash just this cell rather than highlighting every cell with the digit.
+            flashes[p.cell] += 1
+            flashIfCompleted(p.digit)
             // Slow enough to watch each cell fill in.
             if animated { try? await Task.sleep(for: .milliseconds(500)) }
         }
@@ -412,6 +433,7 @@ final class Game {
                     for q in Geometry.peers[p.cell] { notes[q] &= ~Mask.bit(p.digit) }
                 }
                 selected = p.cell
+                flashIfCompleted(p.digit)
             }
             checkComplete()
         }

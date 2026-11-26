@@ -65,6 +65,7 @@ struct GameView: View {
         .onChange(of: autoCompleteThreshold) { game.refreshAutoComplete() }
         .sensoryFeedback(.success, trigger: game.isComplete)
         .sensoryFeedback(.error, trigger: game.mistakes)
+        .sensoryFeedback(.impact(weight: .light), trigger: game.digitsCompleted)
         .overlay {
             if game.isComplete { CompletionView(game: game) }
         }
