@@ -7,14 +7,12 @@ struct CellView: View {
     let ctx: BoardContext
     let size: CGFloat
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let v = game.value(cell)
         ZStack {
             Rectangle().fill(background(v))
-            // A flash (a completed digit, an auto-completed cell) snaps on and fades slowly, with a pop.
-            // The pop scales the digit, not the cell, so it stays inside its square.
+            // A flash (a completed digit, an auto-completed cell) snaps on and fades slowly.
             Rectangle()
                 .fill(Color.accentColor)
                 .keyframeAnimator(initialValue: 0.0, trigger: game.flashes[cell]) { content, glow in
@@ -29,12 +27,6 @@ struct CellView: View {
                 Text("\(v)")
                     .font(.system(size: size * 0.62, weight: game.isGiven(cell) ? .semibold : .regular, design: .rounded))
                     .foregroundStyle(valueColor(v))
-                    .keyframeAnimator(initialValue: 1.0, trigger: game.flashes[cell]) { content, scale in
-                        content.scaleEffect(reduceMotion ? 1 : scale)
-                    } keyframes: { _ in
-                        SpringKeyframe(1.25, duration: 0.18, spring: .snappy)
-                        SpringKeyframe(1, duration: 0.6, spring: .bouncy)
-                    }
             } else {
                 NotesView(game: game, cell: cell, ctx: ctx, size: size)
             }
