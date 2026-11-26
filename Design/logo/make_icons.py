@@ -16,10 +16,15 @@ from make_logo import S, FONT, BOARDS, d4
 # bands (which keeps it a valid sudoku) and chosen so the 7x7 snowflake has no runs, repeated diagonals or
 # mirrored pairs. The 7x7 window starts at row 1, column 1, so its centre 3x3 is a real sudoku box.
 SOURCE_PUZZLE = "16...3.9.2...1.....58....47....8...1...2.9.........9.5.9.....24.1..478.....6....."
+# The same puzzle after that shuffle (still Medium, unique solution); its clues are the icon's givens.
+PUZZLE = "16...39..2...1.....58...47....2.9..........59....8..1....6......1..47..8.9....24."
 SOLUTION = "164873925279514863358926471531269784827431659946785312485692137612347598793158246"
 
 def solved(r, c):
     return int(SOLUTION[(r + 1) * 9 + c + 1])
+
+def is_given(r, c):
+    return PUZZLE[(r + 1) * 9 + c + 1] != "."
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, "build")
@@ -32,6 +37,7 @@ ICTOOL = os.path.join(os.path.dirname(subprocess.check_output(["xcode-select", "
 BLUE = "#2563D4"
 NAVY = "#0E3A8C"
 WHITE = "#FFFFFF"
+INK = "#1C1C1E"   # iOS label color in light mode, what the game uses for givens
 
 def svg(body):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {S} {S}" width="{S}" height="{S}">{body}</svg>'
@@ -60,13 +66,16 @@ def layer_tiles(n, base, pad, color, gap=0, radius=0):
         rects.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{cell-2*gap:.1f}" height="{cell-2*gap:.1f}" rx="{radius}"/>')
     return svg(f'<g fill="{color}">{"".join(rects)}</g>')
 
-def layer_digits(n, base, pad, color):
+def layer_digits(n, base, pad, color, given_color=None):
+    """Digits for the snowflake cells. With given_color, the puzzle's clues get that color, as the game draws
+    givens in the primary color and the player's entries in the accent color."""
     cell = geometry(n, pad)
     texts = []
     for r, c in sorted(d4(base, n)):
         x, y = pad + c * cell + cell / 2, pad + r * cell + cell / 2
-        texts.append(f'<text x="{x:.1f}" y="{y:.1f}" dy="0.36em" text-anchor="middle">{solved(r, c)}</text>')
-    return svg(f'<g font-family="{FONT}" font-weight="700" font-size="{cell*0.6:.0f}" fill="{color}">{"".join(texts)}</g>')
+        fill = given_color if given_color and is_given(r, c) else color
+        texts.append(f'<text x="{x:.1f}" y="{y:.1f}" dy="0.36em" text-anchor="middle" fill="{fill}">{solved(r, c)}</text>')
+    return svg(f'<g font-family="{FONT}" font-weight="700" font-size="{cell*0.6:.0f}">{"".join(texts)}</g>')
 
 def rasterize(svg_text, png_path):
     html = png_path[:-4] + ".html"
@@ -115,7 +124,7 @@ def options():
     n, base = star
     pad = 120
     out.append(("3-glass-tiles", {
-        "digits": layer_digits(n, base, pad, BLUE),
+        "digits": layer_digits(n, base, pad, BLUE, given_color=INK),
         "tiles": layer_tiles(n, base, pad, WHITE, gap=7, radius=22),
     }, {"fill": gradient, "groups": [
         group("Digits", ["digits"], glass=False, shadow=("none", 0)),

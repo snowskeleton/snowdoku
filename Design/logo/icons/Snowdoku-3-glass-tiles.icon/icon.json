@@ -19,6 +19,7 @@
     {
       "layers" : [
         {
+          "blend-mode" : "darken",
           "glass" : false,
           "image-name" : "digits.png",
           "name" : "digits"
@@ -40,7 +41,8 @@
         {
           "glass" : true,
           "image-name" : "tiles.png",
-          "name" : "tiles"
+          "name" : "tiles",
+          "opacity" : 0.9
         }
       ],
       "name" : "Tiles",
