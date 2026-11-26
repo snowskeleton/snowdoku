@@ -21,7 +21,7 @@ sudokugen — Snowdoku puzzle tooling
                                            by swapping clues in known ones (puzzles to stdout)
   sudokugen drills [options]               Mine "next move is X" training positions (JSON to stdout)
       --per N           drills per technique (default 20)
-      --technique T     only this technique
+      --technique T     only these techniques (comma-separated)
       --minutes M       stop after M minutes even if some techniques are short (default 10)
       --from FILE       mine these puzzles (one per line) instead of random ones, each once
       --seed N, --threads N
@@ -188,13 +188,29 @@ case "merge-drills":
             byTechnique[d.technique, default: []].append(d)
         }
     }
+    // Re-check every drill against the current solver order. If its next move is now a different
+    // technique, it becomes a drill for that one (a singles drill only when its candidates are the
+    // plain ones, since those are shown without notes).
+    let all = byTechnique.values.flatMap { $0 }
+    let checked = Locked<[Technique: [(drill: Drill, complexity: Int, cells: Int)]]>([:])
+    let relabeled = Locked(0)
+    DispatchQueue.concurrentPerform(iterations: all.count) { i in
+        var d = all[i]
+        guard let s = HumanSolver().nextStep(d.board) else { return }
+        if s.technique != d.technique {
+            if s.technique.difficulty == .beginner && Board(d.values).candidates != d.candidates { return }
+            d.technique = s.technique
+            relabeled.with { $0 += 1 }
+        }
+        checked.with { $0[d.technique, default: []].append((d, s.complexity, s.patternCells.count)) }
+    }
+    FileHandle.standardError.write("\(relabeled.with { $0 }) drills relabeled to a new technique\n".data(using: .utf8)!)
+    // Simplest step first, then the fewest highlighted cells: that one becomes the worked example.
     let ranked = Locked<[Technique: [Drill]]>([:])
-    let keys = Array(byTechnique.keys)
-    DispatchQueue.concurrentPerform(iterations: keys.count) { i in
-        let t = keys[i]
-        // Simplest step first, then the fewest highlighted cells: that one becomes the worked example.
-        let scored = byTechnique[t]!.compactMap { d in d.step().map { s in (d, s.complexity, s.patternCells.count) } }
-        let sorted = scored.sorted { ($0.1, $0.2) < ($1.1, $1.2) }.map(\.0)
+    for (t, list) in checked.with({ $0 }) {
+        var unique = Set<Drill>()
+        let sorted = list.sorted { ($0.complexity, $0.cells) < ($1.complexity, $1.cells) }
+            .map(\.drill).filter { unique.insert($0).inserted }
         ranked.with { $0[t] = Array(sorted.prefix(per)) }
     }
     let result = ranked.with { $0 }
@@ -252,11 +268,13 @@ case "drills":
     let minutes = Double(option("--minutes", in: args) ?? "") ?? 10
     let seed = UInt64(option("--seed", in: args) ?? "") ?? UInt64.random(in: 0...UInt64.max)
     let threads = Int(option("--threads", in: args) ?? "") ?? ProcessInfo.processInfo.activeProcessorCount
-    let only = option("--technique", in: args).map { name -> Technique in
-        guard let t = Technique(rawValue: name) else { fail("Unknown technique") }
-        return t
+    let only = option("--technique", in: args).map { list -> Set<Technique> in
+        Set(list.split(separator: ",").map { name in
+            guard let t = Technique(rawValue: String(name)) else { fail("Unknown technique \(name)") }
+            return t
+        })
     }
-    let wanted: Set<Technique> = only.map { [$0] } ?? Set(Technique.allCases.filter { $0 != .bruteForce })
+    let wanted: Set<Technique> = only ?? Set(Technique.allCases.filter { $0 != .bruteForce })
     let found = Locked<[Technique: [Drill]]>([:])
     let attempts = Locked(0)
     let start = Date()

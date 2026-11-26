@@ -133,13 +133,15 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    /// Relative difficulty used to order the solver and rate puzzles. Our own scale; tune freely.
+    /// Relative difficulty used to order the solver and rate puzzles. Our own scale and tiers, with
+    /// the relative order following HoDoKu's defaults where the two disagreed: Remote Pair, finned
+    /// and sashimi X-Wings, Turbot Fish, the uniqueness family, Jellyfish, Multi-Coloring and singles.
     public var score: Int {
         switch self {
         case .fullHouse: 4
         case .hiddenSingleBox: 8
         case .hiddenSingleLine: 12
-        case .nakedSingle: 15
+        case .nakedSingle: 6
         case .pointing: 30
         case .claiming: 35
         case .lockedPair: 37
@@ -153,31 +155,31 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .xWing: 110
         case .skyscraper: 120
         case .twoStringKite: 125
-        case .uniqueRectangle2: 130
+        case .uniqueRectangle2: 101
         case .nakedQuad: 135
         case .hiddenQuad: 140
-        case .uniqueRectangle4: 145
+        case .uniqueRectangle4: 102
         case .xyWing: 150
         case .emptyRectangle: 155
-        case .turbotFish: 160
+        case .turbotFish: 118
         case .swordfish: 165
         case .xyzWing: 170
         case .wWing: 175
-        case .uniqueRectangle3: 180
-        case .hiddenRectangle: 185
-        case .avoidableRectangle: 178
-        case .avoidableRectangle2: 179
-        case .uniqueRectangle5: 182
-        case .uniqueRectangle6: 188
+        case .uniqueRectangle3: 105
+        case .hiddenRectangle: 106
+        case .avoidableRectangle: 107
+        case .avoidableRectangle2: 108
+        case .uniqueRectangle5: 103
+        case .uniqueRectangle6: 104
         case .simpleColoring: 190
         case .colorWrap: 192
-        case .finnedXWing: 200
-        case .sashimiXWing: 205
-        case .remotePair: 210
-        case .jellyfish: 220
+        case .finnedXWing: 109
+        case .sashimiXWing: 128
+        case .remotePair: 105
+        case .jellyfish: 168
         case .finnedSwordfish: 230
         case .sashimiSwordfish: 235
-        case .multiColoring: 240
+        case .multiColoring: 196
         case .xChain: 250
         case .wxyzWing: 255
         case .finnedJellyfish: 260

@@ -40,7 +40,16 @@ xcodebuild -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'platform=m
 xcodebuild test -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath .build/xcode
 ```
 
-Re-mining the drill bank (needed when the solver's order changes; `DrillTests.bundledDrillsStillWork` fails when it is):
+Updating the drill bank when the solver's order changes (`DrillTests.bundledDrillsStillWork` fails when it does). `merge-drills` re-checks every drill: one whose next move is now a different technique becomes a drill for that technique. So first re-check the existing bank, then mine only the techniques it prints as short:
+
+```bash
+G=Engine/.build/release/sudokugen; T=$(mktemp -d)
+$G merge-drills App/Resources/Drills.json > $T/rechecked.json           # prints per-technique counts
+$G drills --per 20 --minutes 8 --technique xWing,skyscraper > $T/topup.json   # the short ones
+$G merge-drills $T/rechecked.json $T/topup.json > App/Resources/Drills.json
+```
+
+Re-mining from scratch:
 
 ```bash
 G=Engine/.build/release/sudokugen; T=$(mktemp -d)
