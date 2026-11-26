@@ -24,6 +24,11 @@ final class PadLayoutTests: XCTestCase {
 
     func testOnePadSwitchesBetweenValuesAndNotes() {
         XCTAssertFalse(app.buttons["Note 4"].exists, "one pad: no separate notes pad")
+        XCTAssertFalse(app.buttons["Erase"].exists, "one pad drops Erase")
+        let undo = app.buttons["Undo"], hint = app.buttons["Hint"]
+        XCTAssertTrue(undo.exists && app.buttons["Fill"].exists && hint.exists)
+        XCTAssertGreaterThan(undo.frame.minX, app.buttons["Digits"].frame.maxX, "actions are the pad's last column")
+        XCTAssertGreaterThan(hint.frame.minY, undo.frame.maxY)
         cell(1, 3).tap()
         bigDigit(4).tap()
         XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, 4")

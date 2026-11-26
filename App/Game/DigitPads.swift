@@ -39,9 +39,9 @@ struct DigitPads: View {
         }
     }
 
-    /// One set of digits with the mode keys as a fourth column (or, when wide, three more keys at the
-    /// end of the row), all the same size. Keys keep one height in every mode so nothing jumps, and
-    /// skip the remaining counts.
+    /// One set of digits, then a column of mode keys and a column of actions (Undo, Fill, Hint; the
+    /// controls row is hidden in this layout), all the same size. When wide, the same keys in one row.
+    /// Keys keep one height in every mode so nothing jumps, and skip the remaining counts.
     var onePad: some View {
         let small = game.padMode != .digits, kind = game.padMode.noteKind
         return ViewThatFits(in: .horizontal) {
@@ -51,6 +51,8 @@ struct DigitPads: View {
                 }
                 Color.clear.frame(width: 6, height: 1)
                 ForEach(PadMode.allCases, id: \.self) { modeKey($0, height: rowKeyHeight) }
+                Color.clear.frame(width: 6, height: 1)
+                ForEach(0..<3, id: \.self) { actionKey($0, height: rowKeyHeight) }
             }
             .frame(minWidth: 600)
             Grid(horizontalSpacing: 6, verticalSpacing: 6) {
@@ -60,6 +62,7 @@ struct DigitPads: View {
                             DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight, noteKind: kind, showsRemaining: false)
                         }
                         modeKey(PadMode.allCases[r], height: gridKeyHeight)
+                        actionKey(r, height: gridKeyHeight)
                     }
                 }
             }
@@ -69,6 +72,19 @@ struct DigitPads: View {
     /// A key of the Digits / Notes / Center switch.
     func modeKey(_ m: PadMode, height: Double) -> some View {
         ModeKey(title: m.title, mode: m, on: game.padMode == m, height: height) { game.choosePadMode(m) }
+    }
+
+    /// Undo, Fill or Hint (no Erase in this layout: tapping a cell's digit again clears it).
+    @ViewBuilder func actionKey(_ i: Int, height: Double) -> some View {
+        switch i {
+        case 0:
+            ActionKey(title: "Undo", systemImage: "arrow.uturn.backward", height: height, action: game.undo)
+                .disabled(!game.canUndo)
+        case 1:
+            ActionKey(title: "Fill", systemImage: "square.grid.3x3.middle.filled", height: height, action: game.fillNotes)
+        default:
+            ActionKey(title: "Hint", systemImage: "lightbulb", height: height) { withAnimation { game.requestHint() } }
+        }
     }
 
     /// The two-pad layout's rows and grids; its notes pad uses the Manual / Auto notation.

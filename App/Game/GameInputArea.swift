@@ -5,10 +5,12 @@ import SwiftUI
 struct GameInputArea: View {
     @Bindable var game: Game
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("padLayout") private var padLayout: PadLayout = .twoPads
 
     var body: some View {
         VStack(spacing: 12) {
-            ControlsView(game: game)
+            // One pad carries its own Undo / Fill / Hint keys.
+            if padLayout == .twoPads { ControlsView(game: game) }
             DigitPads(game: game)
         }
         .overlay(alignment: .bottom) {
