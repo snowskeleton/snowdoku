@@ -99,3 +99,40 @@ struct HiddenSubset: Strategy {
         }
     }
 }
+
+/// Locked Pair / Locked Triple: a naked subset whose cells all sit in one box/line intersection,
+/// so its digits leave both the box and the line. Easier to see than a general naked subset.
+struct LockedSubset: Strategy {
+    let size: Int
+    var technique: Technique { size == 2 ? .lockedPair : .lockedTriple }
+    func find(_ b: Board, _ out: inout StepCollector) {
+        for box in 0..<9 {
+            let bh = 18 + box
+            for line in 0..<18 {
+                let seg = Geometry.houses[bh].filter { Geometry.houseSets[line].contains($0) }
+                guard seg.count == 3 else { continue }
+                let pool = seg.filter { b.isEmpty($0) && (2...size).contains(b.candidates[$0].nonzeroBitCount) }
+                guard pool.count >= size else { continue }
+                forEachCombination(pool.count, size) { idx in
+                    let set = idx.map { pool[$0] }
+                    let u = b.union(set)
+                    guard u.nonzeroBitCount == size else { return true }
+                    var elims: [Candidate] = []
+                    var seen = Set<Int>()
+                    for h in [line, bh] {
+                        for c in Geometry.houses[h] where !set.contains(c) && seen.insert(c).inserted {
+                            for d in Mask.digits(b.candidates[c] & u) { elims.append(Candidate(c, d)) }
+                        }
+                    }
+                    guard !elims.isEmpty else { return true }
+                    let ds = Mask.digits(u).map(String.init).joined(separator: "/")
+                    out.add(Step(technique, eliminations: elims, houses: [line, bh],
+                                 highlights: set.flatMap { c in Mask.digits(b.candidates[c]).map { Highlight(c, $0, .pattern) } },
+                                 explanation: "\(Geometry.cellsName(set)) can only hold \(ds), and they share both \(Geometry.houseName(line)) and \(Geometry.houseName(bh)). Those digits are locked there for both houses: \(describeEliminations(elims))."))
+                    return !out.done
+                }
+                if out.done { return }
+            }
+        }
+    }
+}

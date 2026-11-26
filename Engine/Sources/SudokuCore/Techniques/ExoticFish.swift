@@ -1,8 +1,9 @@
 /// Franken and Mutant fish: base and cover sets drawn from rows, columns and boxes.
 ///
-/// Base houses must not share candidates (no endo-fins). If no fin is true, each cover
-/// house holds exactly one of the base digits, so cover candidates outside the base die,
-/// as do base candidates covered twice (cannibals). With fins, targets must also see every fin.
+/// Candidates shared by two base houses (a box and a line) are endo fins; base candidates outside
+/// the cover are exo fins. If no fin is true, each base house holds the digit in its own cells, so
+/// each cover house holds exactly one of them: cover candidates outside the base die, as do base
+/// candidates covered twice (cannibals). With fins, targets must also see every fin.
 struct GeneralFish: Strategy {
     enum Kind: Sendable { case franken, mutant }
     let kind: Kind
@@ -21,29 +22,32 @@ struct GeneralFish: Strategy {
                 for size in 2...3 {
                     forEachCombination(bases.count, size) { idx in
                         let bh = idx.map { bases[$0] }
-                        var baseCells = CellSet()
+                        var baseCells = CellSet(), endo = CellSet()
                         for h in bh {
-                            if !(baseCells & hc[h]).isEmpty { return true }
+                            endo |= baseCells & hc[h]
                             baseCells |= hc[h]
                         }
+                        guard endo.count <= 2 else { return true }
+                        var baseKinds = 0
+                        for h in bh { baseKinds |= Self.kindBit[h] }
                         let coverCands = coverPool.filter { !bh.contains($0) && !(hc[$0] & baseCells).isEmpty }
                         guard coverCands.count >= size else { return true }
                         forEachCombination(coverCands.count, size) { cidx in
-                            let ch = cidx.map { coverCands[$0] }
-                            guard classify(bh, ch) == kind else { return true }
                             var coverCells = CellSet()
-                            for h in ch { coverCells |= hc[h] }
-                            let fins = baseCells - coverCells
-                            guard fins.count <= 3 else { return true }
+                            var coverKinds = 0
+                            for i in cidx { coverCells |= hc[coverCands[i]]; coverKinds |= Self.kindBit[coverCands[i]] }
+                            let fins = (baseCells - coverCells) | endo
+                            guard fins.count <= 3, Self.classify(baseKinds, coverKinds) == kind else { return true }
+                            let ch = cidx.map { coverCands[$0] }
                             var targets = coverCells - baseCells
-                            for c in baseCells where ch.filter({ hc[$0].contains(c) }).count >= 2 { targets.insert(c) }
+                            for c in baseCells - fins where ch.filter({ hc[$0].contains(c) }).count >= 2 { targets.insert(c) }
                             if !fins.isEmpty { targets &= Geometry.commonPeers(fins) }
                             guard !targets.isEmpty else { return true }
                             let elims = targets.map { Candidate($0, d) }
                             out.add(Step(technique, eliminations: elims, houses: bh + ch,
                                          highlights: baseCells.map { Highlight($0, d, fins.contains($0) ? .fin : .pattern) },
                                          complexity: size,
-                                         explanation: "\(technique.name) on \(d): the base houses \(bh.map(Geometry.houseName).joined(separator: ", ")) hold \(size) separate \(d)s, all inside the cover houses \(ch.map(Geometry.houseName).joined(separator: ", "))\(fins.isEmpty ? "" : " apart from the fin\(fins.count > 1 ? "s" : "") \(Geometry.cellsName(fins))"). Each cover house is used up\(fins.isEmpty ? "" : " (or a fin is true)"): \(describeEliminations(elims))."))
+                                         explanation: "\(technique.name) on \(d): the base houses \(bh.map(Geometry.houseName).joined(separator: ", ")) hold \(size) separate \(d)s\(endo.isEmpty ? "" : " (\(Geometry.cellsName(endo)) belong to two of them, so they count as fins)"), all inside the cover houses \(ch.map(Geometry.houseName).joined(separator: ", "))\(fins.isEmpty ? "" : " apart from the fin\(fins.count > 1 ? "s" : "") \(Geometry.cellsName(fins))"). Each cover house is used up\(fins.isEmpty ? "" : " (or a fin is true)"): \(describeEliminations(elims))."))
                             return !out.done
                         }
                         return !out.done
@@ -54,11 +58,14 @@ struct GeneralFish: Strategy {
         }
     }
 
-    func classify(_ base: [Int], _ cover: [Int]) -> Kind? {
-        func all(_ hs: [Int], _ ok: (Geometry.HouseKind) -> Bool) -> Bool { hs.allSatisfy { ok(Geometry.kind($0)) } }
-        let basic = (all(base) { $0 == .row } && all(cover) { $0 == .column }) || (all(base) { $0 == .column } && all(cover) { $0 == .row })
-        if basic { return nil }
-        let franken = (all(base) { $0 != .column } && all(cover) { $0 != .row }) || (all(base) { $0 != .row } && all(cover) { $0 != .column })
+    /// 1 = row, 2 = column, 4 = box, per house.
+    static let kindBit: [Int] = (0..<27).map { $0 < 9 ? 1 : $0 < 18 ? 2 : 4 }
+
+    /// Basic (rows vs columns) is nil: those are ordinary fish. Franken keeps one line direction
+    /// out of each side; anything else is mutant.
+    static func classify(_ base: Int, _ cover: Int) -> Kind? {
+        if (base == 1 && cover == 2) || (base == 2 && cover == 1) { return nil }
+        let franken = (base & 2 == 0 && cover & 1 == 0) || (base & 1 == 0 && cover & 2 == 0)
         return franken ? .franken : .mutant
     }
 }

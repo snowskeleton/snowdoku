@@ -2,8 +2,13 @@
 public struct Rating: Hashable, Sendable, Codable {
     /// Hardest technique required.
     public var hardest: Technique
-    /// Tier of the hardest technique.
-    public var difficulty: Difficulty { hardest.difficulty }
+    /// The puzzle's tier: the hardest technique's tier, or one tier higher when the total score
+    /// is over that tier's `maxScore` (a long, grinding solve). The same idea as HoDoKu's rating.
+    public var difficulty: Difficulty {
+        let base = hardest.difficulty
+        guard let max = base.maxScore, totalScore > max else { return base }
+        return Difficulty(rawValue: base.rawValue + 1) ?? base
+    }
     /// Sum of scores of every step (a finer-grained "how long/tedious" measure).
     public var totalScore: Int
     /// How many times each technique was used.

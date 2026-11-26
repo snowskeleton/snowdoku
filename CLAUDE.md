@@ -6,7 +6,7 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 
 | Path | What |
 |---|---|
-| `Engine/` | Swift package `SudokuCore` (iOS 16 / macOS 13). Grid, brute-force solver, human-style solver, ~59 techniques, rater, generator, hints. Also the `sudokugen` CLI and the engine tests. |
+| `Engine/` | Swift package `SudokuCore` (iOS 16 / macOS 13). Grid, brute-force solver, human-style solver, ~64 techniques, rater, generator, hints. Also the `sudokugen` CLI and the engine tests. |
 | `Engine/Sources/SudokuCore/Techniques/` | One `Strategy` per technique |
 | `App/` | SwiftUI app in feature folders: `Root/` (window root, per-window `GameStore`), `Game/` (model, board, pads, hint), `Home/`, `Techniques/`, `Statistics/` (shared `StatsStore`), `Settings/`, `Shared/`. One type per file. A **synced folder**, so new files show up in Xcode automatically. |
 | `App/Resources/Drills.json` | The drill bank: for each technique, up to 20 mid-solve positions whose next move is that technique. Mined offline (see below); the app applies a random `GridTransform` to each drill it serves. |
@@ -92,7 +92,8 @@ UI tests find cells by accessibility label `Row r, column c, …` and big pad di
 - `BruteForce`: bitmask backtracking for uniqueness checks, solutions and random filled grids.
 - `HumanSolver`: repeatedly applies the easiest `Strategy`, ordered by `Technique.score`. Each `Strategy` emits exactly one `Technique`. Strategies with `ranked == true` (chains) collect every step and present the simplest (`complexity`).
 - `Step`: technique, placements, eliminations, houses, highlights (with roles), chain links, explanation. Hints, highlighting and explanations all come from it.
-- `Rater`: the hardest technique in a full solve; its `Difficulty` tier is the puzzle's level.
+- `Rater`: the hardest technique in a full solve sets the tier; a solve whose total score is over that tier's `Difficulty.maxScore` (≈ 98th percentile) goes up one tier, as in HoDoKu. Master is never bumped to Extreme.
+- Forcing chains and nets use **tabling** (`Techniques/Tabling.swift`, HoDoKu's method): an `ImplicationTable` per assumed literal records every consequence with its premises, so steps show their chains (`Step.links`, "r1c1=5 → r1c3≠5 → …"). Chain mode follows only the position's strong/weak links; net mode allows multi-premise steps (a cell emptied by several chains). The old locked-candidates-and-pairs net is kept as a final fallback.
 - `Generator`: random grid → remove clues while the solution stays unique (optional `Symmetry`) → rate. `GridTransform` (relabel digits, shuffle rows/columns within bands, transpose) preserves the rating exactly. `Daily.seed` + `Daily.pick` choose the day's bank puzzle and transform deterministically with no server.
 - `BankedPuzzle` (`PuzzleBank.swift`): one bank line, parsed without re-rating; `generated(transform)` solves it for play.
 - `HintEngine`: wrong values first, then removed-correct notes, then the next step from the player's own notes. `Step.hintText(level)` gives nudge → technique → region → pattern → answer.
@@ -105,7 +106,7 @@ UI tests find cells by accessibility label `Row r, column c, …` and big pad di
 3. Register it in `HumanSolver.allStrategies`.
 4. Run `swift test`. `SoundnessTests` check that every step (in find-all mode too) never removes a solution digit, which is how unsound logic gets caught. Then run `sudokugen stats` to see how often it fires.
 
-Deliberately not implemented: Exocet, MSLS, SK-loops (rare; forcing nets cover them). The Easter Monster still ends with a trial-and-error step.
+HoDoKu (GPL, Java) is a design reference only: read it for ideas, but never translate its code, or the app would have to be GPL. Deliberately not implemented: Exocet, MSLS, SK-loops (rare; forcing nets cover them), templates, Whale/Leviathan fish, and HoDoKu's "dual" kite/empty rectangle (two ordinary steps in one; the solver always finds the first half alone). The Easter Monster still ends with a trial-and-error step.
 
 ## App behavior (v1 decisions)
 

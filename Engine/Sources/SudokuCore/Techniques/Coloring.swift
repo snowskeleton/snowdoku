@@ -30,27 +30,31 @@ func colorClusters(_ b: Board, _ d: Int) -> [ColorCluster] {
 
 func seesAny(_ c: Int, _ set: CellSet) -> Bool { !(Geometry.peerSets[c] & set).isEmpty }
 
+/// Simple Coloring, in its two forms: a trap (a cell sees both colors) and a wrap (one color
+/// sees itself, so it is false). HoDoKu names them apart; they're spotted differently.
 struct SimpleColoring: Strategy {
-    let technique = Technique.simpleColoring
+    var wrap = false
+    var technique: Technique { wrap ? .colorWrap : .simpleColoring }
     func find(_ b: Board, _ out: inout StepCollector) {
         for d in 1...9 {
             for cl in colorClusters(b, d) {
                 let hl = cl.colors[0].map { Highlight($0, d, .colorA) } + cl.colors[1].map { Highlight($0, d, .colorB) }
                 // Color wrap: two cells of the same color see each other -> that color is false.
-                for k in 0..<2 {
+                for k in 0..<2 where wrap {
                     if cl.colors[k].contains(where: { seesAny($0, cl.colors[k]) }) {
                         let elims = cl.colors[k].map { Candidate($0, d) }
                         out.add(Step(technique, eliminations: elims, highlights: hl,
-                                     explanation: "Simple Coloring on \(d): two cells of the same color see each other, so that whole color is false: \(describeEliminations(elims))."))
+                                     explanation: "Simple Coloring Wrap on \(d): two cells of the same color see each other, so that whole color is false: \(describeEliminations(elims))."))
                         if out.done { return }
                     }
                 }
+                guard !wrap else { continue }
                 // Color trap: a cell seeing both colors.
                 let targets = b.cells(with: d) - cl.all
                 let elims = targets.filter { seesAny($0, cl.colors[0]) && seesAny($0, cl.colors[1]) }.map { Candidate($0, d) }
                 if !elims.isEmpty {
                     out.add(Step(technique, eliminations: elims, highlights: hl,
-                                 explanation: "Simple Coloring on \(d): following the strong links, one color must be true. Cells that see both colors can't be \(d): \(describeEliminations(elims))."))
+                                 explanation: "Simple Coloring Trap on \(d): following the strong links, one color must be true. Cells that see both colors can't be \(d): \(describeEliminations(elims))."))
                     if out.done { return }
                 }
             }

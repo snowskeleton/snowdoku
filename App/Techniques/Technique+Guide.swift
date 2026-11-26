@@ -46,6 +46,18 @@ extension Technique {
             ]
 
         // MARK: Subsets
+        case .lockedPair:
+            [
+                "Two cells that share a box *and* a row or column, and both hold exactly the same two candidates, say 3 and 7. One is 3 and the other 7, so both digits are used up in the box and in the line.",
+                "Remove 3 and 7 from every other cell of the box and of the line. It's a naked pair that pays twice, and the easiest pair to see, because the two cells sit side by side.",
+                "**How to spot it:** look inside each box for two neighboring two-note cells with matching notes in the same row or column.",
+            ]
+        case .lockedTriple:
+            [
+                "Three cells in one box/line segment (the three cells where a box meets a row or column) whose notes, together, are only three digits.",
+                "Those three digits fill those three cells, so they leave the rest of the box and the rest of the line.",
+                "**How to spot it:** look for a box segment with all three cells open and only three different digits among their notes.",
+            ]
         case .nakedPair:
             [
                 "Two cells in the same house that both have exactly the same two candidates, say 3 and 7. One of them will be 3 and the other 7; we just don't know which yet.",
@@ -208,6 +220,12 @@ extension Technique {
                 "A deadly pattern made of cells you solved, not givens. If three corners of a rectangle on two boxes are solved as X, Y, X (none of them given), the fourth corner can't be Y.",
                 "If it were, the four solved cells could swap X and Y without breaking any given, so the puzzle would have two solutions.",
             ]
+        case .avoidableRectangle2:
+            [
+                "Another deadly pattern made of cells you solved. Two corners on one side of a rectangle (two boxes) are solved as X and Y, not given. Across from them, the open corners hold {Y, Z} and {X, Z}: the digit that would complete the swap, plus the same extra digit Z.",
+                "If neither open corner were Z, they'd be Y and X, and the four cells could swap X and Y: two solutions. So one of them is Z, and any cell seeing both of them can't be Z.",
+                "**How to spot it:** look at cells you've filled in yourself, with two matching two-note cells across the rectangle from them.",
+            ]
         case .bugPlusOne:
             [
                 "BUG stands for Bivalue Universal Grave. If every unsolved cell had exactly two candidates, and every digit appeared exactly twice in each house, the remaining cells could be completed in two ways: a puzzle with one solution can't reach that state.",
@@ -219,7 +237,14 @@ extension Technique {
         case .simpleColoring:
             [
                 "Pick a digit and follow its strong links (houses where it has exactly two spots). Give the cells alternating colors: if one cell is blue, the other end of its link is green, and so on through the chain.",
-                "In the solution, either every blue cell holds the digit or every green cell does. Two rules follow. If two cells of the same color see each other, that color is false everywhere. And any uncolored cell that sees both a blue and a green cell can't hold the digit.",
+                "In the solution, either every blue cell holds the digit or every green cell does. So any uncolored cell that sees both a blue and a green cell is **trapped**: it can't hold the digit.",
+                "**How to spot it:** after coloring, look for cells outside the chain that see one cell of each color.",
+            ]
+        case .colorWrap:
+            [
+                "Color a digit's strong links in two alternating colors, as for a color trap. One of the two colors holds the digit everywhere.",
+                "If two cells of the *same* color see each other, that color can't be the true one: it would put the digit twice in one house. The chain **wraps** onto itself, so the whole color is false and every cell of the other color holds the digit.",
+                "**How to spot it:** after coloring, check each house for two cells of the same color.",
             ]
         case .multiColoring:
             [
@@ -248,10 +273,16 @@ extension Technique {
                 "An alternating chain that closes back on its starting point with the alternation intact. Then the chain must work in both directions, so every weak link in the loop is actually strong: of the two candidates it joins, exactly one is true.",
                 "That gives eliminations along every weak link: other candidates in the same cell (for a link inside a cell), or other cells of the house that see both ends (for a link along a house).",
             ]
+        case .discontinuousNiceLoop:
+            [
+                "An alternating chain that starts and ends in the same cell, but where the loop doesn't close cleanly: the two links touching that cell don't alternate.",
+                "If both end links are strong on the same digit, assuming the cell isn't that digit brings you back to it being that digit, so it must be. If the ends are two different digits of the cell, one of them must be true, and the cell's other candidates go.",
+                "**How to spot it:** while following a chain, notice when it comes back to a cell you've already used.",
+            ]
         case .aic:
             [
                 "Alternating Inference Chains generalize X- and XY-Chains: links can be on one digit between cells, or between two digits in one cell. They still alternate strong (at least one is true) and weak (at most one is true).",
-                "Starting and ending with strong links means one of the two end candidates is true. If both ends are the same digit, cells seeing both lose it. If they're different digits in the same cell, that cell's other candidates go.",
+                "Starting and ending with strong links means one of the two end candidates is true. If both ends are the same digit, cells seeing both lose it. If they're different digits that see each other, each removes the other from the opposite end. (When both ends land in the same cell, it's called a Discontinuous Nice Loop.)",
             ]
         case .groupedAIC:
             [
@@ -305,8 +336,8 @@ extension Technique {
         // MARK: Forcing
         case .cellForcingChain:
             [
-                "Pick a cell and try each of its candidates in turn, following the forced consequences with chains.",
-                "If every candidate leads to the same result (the same digit placed somewhere, or the same candidate removed), that result is true no matter what the cell is.",
+                "Pick a cell and try each of its candidates in turn, following the forced consequences with chains. Each link is a simple one: a true candidate rules out its peers, and a false one forces the other end of a strong link (the other note in a two-note cell, or the other spot in a house with two spots).",
+                "If every candidate leads to the same result (the same digit placed somewhere, or the same candidate removed), that result is true no matter what the cell is. The hint shows the chain from each candidate.",
             ]
         case .unitForcingChain:
             [
@@ -315,12 +346,14 @@ extension Technique {
             ]
         case .forcingContradiction:
             [
-                "Assume a candidate is true and follow the forced consequences. If they lead to an impossibility, such as a cell with no candidates left or a digit with nowhere to go in a house, the assumption was wrong. Remove the candidate.",
+                "Assume a candidate is true and follow the forced consequences along simple chains. If they lead to an impossibility, such as one cell forced to be both 4 and not 4, a cell with no candidates left, or a digit with nowhere to go in a house, the assumption was wrong. Remove the candidate.",
+                "It works the other way too: if assuming a candidate is *false* leads to a contradiction, it must be true.",
                 "This is reasoning by contradiction. It's a step up from guessing because you follow the logic to the end before deciding.",
             ]
         case .forcingNet:
             [
-                "A forcing chain that's allowed to branch and to use simple techniques (locked candidates, naked pairs) along the way, not just single forced moves.",
+                "A forcing chain that's allowed to branch: some of its steps need several earlier conclusions at once, like a cell whose last candidate is left only after three different chains removed the others. The hint lists the cells each branch fills in, in order.",
+                "When even that isn't enough, the net may also use simple techniques (locked candidates, naked pairs) along the way.",
                 "It's the last logical resort before trial and error, and almost every puzzle that resists everything else gives way to it.",
             ]
 

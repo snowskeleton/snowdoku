@@ -198,3 +198,45 @@ struct AvoidableRectangle: Strategy {
         }
     }
 }
+
+/// Avoidable Rectangle Type 2: two corners on one side are solved (not given) as a and b. The
+/// other two corners hold {b, x} and {a, x}, diagonal to the matching solved digit. If neither
+/// took x, a/b would fill the rectangle in a swappable way, so one of them is x.
+struct AvoidableRectangle2: Strategy {
+    let technique = Technique.avoidableRectangle2
+    func find(_ b: Board, _ out: inout StepCollector) {
+        for r1 in 0..<8 {
+            for r2 in (r1 + 1)..<9 {
+                for c1 in 0..<8 {
+                    for c2 in (c1 + 1)..<9 {
+                        guard (r1 / 3 == r2 / 3) != (c1 / 3 == c2 / 3) else { continue }
+                        let tl = r1 * 9 + c1, tr = r1 * 9 + c2, bl = r2 * 9 + c1, br = r2 * 9 + c2
+                        // The solved side and the open side, as (solved1, solved2, open below 1, open below 2).
+                        for (s1, s2, o1, o2) in [(tl, tr, bl, br), (bl, br, tl, tr), (tl, bl, tr, br), (tr, br, tl, bl)] {
+                            guard !b.isEmpty(s1), !b.isEmpty(s2), !b.givens.contains(s1), !b.givens.contains(s2),
+                                  b.isEmpty(o1), b.isEmpty(o2) else { continue }
+                            let a = b.value(s1), bb = b.value(s2)
+                            guard a != bb else { continue }
+                            // o1 is next to s1, so it would take bb; o2 would take a.
+                            let m1 = b.candidates[o1], m2 = b.candidates[o2]
+                            guard m1.nonzeroBitCount == 2, m2.nonzeroBitCount == 2,
+                                  m1 & Mask.bit(bb) != 0, m2 & Mask.bit(a) != 0 else { continue }
+                            let x1 = m1 & ~Mask.bit(bb), x2 = m2 & ~Mask.bit(a)
+                            guard x1 == x2, x1 & (Mask.bit(a) | Mask.bit(bb)) == 0 else { continue }
+                            let x = Mask.first(x1)
+                            let targets = Geometry.commonPeers(CellSet([o1, o2]))
+                            let elims = b.filter(targets, x).map { Candidate($0, x) }
+                            guard !elims.isEmpty else { continue }
+                            out.add(Step(technique, eliminations: elims,
+                                         highlights: [Highlight(s1, 0, .pattern), Highlight(s2, 0, .pattern),
+                                                      Highlight(o1, bb, .pattern), Highlight(o2, a, .pattern),
+                                                      Highlight(o1, x, .fin), Highlight(o2, x, .fin)],
+                                         explanation: "Avoidable Rectangle Type 2: \(Geometry.cellName(s1)) and \(Geometry.cellName(s2)) were solved (not given) as \(a) and \(bb). If \(Geometry.cellName(o1)) were \(bb) and \(Geometry.cellName(o2)) were \(a), swapping \(a) and \(bb) in all four cells would give a second solution. So one of them is \(x): \(describeEliminations(elims))."))
+                            if out.done { return }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

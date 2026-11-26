@@ -6,7 +6,7 @@ public struct HumanSolver: Sendable {
     public static let allStrategies: [any Strategy] = {
         let list: [any Strategy] = [
             FullHouse(), HiddenSingle(inBox: true), HiddenSingle(inBox: false), NakedSingle(),
-            Pointing(), Claiming(),
+            Pointing(), Claiming(), LockedSubset(size: 2), LockedSubset(size: 3),
             NakedSubset(size: 2), HiddenSubset(size: 2), NakedSubset(size: 3), HiddenSubset(size: 3),
             NakedSubset(size: 4), HiddenSubset(size: 4),
             Fish(size: 2, kind: .basic), Fish(size: 3, kind: .basic), Fish(size: 4, kind: .basic),
@@ -17,10 +17,10 @@ public struct HumanSolver: Sendable {
             EmptyRectangle(),
             XYWing(), XYZWing(), WWing(), WXYZWing(),
             UniqueRectangle(type: 1), UniqueRectangle(type: 2), UniqueRectangle(type: 3), UniqueRectangle(type: 4),
-            UniqueRectangle(type: 5), UniqueRectangle(type: 6), AvoidableRectangle(),
+            UniqueRectangle(type: 5), UniqueRectangle(type: 6), AvoidableRectangle(), AvoidableRectangle2(),
             HiddenRectangle(), BUGPlusOne(),
-            SimpleColoring(), MultiColoring(),
-            ChainStrategy(mode: .remotePair), ChainStrategy(mode: .x), ChainStrategy(mode: .xy), ChainStrategy(mode: .niceLoop),
+            SimpleColoring(), SimpleColoring(wrap: true), MultiColoring(),
+            ChainStrategy(mode: .remotePair), ChainStrategy(mode: .x), ChainStrategy(mode: .xy), ChainStrategy(mode: .niceLoop), ChainStrategy(mode: .discontinuous),
             ChainStrategy(mode: .aic), ChainStrategy(mode: .grouped),
             SueDeCoq(), ALSXZ(), ALSXYWing(), ALSChain(), DeathBlossom(),
             GeneralFish(kind: .franken), GeneralFish(kind: .mutant), KrakenFish(),

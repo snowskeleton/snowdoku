@@ -1,4 +1,5 @@
-/// Difficulty tiers. A puzzle's tier is the tier of the hardest technique it needs.
+/// Difficulty tiers. A puzzle's tier is the tier of the hardest technique it needs, bumped up one
+/// tier when the whole solve is unusually long for that tier (see `maxScore`).
 public enum Difficulty: Int, Comparable, CaseIterable, Codable, Sendable {
     case beginner = 1, easy, medium, hard, expert, master, extreme
 
@@ -15,6 +16,22 @@ public enum Difficulty: Int, Comparable, CaseIterable, Codable, Sendable {
         case .extreme: "Extreme"
         }
     }
+
+    /// The largest total solve score (`Rating.totalScore`) a puzzle can have and still sit at this
+    /// tier; above it, the puzzle is rated one tier harder. Set near the 98th percentile of random
+    /// puzzles at each tier, around the median of the next tier, so a long, grinding solve
+    /// counts as harder even when no single step is. Master is never bumped: Extreme means
+    /// forcing chains.
+    public var maxScore: Int? {
+        switch self {
+        case .beginner: 440
+        case .easy: 750
+        case .medium: 1050
+        case .hard: 1600
+        case .expert: 3200
+        case .master, .extreme: nil
+        }
+    }
 }
 
 /// Every solving technique the engine knows. Raw values are stable identifiers (used in puzzle banks).
@@ -23,7 +40,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
     case fullHouse, hiddenSingleBox, hiddenSingleLine, nakedSingle
     // Intersections & subsets
     case pointing, claiming
-    case nakedPair, hiddenPair, nakedTriple, hiddenTriple, nakedQuad, hiddenQuad
+    case lockedPair, lockedTriple, nakedPair, hiddenPair, nakedTriple, hiddenTriple, nakedQuad, hiddenQuad
     // Fish
     case xWing, swordfish, jellyfish
     case finnedXWing, sashimiXWing, finnedSwordfish, sashimiSwordfish, finnedJellyfish, sashimiJellyfish
@@ -33,11 +50,11 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
     case xyWing, xyzWing, wWing, wxyzWing
     // Uniqueness
     case uniqueRectangle1, uniqueRectangle2, uniqueRectangle3, uniqueRectangle4, uniqueRectangle5, uniqueRectangle6
-    case hiddenRectangle, avoidableRectangle, bugPlusOne
+    case hiddenRectangle, avoidableRectangle, avoidableRectangle2, bugPlusOne
     // Coloring
-    case simpleColoring, multiColoring
+    case simpleColoring, colorWrap, multiColoring
     // Chains
-    case remotePair, xChain, xyChain, niceLoop, aic, groupedAIC
+    case remotePair, xChain, xyChain, niceLoop, discontinuousNiceLoop, aic, groupedAIC
     // Exotic fish
     case frankenFish, mutantFish, krakenFish
     // Almost locked sets
@@ -55,6 +72,8 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .nakedSingle: "Naked Single"
         case .pointing: "Pointing"
         case .claiming: "Claiming"
+        case .lockedPair: "Locked Pair"
+        case .lockedTriple: "Locked Triple"
         case .nakedPair: "Naked Pair"
         case .hiddenPair: "Hidden Pair"
         case .nakedTriple: "Naked Triple"
@@ -85,14 +104,17 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .uniqueRectangle5: "Unique Rectangle Type 5"
         case .uniqueRectangle6: "Unique Rectangle Type 6"
         case .hiddenRectangle: "Hidden Rectangle"
-        case .avoidableRectangle: "Avoidable Rectangle"
+        case .avoidableRectangle: "Avoidable Rectangle Type 1"
+        case .avoidableRectangle2: "Avoidable Rectangle Type 2"
         case .bugPlusOne: "BUG+1"
-        case .simpleColoring: "Simple Coloring"
+        case .simpleColoring: "Simple Coloring Trap"
+        case .colorWrap: "Simple Coloring Wrap"
         case .multiColoring: "Multi-Coloring"
         case .remotePair: "Remote Pair"
         case .xChain: "X-Chain"
         case .xyChain: "XY-Chain"
         case .niceLoop: "Continuous Nice Loop"
+        case .discontinuousNiceLoop: "Discontinuous Nice Loop"
         case .aic: "Alternating Inference Chain"
         case .frankenFish: "Franken Fish"
         case .mutantFish: "Mutant Fish"
@@ -120,7 +142,9 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .nakedSingle: 15
         case .pointing: 30
         case .claiming: 35
+        case .lockedPair: 37
         case .nakedPair: 40
+        case .lockedTriple: 45
         case .hiddenPair: 50
         case .nakedTriple: 60
         case .hiddenTriple: 70
@@ -142,9 +166,11 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .uniqueRectangle3: 180
         case .hiddenRectangle: 185
         case .avoidableRectangle: 178
+        case .avoidableRectangle2: 179
         case .uniqueRectangle5: 182
         case .uniqueRectangle6: 188
         case .simpleColoring: 190
+        case .colorWrap: 192
         case .finnedXWing: 200
         case .sashimiXWing: 205
         case .remotePair: 210
@@ -158,6 +184,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .sashimiJellyfish: 265
         case .xyChain: 270
         case .niceLoop: 285
+        case .discontinuousNiceLoop: 300
         case .aic: 300
         case .frankenFish: 340
         case .mutantFish: 420
@@ -192,7 +219,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
     public var assumesUniqueness: Bool {
         switch self {
         case .uniqueRectangle1, .uniqueRectangle2, .uniqueRectangle3, .uniqueRectangle4, .uniqueRectangle5, .uniqueRectangle6,
-             .hiddenRectangle, .avoidableRectangle, .bugPlusOne: true
+             .hiddenRectangle, .avoidableRectangle, .avoidableRectangle2, .bugPlusOne: true
         default: false
         }
     }
@@ -206,6 +233,8 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .nakedSingle: "A cell with only one candidate left."
         case .pointing: "When a digit's candidates in a box all lie on one line, the digit can be removed from the rest of that line."
         case .claiming: "When a digit's candidates in a line all lie in one box, the digit can be removed from the rest of that box."
+        case .lockedPair: "A naked pair that sits in both a line and a box, so both digits can go from the rest of both houses."
+        case .lockedTriple: "A naked triple inside one box/line intersection: its digits leave the rest of the box and the line."
         case .nakedPair: "Two cells in a house holding the same two candidates; those digits can go nowhere else in the house."
         case .hiddenPair: "Two digits that only fit in the same two cells of a house; other candidates in those cells can go."
         case .nakedTriple: "Three cells in a house limited to the same three digits."
@@ -231,14 +260,17 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .uniqueRectangle4: "One rectangle digit is locked to the roof cells, so the other digit can go from both."
         case .uniqueRectangle5: "Several rectangle corners share one extra candidate; one of them must hold it."
         case .uniqueRectangle6: "A rectangle digit forms an X-Wing on the rectangle, so it must sit on the bivalue diagonal."
+        case .avoidableRectangle2: "Two solved (non-given) corners and two open corners would form a swappable rectangle unless an open corner takes its extra digit."
         case .avoidableRectangle: "Three solved (non-given) corners would let the fourth complete a swappable rectangle."
         case .hiddenRectangle: "Strong links around a rectangle force one corner to avoid the deadly pattern."
         case .bugPlusOne: "Every cell but one is bivalue; the extra candidate in that cell must be true."
-        case .simpleColoring: "Color a digit's strong-link chain in two colors; one color is true."
+        case .simpleColoring: "Color a digit's strong-link chain in two colors; one color is true, so a cell seeing both colors loses the digit."
+        case .colorWrap: "Color a digit's strong-link chain in two colors; if two cells of one color see each other, that whole color is false."
         case .multiColoring: "Two colored clusters on one digit interact to eliminate more."
         case .remotePair: "A chain of identical bivalue cells; cells seeing both ends of opposite parity lose both digits."
         case .xChain: "An alternating chain of strong and weak links on one digit."
         case .xyChain: "A chain through bivalue cells; the end digit is eliminated from cells seeing both ends."
+        case .discontinuousNiceLoop: "A chain that starts and ends in the same cell: the cell either keeps only the chain's digits or must take one of them."
         case .niceLoop: "A chain that closes on itself: every weak link in the loop becomes strong."
         case .frankenFish: "A fish whose base or cover sets include boxes."
         case .mutantFish: "A fish mixing rows, columns and boxes freely in its base and cover sets."
@@ -250,10 +282,10 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .alsXYWing: "Three almost locked sets in an XY-Wing shape."
         case .alsChain: "A chain of almost locked sets joined by restricted common digits."
         case .deathBlossom: "A stem cell whose every candidate locks an almost locked set petal."
-        case .cellForcingChain: "Every candidate of one cell leads to the same conclusion."
-        case .unitForcingChain: "Every position of a digit in a house leads to the same conclusion."
-        case .forcingContradiction: "Assuming a candidate leads to a contradiction, so it is false."
-        case .forcingNet: "Trying each option with deeper reasoning (locked candidates, pairs) reaches the same conclusion."
+        case .cellForcingChain: "Every candidate of one cell leads, by a simple chain, to the same conclusion."
+        case .unitForcingChain: "Every position of a digit in a house leads, by a simple chain, to the same conclusion."
+        case .forcingContradiction: "Assuming a candidate (or its absence) leads by simple chains to a contradiction, so the opposite is true."
+        case .forcingNet: "Like a forcing chain, but some steps need several earlier conclusions at once (a cell or house left with one option)."
         case .bruteForce: "No known technique applies; a value is revealed from the solution."
         }
     }

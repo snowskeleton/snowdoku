@@ -1,9 +1,12 @@
-/// Alternating inference chains: X-Chains, XY-Chains, Remote Pairs, AICs and grouped AICs.
+/// Alternating inference chains: X-Chains, XY-Chains, Remote Pairs, nice loops, AICs and grouped AICs.
+///
+/// An AIC whose two ends land in the same cell is reported as a Discontinuous Nice Loop (HoDoKu's
+/// naming): either the cell's start candidate is forced, or the cell keeps only the two end digits.
 ///
 /// A chain A1 = A2 - A3 = A4 ... = An (strong "=" / weak "-" alternating, starting and ending strong)
 /// proves "A1 or An is true". Anything that conflicts with both endpoints is eliminated.
 struct ChainStrategy: Strategy {
-    enum Mode: Sendable { case remotePair, x, xy, niceLoop, aic, grouped }
+    enum Mode: Sendable { case remotePair, x, xy, niceLoop, discontinuous, aic, grouped }
     let mode: Mode
     var ranked: Bool { true }
     var technique: Technique {
@@ -12,6 +15,7 @@ struct ChainStrategy: Strategy {
         case .x: .xChain
         case .xy: .xyChain
         case .niceLoop: .niceLoop
+        case .discontinuous: .discontinuousNiceLoop
         case .aic: .aic
         case .grouped: .groupedAIC
         }
@@ -68,6 +72,9 @@ struct ChainStrategy: Strategy {
                         best = min(best, dcur + 1)
                         found = true
                         break
+                    }
+                    if mode == .aic || mode == .discontinuous {
+                        guard isDiscontinuousLoop(s, nb, g) == (mode == .discontinuous) else { continue }
                     }
                     let (elims, places) = conclusions(s, nb, g, b)
                     guard !elims.isEmpty || !places.isEmpty else { continue }
@@ -130,6 +137,12 @@ struct ChainStrategy: Strategy {
         return out.subtracting(inLoop).sorted { ($0.cell, $0.digit) < ($1.cell, $1.digit) }
     }
 
+    /// The chain's ends are in one cell (the same candidate, or two digits of one cell).
+    func isDiscontinuousLoop(_ s: Int, _ e: Int, _ g: ChainGraph) -> Bool {
+        let A = g.nodes[s], B = g.nodes[e]
+        return !A.isGroup && !B.isGroup && A.cells == B.cells
+    }
+
     func conclusions(_ s: Int, _ e: Int, _ g: ChainGraph, _ b: Board) -> ([Candidate], [Candidate]) {
         let A = g.nodes[s], B = g.nodes[e]
         if s == e {
@@ -181,6 +194,16 @@ struct ChainStrategy: Strategy {
                         explanation: "Continuous Nice Loop: \(text). The loop closes on itself, so every weak link in it behaves like a strong one (exactly one end is true): \(describeEliminations(elims)).")
         }
         let what = places.isEmpty ? describeEliminations(elims) : "place " + places.map(\.description).joined(separator: ", ")
+        if mode == .discontinuous {
+            let first = g.nodes[path[0] >> 1], last = g.nodes[path[path.count - 1] >> 1]
+            let cell = Geometry.cellName(first.cells.first!)
+            let why = first.digit == last.digit
+                ? "If \(cell) isn't \(first.digit), the chain comes back and makes it \(first.digit) anyway, so it must be \(first.digit)"
+                : "The chain starts and ends in \(cell): if it isn't \(first.digit), it must be \(last.digit). Either way it's one of those two"
+            return Step(technique, placements: places, eliminations: elims, highlights: hl, links: links,
+                        complexity: path.count,
+                        explanation: "Discontinuous Nice Loop: \(text). \(why): \(what).")
+        }
         return Step(technique, placements: places, eliminations: elims, highlights: hl, links: links,
                     complexity: path.count,
                     explanation: "\(technique.name): \(text). If the first candidate is false, the chain forces the last one true, so one of the two ends is true: \(what).")
