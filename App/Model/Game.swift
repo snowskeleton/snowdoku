@@ -67,6 +67,10 @@ final class Game {
     private(set) var notes: [DigitMask]
     var selected: Int?
     var armed: ArmedDigit?
+    /// Digit just entered via a selected cell; keeps matching digits highlighted after the selection clears.
+    var lastDigit: Int?
+    /// Last selected cell, so arrow keys continue from it after the selection clears.
+    private var lastCell: Int?
     private(set) var mistakes: Int
     private(set) var hintsUsed: Int
     private(set) var isComplete: Bool
@@ -192,15 +196,25 @@ final class Game {
             return
         }
         selected = selected == c ? nil : c
+        lastCell = c
+        lastDigit = nil
     }
 
     /// Tapping a pad digit (or typing it): with a selected cell, enter it there;
     /// otherwise arm the digit so it can be applied to many cells. Tapping the armed digit disarms it.
     func tapDigit(_ d: Int, small: Bool) {
         if let c = selected {
-            if small { toggleNote(d, at: c) } else { place(d, at: c) }
+            if small {
+                toggleNote(d, at: c)
+            } else {
+                // A value finishes with that cell: clear the selection so the next digit tap arms a digit.
+                place(d, at: c)
+                selected = nil
+                lastDigit = values[c] != 0 ? d : nil
+            }
             return
         }
+        lastDigit = nil
         let a = ArmedDigit(digit: d, small: small)
         armed = armed == a ? nil : a
     }
@@ -208,6 +222,7 @@ final class Game {
     func clearSelection() {
         selected = nil
         armed = nil
+        lastDigit = nil
     }
 
     func place(_ d: Int, at c: Int) {
@@ -251,9 +266,11 @@ final class Game {
     }
 
     func moveSelection(dr: Int, dc: Int) {
-        let c = selected ?? 40
+        let c = selected ?? lastCell ?? 40
         let r = (c / 9 + dr + 9) % 9, col = (c % 9 + dc + 9) % 9
         selected = r * 9 + col
+        lastCell = selected
+        lastDigit = nil
     }
 
     private func checkComplete() {

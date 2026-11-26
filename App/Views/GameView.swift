@@ -76,6 +76,17 @@ struct GameView: View {
     }
 
     @ViewBuilder var hintArea: some View {
+        if let a = game.armed, game.hint == nil {
+            HStack {
+                Image(systemName: a.small ? "pencil" : "hand.tap")
+                Text(a.small ? "Tap cells to toggle note \(a.digit)" : "Tap cells to place \(a.digit)")
+                Spacer()
+                Button("Done") { game.armed = nil }
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+        }
         if game.hint != nil {
             HintPanel(game: game)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

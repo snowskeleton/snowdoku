@@ -22,7 +22,7 @@ struct BoardContext {
     @MainActor
     init(game: Game, mistakeMode: MistakeMode, highlightSame: Bool, highlightPeers: Bool) {
         selected = game.selected
-        highlightDigit = game.armed?.digit ?? game.selected.map { game.value($0) } ?? 0
+        highlightDigit = game.armed?.digit ?? game.selected.map { game.value($0) } ?? game.lastDigit ?? 0
         peers = game.selected.map { Geometry.peerSets[$0] } ?? CellSet()
         conflicts = mistakeMode == .off ? [] : game.conflicts
         self.mistakeMode = mistakeMode
