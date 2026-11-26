@@ -4,7 +4,7 @@ import Foundation
 enum PadLayout: String, CaseIterable, Identifiable {
     /// A pad for values and a pad for notes, side by side.
     case twoPads
-    /// One pad, with a Digits / Notes switch choosing what it enters.
+    /// One pad, with a Digits / Notes / Center switch choosing what it enters.
     case onePad
     var id: String { rawValue }
     var label: String {

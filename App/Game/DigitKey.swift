@@ -6,14 +6,15 @@ struct DigitKey: View {
     let digit: Int
     let small: Bool
     let height: Double
-    @AppStorage("noteStyle") private var noteStyle: NoteStyle = .grid
+    /// A centered-note key (one-pad Center mode): the digit sits in the middle.
+    var centered = false
     @ScaledMetric(relativeTo: .title) private var digitSize = 28.0
     @ScaledMetric(relativeTo: .body) private var noteSize = 15.0
 
     var body: some View {
         let left = game.remaining(digit)
-        let armed = game.armed == ArmedDigit(digit: digit, small: small)
-        Button { game.tapDigit(digit, small: small) } label: {
+        let armed = game.armed == ArmedDigit(digit: digit, small: small, centered: small && centered)
+        Button { game.tapDigit(digit, small: small, centered: centered) } label: {
             ZStack(alignment: small ? notePosition : .center) {
                 Color.clear
                 if small {
@@ -30,13 +31,13 @@ struct DigitKey: View {
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
         }
         .buttonStyle(PadKeyStyle(armed: armed, small: small, finished: !small && left == 0))
-        .accessibilityLabel(small ? "Note \(digit)" : "\(digit), \(left) remaining")
+        .accessibilityLabel(small ? "\(centered ? "Center note" : "Note") \(digit)" : "\(digit), \(left) remaining")
         .accessibilityAddTraits(armed ? .isSelected : [])
     }
 
     /// Small digits sit where they'd appear in a cell's notes.
     var notePosition: Alignment {
-        if noteStyle == .center { return .center }
+        if centered { return .center }
         let i = digit - 1
         let h: [HorizontalAlignment] = [.leading, .center, .trailing]
         let v: [VerticalAlignment] = [.top, .center, .bottom]

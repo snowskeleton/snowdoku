@@ -2,7 +2,7 @@ import SwiftUI
 import SudokuCore
 
 /// The digit pads. Two pads: big digits (values) and small digits (notes). One pad: a single set of
-/// digits plus a Digits / Notes switch. With a cell selected they enter into it; with none selected,
+/// digits plus a Digits / Notes / Center switch. With a cell selected they enter into it; with none selected,
 /// tapping arms a digit to apply to many cells.
 /// Wide spaces get single rows; narrower ones get 3x3 grids side by side.
 struct DigitPads: View {
@@ -41,13 +41,13 @@ struct DigitPads: View {
     var onePad: some View {
         ViewThatFits(in: .horizontal) {
             VStack(spacing: 8) {
-                row(small: game.noteMode)
+                row(small: game.padMode != .digits, centered: game.padMode == .centerNotes)
                 HStack(spacing: 6) { modeKeys }
                     .frame(height: noteRowKeyHeight)
             }
             .frame(minWidth: 600)
             HStack(spacing: 14) {
-                grid(small: game.noteMode)
+                grid(small: game.padMode != .digits, centered: game.padMode == .centerNotes)
                 VStack(spacing: 6) { modeKeys }
                     .frame(maxWidth: 110)
                     // As tall as the three rows of digits beside it.
@@ -56,23 +56,28 @@ struct DigitPads: View {
         }
     }
 
-    /// The Digits / Notes switch of the one-pad layout.
+    /// The Digits / Notes / Center switch of the one-pad layout.
     @ViewBuilder var modeKeys: some View {
-        ModeKey(title: "Digits", systemImage: "textformat.123", on: !game.noteMode) { game.noteMode = false }
-        ModeKey(title: "Notes", systemImage: "pencil", on: game.noteMode) { game.noteMode = true }
+        ModeKey(title: "Digits", systemImage: "textformat.123", on: game.padMode == .digits) { game.padMode = .digits }
+        ModeKey(title: "Notes", systemImage: "square.grid.3x3", on: game.padMode == .notes) { game.padMode = .notes }
+        ModeKey(title: "Center", systemImage: "square.dashed.inset.filled", on: game.padMode == .centerNotes) { game.padMode = .centerNotes }
     }
 
-    func row(small: Bool) -> some View {
+    func row(small: Bool, centered: Bool = false) -> some View {
         HStack(spacing: 6) {
-            ForEach(1...9, id: \.self) { d in DigitKey(game: game, digit: d, small: small, height: small ? noteRowKeyHeight : rowKeyHeight) }
+            ForEach(1...9, id: \.self) { d in
+                DigitKey(game: game, digit: d, small: small, height: small ? noteRowKeyHeight : rowKeyHeight, centered: centered)
+            }
         }
     }
 
-    func grid(small: Bool) -> some View {
+    func grid(small: Bool, centered: Bool = false) -> some View {
         Grid(horizontalSpacing: 6, verticalSpacing: 6) {
             ForEach(0..<3, id: \.self) { r in
                 GridRow {
-                    ForEach(1...3, id: \.self) { k in DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight) }
+                    ForEach(1...3, id: \.self) { k in
+                        DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight, centered: centered)
+                    }
                 }
             }
         }

@@ -9,6 +9,8 @@ struct GameRecord: Codable {
     var solution: Grid
     var values: [UInt8]
     var notes: [UInt16]
+    /// Cells whose notes are drawn centered (missing in saves from before centered notes).
+    var centeredNotes: CellSet?
     var elapsed: Double
     var mistakes: Int
     var hintsUsed: Int

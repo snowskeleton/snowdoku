@@ -21,12 +21,15 @@ final class Game {
 
     private(set) var values: [UInt8] { didSet { checkDrill() } }
     private(set) var notes: [DigitMask] { didSet { checkDrill() } }
+    /// Cells whose notes are drawn centered instead of in the 3x3 grid: the last note added to the
+    /// cell was a centered one. Only matters while the cell has notes.
+    private(set) var centeredNotes = CellSet()
     var selected: Int?
     var armed: ArmedDigit?
-    /// One-pad layout: true when the pad enters notes instead of values.
-    var noteMode = false {
+    /// One-pad layout: what the pad enters.
+    var padMode = PadMode.digits {
         // An armed digit follows the switch, so it keeps applying what the pad now shows.
-        didSet { if let a = armed { armed = ArmedDigit(digit: a.digit, small: noteMode) } }
+        didSet { if let a = armed { armed = ArmedDigit(digit: a.digit, small: padMode != .digits, centered: padMode == .centerNotes) } }
     }
     /// Digit just entered via a selected cell; keeps matching digits highlighted after the selection clears.
     var lastDigit: Int?
@@ -48,7 +51,9 @@ final class Game {
     private var accumulated: Double
     private var resumedAt: Date?
 
-    private struct Snapshot { var values: [UInt8]; var notes: [DigitMask] }
+    private struct Snapshot { var values: [UInt8]; var notes: [DigitMask]; var centered: CellSet }
+    private var snapshot: Snapshot { Snapshot(values: values, notes: notes, centered: centeredNotes) }
+    private func restore(_ s: Snapshot) { values = s.values; notes = s.notes; centeredNotes = s.centered }
     private var undoStack: [Snapshot] = []
     private var redoStack: [Snapshot] = []
 
@@ -110,6 +115,7 @@ final class Game {
         drillState = r.drillState ?? .searching
         values = r.values
         notes = r.notes
+        centeredNotes = r.centeredNotes ?? CellSet()
         mistakes = r.mistakes
         hintsUsed = r.hintsUsed
         isComplete = r.completed
@@ -120,7 +126,7 @@ final class Game {
     }
 
     var record: GameRecord {
-        GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, elapsed: elapsed(),
+        GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, centeredNotes: centeredNotes, elapsed: elapsed(),
                    mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
                    techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
                    drill: drill, drillState: drill == nil ? nil : drillState)
@@ -172,7 +178,7 @@ final class Game {
     // MARK: Editing
 
     private func pushUndo() {
-        undoStack.append(Snapshot(values: values, notes: notes))
+        undoStack.append(snapshot)
         if undoStack.count > 500 { undoStack.removeFirst() }
         redoStack.removeAll()
         hint = nil
@@ -180,16 +186,16 @@ final class Game {
 
     func undo() {
         guard !autoCompleting, let s = undoStack.popLast() else { return }
-        redoStack.append(Snapshot(values: values, notes: notes))
-        values = s.values; notes = s.notes
+        redoStack.append(snapshot)
+        restore(s)
         hint = nil
         refreshAutoComplete()
     }
 
     func redo() {
         guard !autoCompleting, let s = redoStack.popLast() else { return }
-        undoStack.append(Snapshot(values: values, notes: notes))
-        values = s.values; notes = s.notes
+        undoStack.append(snapshot)
+        restore(s)
         hint = nil
         refreshAutoComplete()
     }
@@ -201,7 +207,7 @@ final class Game {
     func tapCell(_ c: Int, asNote: Bool = false) {
         guard !autoCompleting else { return }
         if let a = armed {
-            if a.small || asNote { toggleNote(a.digit, at: c) } else { place(a.digit, at: c) }
+            if a.small || asNote { toggleNote(a.digit, at: c, centered: a.small && a.centered) } else { place(a.digit, at: c) }
             return
         }
         selected = selected == c ? nil : c
@@ -211,11 +217,11 @@ final class Game {
 
     /// Tapping a pad digit (or typing it): with a selected cell, enter it there;
     /// otherwise arm the digit so it can be applied to many cells. Tapping the armed digit disarms it.
-    func tapDigit(_ d: Int, small: Bool) {
+    func tapDigit(_ d: Int, small: Bool, centered: Bool = false) {
         guard !autoCompleting else { return }
         if let c = selected {
             if small {
-                toggleNote(d, at: c)
+                toggleNote(d, at: c, centered: centered)
             } else {
                 // A value finishes with that cell: clear the selection so the next digit tap arms a digit.
                 place(d, at: c)
@@ -225,7 +231,7 @@ final class Game {
             return
         }
         lastDigit = nil
-        let a = ArmedDigit(digit: d, small: small)
+        let a = ArmedDigit(digit: d, small: small, centered: small && centered)
         armed = armed == a ? nil : a
     }
 
@@ -259,10 +265,14 @@ final class Game {
         toggleNote(a.digit, at: c)
     }
 
-    func toggleNote(_ d: Int, at c: Int) {
+    /// Adding a note also sets how the cell draws its notes: centered or in the grid.
+    func toggleNote(_ d: Int, at c: Int, centered: Bool = false) {
         guard !isComplete, values[c] == 0 else { return }
         pushUndo()
         notes[c] ^= Mask.bit(d)
+        if notes[c] & Mask.bit(d) != 0 {
+            if centered { centeredNotes.insert(c) } else { centeredNotes.remove(c) }
+        }
     }
 
     func erase() {
@@ -276,6 +286,8 @@ final class Game {
     func fillNotes() {
         guard !isComplete else { return }
         pushUndo()
+        // Cells that had no notes get grid notes; cells with notes keep their style.
+        for c in 0..<81 where values[c] == 0 && notes[c] == 0 { centeredNotes.remove(c) }
         for c in 0..<81 where values[c] == 0 {
             var m = Mask.all
             for p in Geometry.peers[c] where values[p] != 0 { m &= ~Mask.bit(Int(values[p])) }

@@ -86,13 +86,14 @@ struct GameView: View {
     /// Shifted number-row symbols (US layout) map to small digits.
     static let shiftedDigits: [Character: Int] = ["!": 1, "@": 2, "#": 3, "$": 4, "%": 5, "^": 6, "&": 7, "*": 8, "(": 9]
 
-    /// Number = big digit, Shift+number = small (note) digit. With one pad in Notes mode, a plain
-    /// number is a note too, and N flips the switch.
+    /// Number = big digit, Shift+number = small (note) digit. With one pad in Notes or Center mode, a
+    /// plain number is that kind of note, and N steps through the modes.
     func handleKey(_ press: KeyPress) -> KeyPress.Result {
         if let ch = press.characters.first {
             if let d = ch.wholeNumberValue, (1...9).contains(d) {
-                let notes = press.modifiers.contains(.shift) || (padLayout == .onePad && game.noteMode)
-                game.tapDigit(d, small: notes); return .handled
+                if press.modifiers.contains(.shift) { game.tapDigit(d, small: true); return .handled }
+                let mode = padLayout == .onePad ? game.padMode : .digits
+                game.tapDigit(d, small: mode != .digits, centered: mode == .centerNotes); return .handled
             }
             if let d = Self.shiftedDigits[ch] {
                 game.tapDigit(d, small: true); return .handled
@@ -108,7 +109,7 @@ struct GameView: View {
         default:
             switch press.characters.lowercased() {
             case "h": showHint()
-            case "n" where padLayout == .onePad: game.noteMode.toggle()
+            case "n" where padLayout == .onePad: game.padMode = game.padMode.next
             case "z" where press.modifiers.contains(.command): press.modifiers.contains(.shift) ? game.redo() : game.undo()
             case "u": game.undo()
             default: return .ignored

@@ -1,6 +1,6 @@
 import XCTest
 
-/// The one-pad layout: a single set of digits with a Digits / Notes switch.
+/// The one-pad layout: a single set of digits with a Digits / Notes / Center switch.
 final class PadLayoutTests: XCTestCase {
     var app: XCUIApplication!
 
@@ -46,5 +46,32 @@ final class PadLayoutTests: XCTestCase {
         app.buttons["Digits"].tap()
         cell(1, 7).tap()
         XCTAssertEqual(cell(1, 7).label, "Row 1, column 7, 9", "switching to Digits makes the armed 9 a value")
+    }
+
+    func testCenterNotesAreDrawnPerCell() {
+        app.buttons["Center"].tap()
+        cell(1, 3).tap()
+        app.buttons["Center note 1"].tap()
+        app.buttons["Center note 2"].tap()
+        XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, centered notes 1 2")
+
+        // Grid notes elsewhere stay in the grid.
+        app.buttons["Notes"].tap()
+        cell(1, 4).tap()
+        app.buttons["Note 6"].tap()
+        XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, notes 6")
+        XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, centered notes 1 2")
+
+        // Adding a grid note to the centered cell switches it to the grid; undo switches it back.
+        cell(1, 3).tap()
+        app.buttons["Note 4"].tap()
+        XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, notes 1 2 4")
+        app.buttons["Undo"].tap()
+        XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, centered notes 1 2")
+
+        app.buttons["Center"].tap()
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "center notes"; shot.lifetime = .keepAlways
+        add(shot)
     }
 }

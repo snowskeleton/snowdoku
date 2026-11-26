@@ -7,13 +7,9 @@ struct NotesView: View {
     let ctx: BoardContext
     let size: CGFloat
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
-    @AppStorage("noteStyle") private var noteStyle: NoteStyle = .grid
 
     var body: some View {
-        switch noteStyle {
-        case .grid: grid
-        case .center: centered
-        }
+        if centered { centeredNotes } else { grid }
     }
 
     /// Each digit in its own spot: 1 top left … 9 bottom right.
@@ -31,7 +27,7 @@ struct NotesView: View {
     }
 
     /// The shown digits side by side in the middle, on two lines past five.
-    var centered: some View {
+    var centeredNotes: some View {
         let digits = (1...9).filter(isShown)
         let lines = digits.count > 5 ? [Array(digits.prefix((digits.count + 1) / 2)), Array(digits.dropFirst((digits.count + 1) / 2))] : [digits]
         let fontSize = size * (digits.count > 5 ? 0.22 : digits.count > 3 ? 0.24 : 0.28)
@@ -52,6 +48,9 @@ struct NotesView: View {
 
     var roles: [Int: Highlight.Role] { ctx.hintRoles[cell] ?? [:] }
 
+    /// The cell's last note was entered centered.
+    var centered: Bool { game.centeredNotes.contains(cell) }
+
     func note(_ d: Int, shown: Bool, fontSize: CGFloat) -> some View {
         let cand = Candidate(cell, d)
         let roles = roles
@@ -62,8 +61,8 @@ struct NotesView: View {
             .underline(differentiateWithoutColor && ctx.hintMissing.contains(cand), color: .green)
             .foregroundStyle(noteColor(d, roles, cand))
             // A grid note fills its third of the cell (so a hint's role tint does); a centered one hugs the digit.
-            .frame(width: noteStyle == .grid ? size / 3 : nil, height: noteStyle == .grid ? size / 3 : nil)
-            .padding(.horizontal, noteStyle == .center ? size * 0.015 : 0)
+            .frame(width: centered ? nil : size / 3, height: centered ? nil : size / 3)
+            .padding(.horizontal, centered ? size * 0.015 : 0)
             .background(noteBackground(d, roles, cand), in: RoundedRectangle(cornerRadius: size * 0.06))
     }
 
