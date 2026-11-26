@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Controls and pads. The hint panel and Finish pill float over them (never over the board,
+/// Controls and pads. The hint panel, drill result and Finish pill float over them (never over the board,
 /// whose highlights the hint refers to) so nothing moves when they appear.
 struct GameInputArea: View {
     @Bindable var game: Game
@@ -19,6 +19,12 @@ struct GameInputArea: View {
                     .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .overlay(alignment: .bottom) {
+            if game.drillState == .found && game.drill != nil && game.hint == nil && !game.isComplete {
+                DrillPanel(game: game)
+                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .overlay(alignment: .top) {
             if game.canAutoComplete && game.hint == nil {
                 Button("Finish puzzle", systemImage: "wand.and.stars", action: finish)
@@ -33,6 +39,7 @@ struct GameInputArea: View {
             }
         }
         .animation(.spring(duration: 0.3), value: game.canAutoComplete)
+        .animation(.spring(duration: 0.3), value: game.drillState)
     }
 
     func finish() {

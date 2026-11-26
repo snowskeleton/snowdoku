@@ -51,7 +51,8 @@ final class GameStore {
     }
 
     func recordCompletion(_ g: Game) {
-        stats.recordCompletion(g)
+        // A drill starts mid-solve, so its time and result say nothing about solving skill.
+        if g.drill == nil { stats.recordCompletion(g) }
         save()
     }
 
@@ -92,6 +93,22 @@ final class GameStore {
         start(p, practice: technique)
     }
 
+    /// A position from the bundled drill bank where the next move is `technique`, randomly
+    /// relabeled and reshuffled so repeats look fresh.
+    func drill(_ technique: Technique) async {
+        guard let d = DrillBank.random(for: technique) else {
+            errorMessage = "There are no \(technique.name) drills yet."
+            return
+        }
+        generating = "Setting up a \(technique.name) drill…"
+        defer { generating = nil }
+        let solution = await Task.detached(priority: .userInitiated) { BruteForce.solution(d.puzzle) }.value
+        guard let solution else { errorMessage = "That drill is broken. Try another."; return }
+        game = Game(drill: d, solution: solution)
+        isPlaying = true
+        save()
+    }
+
     func daily() async {
         let key = DailySchedule.key()
         if let g = game, g.dailyKey == key, !g.isComplete { resume(); return }
@@ -111,7 +128,8 @@ final class GameStore {
     /// Launch arguments run once per app launch (not per window).
     private static var appliedDebugArguments = false
 
-    /// Screenshot/test hooks: `-puzzle <81> [-prefill n [-wrong]]`, `-demo <difficulty> [hintLevel] [-arm d]`.
+    /// Screenshot/test hooks: `-puzzle <81> [-prefill n [-wrong]]`, `-demo <difficulty> [hintLevel] [-arm d]`,
+    /// `-drill <technique> [-hint level]`.
     func applyDebugArguments() async {
         guard !Self.appliedDebugArguments else { return }
         Self.appliedDebugArguments = true
@@ -128,6 +146,13 @@ final class GameStore {
             start(puzzle: grid)
             if let n = value(after: "-prefill").flatMap(Int.init) {
                 game?.debugPrefill(leaving: n, wrong: args.contains("-wrong"))
+            }
+            return
+        }
+        if let raw = value(after: "-drill"), let t = Technique(rawValue: raw) {
+            await drill(t)
+            if let level = value(after: "-hint").flatMap(Int.init) {
+                for _ in 0...level { game?.requestHint() }
             }
             return
         }

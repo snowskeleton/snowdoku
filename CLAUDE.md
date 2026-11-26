@@ -9,6 +9,8 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 | `Engine/` | Swift package `SudokuCore` (iOS 16 / macOS 13). Grid, brute-force solver, human-style solver, ~59 techniques, rater, generator, hints. Also the `sudokugen` CLI and the engine tests. |
 | `Engine/Sources/SudokuCore/Techniques/` | One `Strategy` per technique |
 | `App/` | SwiftUI app in feature folders: `Root/` (window root, per-window `GameStore`), `Game/` (model, board, pads, hint), `Home/`, `Techniques/`, `Statistics/` (shared `StatsStore`), `Settings/`, `Shared/`. One type per file. A **synced folder**, so new files show up in Xcode automatically. |
+| `App/Resources/Drills.json` | The drill bank: for each technique, up to 20 mid-solve positions whose next move is that technique. Mined offline (see below); the app applies a random `GridTransform` to each drill it serves. |
+| `Engine/Data/extreme-puzzles.txt` | 404 puzzles that need forcing chains, found by `sudokugen mutate` (random generation essentially never reaches Extreme). Seeds the forcing drills and, later, Extreme in the puzzle bank. |
 | `App/AppIcon.icon` | The app icon, an Icon Composer package. Its look (`icon.json`) is tuned by hand in Icon Composer; its layer images are drawn by `Design/logo/make_icons.py`, which never overwrites `icon.json`. |
 | `Design/logo/` | Logo concepts and the icon generator. |
 | `UITests/` | XCUITest target `SnowdokuUITests` (iOS simulator). Also a synced folder. |
@@ -37,6 +39,18 @@ xcodebuild -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'platform=m
 xcodebuild test -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath .build/xcode
 ```
 
+Re-mining the drill bank (needed when the solver's order changes; `DrillTests.bundledDrillsStillWork` fails when it is):
+
+```bash
+G=Engine/.build/release/sudokugen; T=$(mktemp -d)
+$G drills --per 20 --minutes 8 > $T/random.json                         # everything random puzzles reach
+$G drills --per 20 --from Engine/Data/extreme-puzzles.txt > $T/extreme.json   # forcing chains and nets
+# more extremes: $G mutate --from Engine/Data/extreme-puzzles.txt --minutes 4 --count 400
+$G merge-drills $T/random.json $T/extreme.json > App/Resources/Drills.json
+```
+
+Some techniques never come up as the *next* move, because an easier technique always finds the same thing first (see the drill counts `merge-drills` prints). They have no drills, and their pages hide the drill button.
+
 Build both iOS and macOS after app changes, since the code must stay platform-neutral. Use `#if os(iOS)` only for the rare platform-specific bit.
 
 ### Looking at the app
@@ -55,6 +69,8 @@ sleep 5; xcrun simctl io "$SIM" screenshot <scratchpad>/shot.png
 - `-arm <digit>`: with `-demo`, arm a big digit (digit-first mode)
 - `-puzzle <81 chars>`: start a specific puzzle (no generation wait; UI tests use this)
 - `-prefill <n> [-wrong]`: with `-puzzle`, fill all but the last n empty cells from the solution, optionally with one wrong value
+- `-technique <technique>`: open that technique's page
+- `-drill <technique> [-hint level]`: start a drill from the bundled bank (raw technique name, e.g. `xWing`), optionally advancing the hint
 
 UI tests find cells by accessibility label `Row r, column c, …` and big pad digits by a label that starts with `"<d>,"`.
 
@@ -83,6 +99,8 @@ Deliberately not implemented: Exocet, MSLS, SK-loops (rare; forcing nets cover t
 - Tapping the selected cell deselects it. The board has a single tap handler that maps the location to a cell (don't go back to `.offset` + per-cell gestures, which broke hit-testing).
 - Mac keyboard: number = value, Shift+number = note, arrows move, Option+arrow jumps a box, Command+arrow jumps to the edge, Delete erases, H = hint, Cmd+Z / Shift+Cmd+Z = undo/redo.
 - Highlighting: the selected cell plus its peers, matching digits, and cells whose **notes** contain the highlighted digit (whole-cell tint, bold note).
+- Technique pages: summary, a hand-written "How it works" guide, a worked example (the bank's first drill, drawn like an answer-level hint), and two practice buttons: a drill ("the next move is X") and a full puzzle that needs it.
+- Drills start mid-solve with the solver's own candidates as notes (singles drills have no notes). The header says what to find, with no timer. Making any instance of the move shows a floating result card (Keep solving / Next drill). Drills don't count toward statistics.
 - Hints are progressive, and the panel floats over the controls. Auto-complete ("Finish puzzle" pill) is offered only above Beginner, with no wrong entries, ≤ N empty cells (default 15), and singles finishing the rest.
 - Random games run from Beginner to Master and are generated on device. Extreme isn't offered yet.
 - Accessibility: basic labels and Dynamic Type only. A full VoiceOver mode was explicitly deferred.
@@ -90,7 +108,7 @@ Deliberately not implemented: Exocet, MSLS, SK-loops (rare; forcing nets cover t
 ## Roadmap / known gaps
 
 - Bundled puzzle bank, mined offline with `sudokugen`: instant starts, Extreme puzzles, and stable daily puzzles across engine changes. (Today the daily puzzle depends on the generator code; changing the generator changes past and future dailies.) Daily days are UTC (`DailySchedule`), so everyone gets the same puzzle at the same moment.
-- Technique training: "how you could have spotted this" replay, plus drills (`HumanSolver.allSteps(_:technique:)`).
+- Technique training: a "how you could have spotted this" replay. (Drills and the long-form guides with a worked example exist: `Technique+Guide.swift`, `DrillBank`, `TechniqueExample`.)
 - Draw chain links on the board (`Step.links` exists but isn't rendered).
 - iPad and Mac layout polish, an accent color (no asset catalog yet), dark mode check.
 - Puzzle import (paste or camera); `GameStore.start(puzzle:)` already exists.

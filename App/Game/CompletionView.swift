@@ -21,7 +21,7 @@ struct CompletionView: View {
             }
             HStack {
                 Button("Home", action: store.leaveGame).buttonStyle(.bordered)
-                Button("Next puzzle", action: nextPuzzle).buttonStyle(.borderedProminent)
+                Button(game.drill == nil ? "Next puzzle" : "Next drill", action: nextPuzzle).buttonStyle(.borderedProminent)
             }
         }
         .padding(28)
@@ -35,6 +35,10 @@ struct CompletionView: View {
     }
 
     func nextPuzzle() {
+        if let t = game.drill?.technique {
+            Task { await store.drill(t) }
+            return
+        }
         let d = game.difficulty
         Task { await store.newGame(GameStore.playable.contains(d) ? d : .master) }
     }

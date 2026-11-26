@@ -19,7 +19,7 @@ struct HomeView: View {
                         Label {
                             VStack(alignment: .leading) {
                                 Text("Continue").font(.headline)
-                                Text("\(g.practice.map { "Practice: \($0.name)" } ?? g.difficulty.name) · \(formatTime(g.elapsed()))")
+                                Text("\(g.title) · \(formatTime(g.elapsed()))")
                                     .font(.subheadline).foregroundStyle(.secondary)
                             }
                         } icon: {

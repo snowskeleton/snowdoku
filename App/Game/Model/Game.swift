@@ -13,9 +13,14 @@ final class Game {
     let techniques: [Technique]
     let dailyKey: String?
     let practice: Technique?
+    /// Set for a technique drill: a mid-solve position whose next move is the drill's technique.
+    let drill: Drill?
+    var drillState: DrillState = .searching
+    /// Every instance of the drill's technique in the starting position, computed in the background.
+    private(set) var drillTargets: [Step] = []
 
-    private(set) var values: [UInt8]
-    private(set) var notes: [DigitMask]
+    private(set) var values: [UInt8] { didSet { checkDrill() } }
+    private(set) var notes: [DigitMask] { didSet { checkDrill() } }
     var selected: Int?
     var armed: ArmedDigit?
     /// Digit just entered via a selected cell; keeps matching digits highlighted after the selection clears.
@@ -54,7 +59,31 @@ final class Game {
         isComplete = false
         accumulated = 0
         resumedAt = Date.now
+        drill = nil
         refreshAutoComplete()
+    }
+
+    /// Starts a drill. `tracking` is false for the static examples on technique pages.
+    init(drill d: Drill, solution: Grid, tracking: Bool = true) {
+        id = UUID()
+        puzzle = d.puzzle
+        self.solution = solution
+        givens = d.givens
+        difficulty = d.technique.difficulty
+        hardest = d.technique
+        techniques = [d.technique]
+        dailyKey = nil
+        practice = d.technique
+        drill = d
+        values = d.values.cells
+        notes = d.showsNotes ? d.candidates : Array(repeating: 0, count: 81)
+        mistakes = 0
+        hintsUsed = 0
+        isComplete = false
+        accumulated = 0
+        resumedAt = Date.now
+        refreshAutoComplete()
+        if tracking { loadDrillTargets() }
     }
 
     init(record r: GameRecord) {
@@ -67,6 +96,8 @@ final class Game {
         techniques = r.techniques
         dailyKey = r.dailyKey
         practice = r.practice
+        drill = r.drill
+        drillState = r.drillState ?? .searching
         values = r.values
         notes = r.notes
         mistakes = r.mistakes
@@ -75,12 +106,20 @@ final class Game {
         accumulated = r.elapsed
         resumedAt = r.completed ? nil : Date.now
         refreshAutoComplete()
+        if drill != nil && drillState == .searching { loadDrillTargets() }
     }
 
     var record: GameRecord {
         GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, elapsed: elapsed(),
                    mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
-                   techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete)
+                   techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
+                   drill: drill, drillState: drill == nil ? nil : drillState)
+    }
+
+    var title: String {
+        if let drill { return "Drill: \(drill.technique.name)" }
+        if let practice { return "Practice: \(practice.name)" }
+        return dailyKey != nil ? "Daily" : difficulty.name
     }
 
     // MARK: Clock
@@ -308,6 +347,32 @@ final class Game {
         refreshAutoComplete()
     }
     #endif
+
+    // MARK: Drills
+
+    private func loadDrillTargets() {
+        guard let drill else { return }
+        Task {
+            drillTargets = await Task.detached(priority: .userInitiated) { drill.targets() }.value
+            checkDrill()
+        }
+    }
+
+    /// The target the player has carried out: its placements made and its eliminations gone from
+    /// the notes (or the cell filled with a different digit).
+    var drillFoundStep: Step? {
+        drillTargets.first { s in
+            s.placements.allSatisfy { values[$0.cell] == UInt8($0.digit) }
+                && s.eliminations.allSatisfy { e in
+                    values[e.cell] == 0 ? notes[e.cell] & Mask.bit(e.digit) == 0 : values[e.cell] != UInt8(e.digit)
+                }
+        }
+    }
+
+    private func checkDrill() {
+        guard drill != nil, drillState == .searching, drillFoundStep != nil else { return }
+        drillState = .found
+    }
 
     // MARK: Hints
 

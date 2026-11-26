@@ -8,22 +8,38 @@ struct TechniqueDetailView: View {
     var body: some View {
         List {
             Section {
+                Text(technique.summary).font(.headline)
                 LabeledContent("Difficulty", value: technique.difficulty.name)
-                LabeledContent("Score", value: "\(technique.score)")
                 if technique.assumesUniqueness {
                     Text("Relies on the puzzle having exactly one solution.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            Section("Idea") {
-                Text(technique.summary)
+            Section("How it works") {
+                ForEach(Array(technique.guide.enumerated()), id: \.offset) { _, paragraph in
+                    Text(LocalizedStringKey(paragraph))
+                }
+            }
+            if let drill = DrillBank.example(for: technique) {
+                Section("Example") {
+                    TechniqueExample(drill: drill)
+                }
             }
             Section {
-                Button("Practice with a puzzle that needs it", systemImage: "graduationcap", action: practice)
+                if DrillBank.hasDrills(for: technique) {
+                    Button("Drill: find the next move", systemImage: "scope", action: drill)
+                }
+                Button("Play a puzzle that needs it", systemImage: "graduationcap", action: practice)
+            } header: {
+                Text("Practice")
             } footer: {
-                Text("Generates a puzzle whose logical solution uses \(technique.name). Ask for hints at the technique level to find it.")
+                Text("A drill drops you into the middle of a puzzle where the very next move is \(technique.name). A full puzzle uses it somewhere along the way; ask for hints at the technique level to find it.")
             }
         }
         .navigationTitle(technique.name)
+    }
+
+    func drill() {
+        Task { await store.drill(technique) }
     }
 
     func practice() {

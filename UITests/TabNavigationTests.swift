@@ -34,7 +34,7 @@ final class TabNavigationTests: XCTestCase {
         XCTAssertTrue(tabs.waitForExistence(timeout: 10))
         tabs.buttons["Techniques"].tap()
         app.staticTexts["Naked Single"].firstMatch.tap()
-        app.buttons["Practice with a puzzle that needs it"].tap()
+        app.scroll(to: app.buttons["Play a puzzle that needs it"]).tap()
 
         let cell = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Row 1, column 1,")).firstMatch

@@ -124,7 +124,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .hiddenPair: 50
         case .nakedTriple: 60
         case .hiddenTriple: 70
-        case .bugPlusOne: 90
+        case .bugPlusOne: 100
         case .uniqueRectangle1: 100
         case .xWing: 110
         case .skyscraper: 120

@@ -18,4 +18,6 @@ struct GameRecord: Codable {
     var dailyKey: String?
     var practice: Technique?
     var completed: Bool
+    var drill: Drill?
+    var drillState: DrillState?
 }

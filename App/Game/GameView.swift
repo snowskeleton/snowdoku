@@ -50,7 +50,7 @@ struct GameView: View {
                 }
             }
         }
-        .navigationTitle(game.practice.map { "Practice: \($0.name)" } ?? (game.dailyKey != nil ? "Daily" : game.difficulty.name))
+        .navigationTitle(game.title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif

@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: GameStore
     @State private var tab: AppTab = .play
+    @State private var techniquePath: [Technique] = []
 
     init(stats: StatsStore) {
         _store = State(initialValue: GameStore(stats: stats))
@@ -27,7 +28,7 @@ struct RootView: View {
                 }
             }
             Tab("Techniques", systemImage: "book", value: .techniques) {
-                NavigationStack { TechniqueLibraryView() }
+                NavigationStack(path: $techniquePath) { TechniqueLibraryView() }
             }
             Tab("Statistics", systemImage: "chart.bar", value: .statistics) {
                 NavigationStack { StatsView() }
@@ -58,7 +59,12 @@ struct RootView: View {
         .environment(store)
         #if DEBUG
         .task {
-            if ProcessInfo.processInfo.arguments.contains("-statsTab") { tab = .statistics }
+            let args = ProcessInfo.processInfo.arguments
+            if args.contains("-statsTab") { tab = .statistics }
+            if let i = args.firstIndex(of: "-technique"), i + 1 < args.count, let t = Technique(rawValue: args[i + 1]) {
+                tab = .techniques
+                techniquePath = [t]
+            }
             await store.applyDebugArguments()
         }
         #endif
