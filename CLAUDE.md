@@ -9,6 +9,8 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 | `Engine/` | Swift package `SudokuCore` (iOS 16 / macOS 13). Grid, brute-force solver, human-style solver, ~59 techniques, rater, generator, hints. Also the `sudokugen` CLI and the engine tests. |
 | `Engine/Sources/SudokuCore/Techniques/` | One `Strategy` per technique |
 | `App/` | SwiftUI app in feature folders: `Root/` (window root, per-window `GameStore`), `Game/` (model, board, pads, hint), `Home/`, `Techniques/`, `Statistics/` (shared `StatsStore`), `Settings/`, `Shared/`. One type per file. A **synced folder**, so new files show up in Xcode automatically. |
+| `App/AppIcon.icon` | The app icon, an Icon Composer package. Its look (`icon.json`) is tuned by hand in Icon Composer; its layer images are drawn by `Design/logo/make_icons.py`, which never overwrites `icon.json`. |
+| `Design/logo/` | Logo concepts and the icon generator. |
 | `UITests/` | XCUITest target `SnowdokuUITests` (iOS simulator). Also a synced folder. |
 | `project.yml` | XcodeGen spec. `Snowdoku.xcodeproj` is generated from it, and **both are committed**. |
 
@@ -90,5 +92,5 @@ Deliberately not implemented: Exocet, MSLS, SK-loops (rare; forcing nets cover t
 - Bundled puzzle bank, mined offline with `sudokugen`: instant starts, Extreme puzzles, and stable daily puzzles across engine changes. (Today the daily puzzle depends on the generator code; changing the generator changes past and future dailies.) Daily days are UTC (`DailySchedule`), so everyone gets the same puzzle at the same moment.
 - Technique training: "how you could have spotted this" replay, plus drills (`HumanSolver.allSteps(_:technique:)`).
 - Draw chain links on the board (`Step.links` exists but isn't rendered).
-- iPad and Mac layout polish, an app icon and accent color (no asset catalog yet), dark mode check.
+- iPad and Mac layout polish, an accent color (no asset catalog yet), dark mode check.
 - Puzzle import (paste or camera); `GameStore.start(puzzle:)` already exists.

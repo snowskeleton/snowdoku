@@ -29,6 +29,9 @@ def is_given(r, c):
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, "build")
 ICONS = os.path.join(HERE, "icons")
+# The option that ships: it lives in the app's synced folder, where Xcode builds it as the app icon.
+CHOSEN = "3-glass-tiles"
+APP_ICON = os.path.join(HERE, "..", "..", "App", "AppIcon.icon")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 SKILL = os.path.expanduser("~/.claude/skills/compose-app-icon/scripts")
 ICTOOL = os.path.join(os.path.dirname(subprocess.check_output(["xcode-select", "-p"], text=True).strip()),
@@ -161,7 +164,7 @@ if __name__ == "__main__":
         doc_path = os.path.join(ldir, "icon.json")
         with open(doc_path, "w") as f:
             json.dump(doc, f, indent=2)
-        icon = os.path.join(ICONS, f"Snowdoku-{name}.icon")
+        icon = APP_ICON if name == CHOSEN else os.path.join(ICONS, f"Snowdoku-{name}.icon")
         if os.path.isdir(icon):
             # Once a package exists, its icon.json is tuned by hand in Icon Composer: only refresh the layers.
             for lname in layers:
