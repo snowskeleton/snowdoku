@@ -52,6 +52,7 @@ final class GameStore {
         isPlaying = true
     }
 
+    /// Called when the board is dismissed, by the Home button or the navigation back button.
     func leaveGame() {
         game?.pauseClock()
         isPlaying = false

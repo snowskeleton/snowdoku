@@ -1,0 +1,41 @@
+import SwiftUI
+
+/// Controls and pads. The hint panel and Finish pill float over them (never over the board,
+/// whose highlights the hint refers to) so nothing moves when they appear.
+struct GameInputArea: View {
+    @Bindable var game: Game
+    /// False when the controls live in the toolbar instead (wide layouts).
+    let showsControls: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if showsControls { ControlsView(game: game) }
+            DigitPads(game: game)
+        }
+        .overlay(alignment: .bottom) {
+            if game.hint != nil {
+                HintPanel(game: game)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .overlay(alignment: .top) {
+            if game.canAutoComplete && game.hint == nil {
+                Button("Finish puzzle", systemImage: "wand.and.stars", action: finish)
+                    .font(.headline)
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.large)
+                    .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
+                    // Float just above the controls row, never over the buttons.
+                    .offset(y: -54)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.3), value: game.canAutoComplete)
+    }
+
+    func finish() {
+        Task { await game.autoComplete(animated: !reduceMotion) }
+    }
+}

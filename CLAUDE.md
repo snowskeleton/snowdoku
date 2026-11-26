@@ -1,6 +1,6 @@
 # Snowdoku: working in this repo
 
-A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. One SwiftUI codebase for iOS 17+, iPadOS and native macOS 14+, on top of a pure-Swift engine.
+A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. One SwiftUI codebase for iOS 18+, iPadOS and native macOS 15+, on top of a pure-Swift engine.
 
 ## Layout
 

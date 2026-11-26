@@ -6,12 +6,10 @@ struct HomeView: View {
 
     var body: some View {
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Snowdoku").font(.largeTitle.bold())
-                    Text("No ads. No nonsense. Just sudoku.").foregroundStyle(.secondary)
-                }
-                .listRowBackground(Color.clear)
+            Section {} header: {
+                Text("No ads. No nonsense. Just sudoku.")
+                    .font(.subheadline)
+                    .textCase(nil)
             }
 
             if store.hasGameInProgress, let g = store.game {
@@ -54,9 +52,7 @@ struct HomeView: View {
                 }
             }
         }
-        #if os(iOS)
-        .navigationBarHidden(true)
-        #endif
+        .navigationTitle("Snowdoku")
     }
 
     func blurb(_ d: Difficulty) -> String {
@@ -135,6 +131,15 @@ struct StatsView: View {
                 }
             }
         }
+        .overlay {
+            if store.stats.started.isEmpty && store.stats.dailyCompleted.isEmpty {
+                ContentUnavailableView(
+                    "No games yet",
+                    systemImage: "chart.bar",
+                    description: Text("Your solve counts, streaks and best times will show up here.")
+                )
+            }
+        }
         .navigationTitle("Statistics")
     }
 }
@@ -174,6 +179,7 @@ struct SettingsView: View {
                 Toggle("Show timer", isOn: $showTimer)
             }
         }
+        .formStyle(.grouped)
         .navigationTitle("Settings")
     }
 }

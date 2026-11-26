@@ -4,37 +4,51 @@ import SudokuCore
 struct GameView: View {
     @Bindable var game: Game
     @Environment(GameStore.self) private var store
-    @AppStorage("showTimer") private var showTimer = true
-    @AppStorage("mistakeMode") private var mistakeMode: MistakeMode = .conflicts
     @AppStorage("autoComplete") private var autoCompletePref = true
     @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focused: Bool
+    /// Landscape-ish space: board on the left, pads on the right, actions in the toolbar.
+    @State private var isWide = false
 
     var body: some View {
-        GeometryReader { geo in
-            let wide = geo.size.width > geo.size.height * 1.15
-            Group {
-                if wide {
-                    HStack(alignment: .center, spacing: 24) {
-                        BoardView(game: game)
-                        VStack(spacing: 16) {
-                            header
-                            Spacer(minLength: 0)
-                            inputArea
-                        }
-                        .frame(maxWidth: 360)
-                    }
-                } else {
-                    VStack(spacing: 12) {
-                        header
-                        BoardView(game: game)
+        Group {
+            if isWide {
+                HStack(spacing: 24) {
+                    BoardView(game: game)
+                    VStack(spacing: 16) {
+                        GameHeader(game: game)
                         Spacer(minLength: 0)
-                        inputArea
+                        GameInputArea(game: game, showsControls: false)
                     }
+                    .frame(maxWidth: 360)
+                }
+                .padding()
+            } else {
+                VStack(spacing: 12) {
+                    GameHeader(game: game)
+                    BoardView(game: game)
+                }
+                .padding(.horizontal)
+                .frame(maxHeight: .infinity)
+                // Controls and pads are pinned to the bottom; the board takes the rest.
+                .safeAreaInset(edge: .bottom) {
+                    GameInputArea(game: game, showsControls: true)
+                        .padding([.horizontal, .bottom])
                 }
             }
-            .padding()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: Bool.self) { $0.size.width > $0.size.height * 1.15 } action: { isWide = $0 }
+        .toolbar {
+            if isWide {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Undo", systemImage: "arrow.uturn.backward", action: game.undo)
+                        .disabled(!game.canUndo)
+                    Button("Erase", systemImage: "eraser", action: game.erase)
+                    Button("Fill notes", systemImage: "square.grid.3x3.middle.filled", action: game.fillNotes)
+                    Button("Hint", systemImage: "lightbulb", action: showHint)
+                }
+            }
         }
         .navigationTitle(game.practice.map { "Practice: \($0.name)" } ?? (game.dailyKey != nil ? "Daily" : game.difficulty.name))
         #if os(iOS)
@@ -56,58 +70,8 @@ struct GameView: View {
         }
     }
 
-    var header: some View {
-        HStack {
-            Label(game.difficulty.name, systemImage: "chart.bar.fill")
-                .foregroundStyle(.secondary)
-            Spacer()
-            if mistakeMode == .solution {
-                Label("\(game.mistakes)", systemImage: "xmark.circle")
-                    .foregroundStyle(game.mistakes > 0 ? .red : .secondary)
-            }
-            if showTimer {
-                TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    Text(formatTime(game.elapsed(at: ctx.date)))
-                        .monospacedDigit()
-                }
-                .foregroundStyle(.secondary)
-            }
-        }
-        .font(.subheadline)
-    }
-
-    /// Controls and pads. The hint panel floats over them (never over the board, whose
-    /// highlights it refers to) so nothing moves when it appears.
-    var inputArea: some View {
-        VStack(spacing: 12) {
-            ControlsView(game: game)
-            DigitPads(game: game)
-        }
-        .overlay(alignment: .bottom) {
-            if game.hint != nil {
-                HintPanel(game: game)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .overlay(alignment: .top) {
-            if game.canAutoComplete && game.hint == nil {
-                Button {
-                    Task { await game.autoComplete(animated: !reduceMotion) }
-                } label: {
-                    Label("Finish puzzle", systemImage: "wand.and.stars")
-                        .font(.headline)
-                        .padding(.horizontal, 18).padding(.vertical, 10)
-                        .background(Color.accentColor, in: Capsule())
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
-                }
-                .buttonStyle(.plain)
-                // Float just above the controls row, never over the buttons.
-                .offset(y: -54)
-                .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .animation(.spring(duration: 0.3), value: game.canAutoComplete)
+    func showHint() {
+        withAnimation { game.requestHint() }
     }
 
     /// Arrow = one cell, Option+arrow = same spot in the next box, Command+arrow = board edge.
@@ -139,7 +103,7 @@ struct GameView: View {
         case .escape: game.clearSelection()
         default:
             switch press.characters.lowercased() {
-            case "h": withAnimation { game.requestHint() }
+            case "h": showHint()
             case "z" where press.modifiers.contains(.command): press.modifiers.contains(.shift) ? game.redo() : game.undo()
             case "u": game.undo()
             default: return .ignored
@@ -159,26 +123,19 @@ struct ControlsView: View {
 
     var body: some View {
         HStack {
-            control("Undo", "arrow.uturn.backward", disabled: !game.canUndo) { game.undo() }
-            control("Erase", "eraser") { game.erase() }
-            control("Fill", "square.grid.3x3.middle.filled") { game.fillNotes() }
-            control("Hint", "lightbulb") { withAnimation { game.requestHint() } }
+            Button("Undo", systemImage: "arrow.uturn.backward", action: game.undo)
+                .disabled(!game.canUndo)
+            Button("Erase", systemImage: "eraser", action: game.erase)
+            Button("Fill", systemImage: "square.grid.3x3.middle.filled", action: game.fillNotes)
+            Button("Hint", systemImage: "lightbulb", action: showHint)
         }
+        .labelStyle(VerticalLabelStyle())
+        .buttonStyle(ControlButtonStyle())
         .disabled(game.isComplete)
     }
 
-    func control(_ title: String, _ icon: String, active: Bool = false, disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: icon).font(.title2)
-                Text(title).font(.caption)
-            }
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .foregroundStyle(active ? Color.accentColor : .primary)
-        }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .opacity(disabled ? 0.4 : 1)
+    func showHint() {
+        withAnimation { game.requestHint() }
     }
 }
 
@@ -187,6 +144,9 @@ struct ControlsView: View {
 /// Wide spaces get two single rows; narrower ones get two 3x3 grids side by side.
 struct DigitPads: View {
     @Bindable var game: Game
+    @ScaledMetric private var rowKeyHeight = 56.0
+    @ScaledMetric private var noteRowKeyHeight = 44.0
+    @ScaledMetric private var gridKeyHeight = 48.0
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -201,11 +161,13 @@ struct DigitPads: View {
             }
         }
         .disabled(game.isComplete)
+        // Past this size the pads would squeeze the board too much.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     func row(small: Bool) -> some View {
         HStack(spacing: 6) {
-            ForEach(1...9, id: \.self) { d in DigitKey(game: game, digit: d, small: small, height: small ? 44 : 56) }
+            ForEach(1...9, id: \.self) { d in DigitKey(game: game, digit: d, small: small, height: small ? noteRowKeyHeight : rowKeyHeight) }
         }
     }
 
@@ -213,7 +175,7 @@ struct DigitPads: View {
         Grid(horizontalSpacing: 6, verticalSpacing: 6) {
             ForEach(0..<3, id: \.self) { r in
                 GridRow {
-                    ForEach(1...3, id: \.self) { k in DigitKey(game: game, digit: r * 3 + k, small: small, height: 48) }
+                    ForEach(1...3, id: \.self) { k in DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight) }
                 }
             }
         }
@@ -224,32 +186,30 @@ struct DigitKey: View {
     @Bindable var game: Game
     let digit: Int
     let small: Bool
-    let height: CGFloat
+    let height: Double
+    @ScaledMetric(relativeTo: .title) private var digitSize = 28.0
+    @ScaledMetric(relativeTo: .body) private var noteSize = 15.0
 
     var body: some View {
         let left = game.remaining(digit)
         let armed = game.armed == ArmedDigit(digit: digit, small: small)
         Button { game.tapDigit(digit, small: small) } label: {
             ZStack(alignment: small ? notePosition : .center) {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(armed ? Color.accentColor : Color.primary.opacity(0.06))
+                Color.clear
                 if small {
                     Text("\(digit)")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.system(size: noteSize, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 8).padding(.vertical, 5)
                 } else {
                     VStack(spacing: 0) {
-                        Text("\(digit)").font(.system(size: 28, weight: .medium, design: .rounded))
-                        if left > 0 { Text("\(left)").font(.caption2).opacity(0.6) }
+                        Text("\(digit)").font(.system(size: digitSize, weight: .medium, design: .rounded))
+                        if left > 0 { Text("\(left)").font(.caption2).foregroundStyle(.secondary) }
                     }
                 }
             }
-            .foregroundStyle(armed ? Color.white : (small ? Color.secondary : Color.primary))
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .opacity(!small && left == 0 ? 0.3 : 1)
+        .buttonStyle(PadKeyStyle(armed: armed, small: small, finished: !small && left == 0))
         .accessibilityLabel(small ? "Note \(digit)" : "\(digit), \(left) remaining")
         .accessibilityAddTraits(armed ? .isSelected : [])
     }
