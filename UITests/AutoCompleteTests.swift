@@ -20,7 +20,8 @@ final class AutoCompleteTests: XCTestCase {
         let finish = app.buttons["Finish puzzle"]
         XCTAssertTrue(finish.waitForExistence(timeout: 5))
         finish.tap()
-        XCTAssertTrue(app.staticTexts["Solved!"].waitForExistence(timeout: 5))
+        // 10 cells at half a second each.
+        XCTAssertTrue(app.staticTexts["Solved!"].waitForExistence(timeout: 15))
     }
 
     func testNotOfferedWithAMistake() {

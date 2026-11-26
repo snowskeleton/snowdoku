@@ -292,7 +292,8 @@ final class Game {
             values[p.cell] = UInt8(p.digit)
             notes[p.cell] = 0
             lastDigit = p.digit
-            if animated { try? await Task.sleep(for: .milliseconds(45)) }
+            // Slow enough to watch each cell fill in.
+            if animated { try? await Task.sleep(for: .milliseconds(500)) }
         }
         autoCompleting = false
         checkComplete()
