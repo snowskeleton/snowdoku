@@ -16,7 +16,7 @@ struct GameInputArea: View {
         .overlay(alignment: .bottom) {
             if game.hint != nil {
                 HintPanel(game: game)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
         }
         .overlay(alignment: .top) {
@@ -29,7 +29,7 @@ struct GameInputArea: View {
                     .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
                     // Float just above the controls row, never over the buttons.
                     .offset(y: -54)
-                    .transition(.scale.combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
             }
         }
         .animation(.spring(duration: 0.3), value: game.canAutoComplete)

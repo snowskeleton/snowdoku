@@ -2,38 +2,30 @@ import Foundation
 import Observation
 import SudokuCore
 
-struct Stats: Codable {
-    var started: [Difficulty: Int] = [:]
-    var completed: [Difficulty: Int] = [:]
-    var bestTime: [Difficulty: Double] = [:]
-    var totalTime: [Difficulty: Double] = [:]
-    var dailyCompleted: Set<String> = []
-    var streak = 0
-    var lastDaily: String?
-}
-
-/// Owns the current game, puzzle creation, persistence and statistics.
+/// One window's game: the current puzzle, puzzle creation and its persistence.
+/// Each window owns its own store, so two iPad or Mac windows can play different games.
+/// Statistics are app-wide and live in `StatsStore`.
 @Observable @MainActor
 final class GameStore {
     var game: Game?
     var isPlaying = false
     var generating: String?
-    var stats = Stats()
     var errorMessage: String?
 
     /// Levels offered for random games. Extreme puzzles are too rare to mine on-device;
     /// they'll come from the bundled bank.
     static let playable: [Difficulty] = [.beginner, .easy, .medium, .hard, .expert, .master]
 
+    private let stats: StatsStore
     private let defaults = UserDefaults.standard
 
-    init() {
+    /// Restores the last unfinished game. (Two windows opened on the same saved game play
+    /// separate copies; whichever saves last is what Continue offers next time.)
+    init(stats: StatsStore) {
+        self.stats = stats
         if let data = defaults.data(forKey: "currentGame"), let r = try? JSONDecoder().decode(GameRecord.self, from: data), !r.completed {
             game = Game(record: r)
             game?.pauseClock()
-        }
-        if let data = defaults.data(forKey: "stats"), let s = try? JSONDecoder().decode(Stats.self, from: data) {
-            stats = s
         }
     }
 
@@ -43,7 +35,6 @@ final class GameStore {
         if let g = game, let data = try? JSONEncoder().encode(g.record) {
             defaults.set(data, forKey: "currentGame")
         }
-        if let data = try? JSONEncoder().encode(stats) { defaults.set(data, forKey: "stats") }
     }
 
     func resume() {
@@ -59,9 +50,14 @@ final class GameStore {
         save()
     }
 
+    func recordCompletion(_ g: Game) {
+        stats.recordCompletion(g)
+        save()
+    }
+
     private func start(_ p: GeneratedPuzzle, dailyKey: String? = nil, practice: Technique? = nil) {
         game = Game(p, dailyKey: dailyKey, practice: practice)
-        stats.started[p.rating.difficulty, default: 0] += 1
+        stats.recordStart(p.rating.difficulty)
         isPlaying = true
         save()
     }
@@ -75,6 +71,7 @@ final class GameStore {
     func newGame(_ difficulty: Difficulty) async {
         generating = "Building a \(difficulty.name.lowercased()) puzzle…"
         defer { generating = nil }
+        // Generation is CPU-heavy; keep it off the main actor.
         let p = await Task.detached(priority: .userInitiated) { () -> GeneratedPuzzle? in
             var rng = SystemRandomNumberGenerator()
             return Generator.generate(difficulty: difficulty, maxAttempts: 4000, using: &rng)
@@ -95,27 +92,11 @@ final class GameStore {
         start(p, practice: technique)
     }
 
-    // MARK: Daily
-
-    static func dayKey(_ date: Date = Date()) -> String {
-        let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)
-    }
-
-    /// Daily difficulty ramps through the week: Monday easy … Sunday master.
-    static func dailyDifficulty(_ date: Date = Date()) -> Difficulty {
-        let weekday = Calendar(identifier: .gregorian).component(.weekday, from: date) // 1 = Sunday
-        return [.master, .easy, .easy, .medium, .hard, .hard, .expert][weekday - 1]
-    }
-
-    var dailyDone: Bool { stats.dailyCompleted.contains(Self.dayKey()) }
-
     func daily() async {
-        let key = Self.dayKey()
+        let key = DailySchedule.key()
         if let g = game, g.dailyKey == key, !g.isComplete { resume(); return }
-        let difficulty = Self.dailyDifficulty()
-        let c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        let seed = Daily.seed(year: c.year!, month: c.month!, day: c.day!)
+        let difficulty = DailySchedule.difficulty()
+        let seed = DailySchedule.seed()
         generating = "Preparing today's puzzle…"
         defer { generating = nil }
         let p = await Task.detached(priority: .userInitiated) { () -> GeneratedPuzzle? in
@@ -126,20 +107,43 @@ final class GameStore {
         start(p, dailyKey: key)
     }
 
-    // MARK: Completion
+    #if DEBUG
+    /// Launch arguments run once per app launch (not per window).
+    private static var appliedDebugArguments = false
 
-    func recordCompletion(_ g: Game) {
-        let d = g.difficulty
-        let t = g.elapsed()
-        stats.completed[d, default: 0] += 1
-        stats.totalTime[d, default: 0] += t
-        if g.hintsUsed == 0 { stats.bestTime[d] = min(stats.bestTime[d] ?? .infinity, t) }
-        if let key = g.dailyKey, !stats.dailyCompleted.contains(key) {
-            stats.dailyCompleted.insert(key)
-            let yesterday = Self.dayKey(Calendar.current.date(byAdding: .day, value: -1, to: Date())!)
-            stats.streak = stats.lastDaily == yesterday ? stats.streak + 1 : 1
-            stats.lastDaily = key
+    /// Screenshot/test hooks: `-puzzle <81> [-prefill n [-wrong]]`, `-demo <difficulty> [hintLevel] [-arm d]`.
+    func applyDebugArguments() async {
+        guard !Self.appliedDebugArguments else { return }
+        Self.appliedDebugArguments = true
+        let args = ProcessInfo.processInfo.arguments
+        func value(after flag: String) -> String? {
+            args.firstIndex(of: flag).flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
         }
-        save()
+        #if os(macOS)
+        // The Mac sidebar mounts the Play stack late and drops a push that's already
+        // pending when it appears, so let the window settle first.
+        try? await Task.sleep(for: .milliseconds(500))
+        #endif
+        if let p = value(after: "-puzzle"), let grid = Grid(p) {
+            start(puzzle: grid)
+            if let n = value(after: "-prefill").flatMap(Int.init) {
+                game?.debugPrefill(leaving: n, wrong: args.contains("-wrong"))
+            }
+            return
+        }
+        guard let name = value(after: "-demo"),
+              let d = Difficulty.allCases.first(where: { $0.name.lowercased() == name }) else { return }
+        await newGame(d)
+        guard let g = game else { return }
+        g.fillNotes()
+        g.selected = g.values.firstIndex(of: 0)
+        if let digit = value(after: "-arm").flatMap(Int.init) {
+            g.selected = nil
+            g.tapDigit(digit, small: false)
+        }
+        if let i = args.firstIndex(of: "-demo"), i + 2 < args.count, let level = Int(args[i + 2]) {
+            for _ in 0...level { g.requestHint() }
+        }
     }
+    #endif
 }

@@ -2,57 +2,6 @@ import Foundation
 import Observation
 import SudokuCore
 
-/// How (and whether) the player is told about mistakes.
-enum MistakeMode: String, CaseIterable, Identifiable {
-    case off, conflicts, solution
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .off: "Off"
-        case .conflicts: "Rule conflicts"
-        case .solution: "Check against solution"
-        }
-    }
-}
-
-/// User preferences read by the model (views use @AppStorage with the same keys).
-enum Prefs {
-    static func bool(_ key: String, _ def: Bool) -> Bool { UserDefaults.standard.object(forKey: key) as? Bool ?? def }
-    static var autoRemoveNotes: Bool { bool("autoRemoveNotes", true) }
-    static var autoComplete: Bool { bool("autoComplete", true) }
-    static var autoCompleteThreshold: Int { UserDefaults.standard.object(forKey: "autoCompleteThreshold") as? Int ?? 15 }
-    static var mistakeMode: MistakeMode { MistakeMode(rawValue: UserDefaults.standard.string(forKey: "mistakeMode") ?? "") ?? .conflicts }
-}
-
-/// Persisted form of a game.
-struct GameRecord: Codable {
-    var id: UUID
-    var puzzle: Grid
-    var solution: Grid
-    var values: [UInt8]
-    var notes: [UInt16]
-    var elapsed: Double
-    var mistakes: Int
-    var hintsUsed: Int
-    var difficulty: Difficulty
-    var hardest: Technique
-    var techniques: [Technique]
-    var dailyKey: String?
-    var practice: Technique?
-    var completed: Bool
-}
-
-/// A digit chosen on a pad with no cell selected; tapping cells then applies it.
-struct ArmedDigit: Equatable {
-    var digit: Int
-    var small: Bool
-}
-
-struct HintSession {
-    var hint: Hint
-    var level: HintLevel
-}
-
 @Observable @MainActor
 final class Game {
     let id: UUID
@@ -104,7 +53,7 @@ final class Game {
         hintsUsed = 0
         isComplete = false
         accumulated = 0
-        resumedAt = Date()
+        resumedAt = Date.now
         refreshAutoComplete()
     }
 
@@ -124,7 +73,7 @@ final class Game {
         hintsUsed = r.hintsUsed
         isComplete = r.completed
         accumulated = r.elapsed
-        resumedAt = r.completed ? nil : Date()
+        resumedAt = r.completed ? nil : Date.now
         refreshAutoComplete()
     }
 
@@ -136,7 +85,7 @@ final class Game {
 
     // MARK: Clock
 
-    func elapsed(at date: Date = Date()) -> Double {
+    func elapsed(at date: Date = Date.now) -> Double {
         accumulated + (resumedAt.map { date.timeIntervalSince($0) } ?? 0)
     }
     func pauseClock() {
@@ -144,7 +93,7 @@ final class Game {
         resumedAt = nil
     }
     func resumeClock() {
-        if resumedAt == nil && !isComplete { resumedAt = Date() }
+        if resumedAt == nil && !isComplete { resumedAt = Date.now }
     }
     var isPaused: Bool { resumedAt == nil }
 

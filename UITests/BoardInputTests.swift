@@ -47,7 +47,9 @@ final class BoardInputTests: XCTestCase {
         cell(1, 3).tap()
         XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, 4")
         cell(1, 4).tap()
-        XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, 4")
+        // Two 4s in row 1 now conflict; VoiceOver hears it, not just a red tint.
+        XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, 4, mistake")
+        XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, 4, mistake")
         cell(9, 9).tap() // a given: unchanged
         XCTAssertEqual(cell(9, 9).label, "Row 9, column 9, 9, given")
 
