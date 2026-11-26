@@ -40,6 +40,12 @@ struct GameRecord: Codable {
     var completed: Bool
 }
 
+/// A digit chosen on a pad with no cell selected; tapping cells then applies it.
+struct ArmedDigit: Equatable {
+    var digit: Int
+    var small: Bool
+}
+
 struct HintSession {
     var hint: Hint
     var level: HintLevel
@@ -60,7 +66,7 @@ final class Game {
     private(set) var values: [UInt8]
     private(set) var notes: [DigitMask]
     var selected: Int?
-    var pencil = false
+    var armed: ArmedDigit?
     private(set) var mistakes: Int
     private(set) var hintsUsed: Int
     private(set) var isComplete: Bool
@@ -177,13 +183,35 @@ final class Game {
         hint = nil
     }
 
-    /// Digit button / key: pencil mode toggles a note, otherwise places the value.
-    func input(_ d: Int) {
-        if pencil { toggleNote(d) } else { place(d) }
+    // MARK: Input
+
+    /// Tapping a cell applies the armed digit, or toggles selection.
+    func tapCell(_ c: Int) {
+        if let a = armed {
+            if a.small { toggleNote(a.digit, at: c) } else { place(a.digit, at: c) }
+            return
+        }
+        selected = selected == c ? nil : c
     }
 
-    func place(_ d: Int) {
-        guard !isComplete, let c = selected, !isGiven(c) else { return }
+    /// Tapping a pad digit (or typing it): with a selected cell, enter it there;
+    /// otherwise arm the digit so it can be applied to many cells. Tapping the armed digit disarms it.
+    func tapDigit(_ d: Int, small: Bool) {
+        if let c = selected {
+            if small { toggleNote(d, at: c) } else { place(d, at: c) }
+            return
+        }
+        let a = ArmedDigit(digit: d, small: small)
+        armed = armed == a ? nil : a
+    }
+
+    func clearSelection() {
+        selected = nil
+        armed = nil
+    }
+
+    func place(_ d: Int, at c: Int) {
+        guard !isComplete, !isGiven(c) else { return }
         pushUndo()
         if values[c] == UInt8(d) {
             values[c] = 0
@@ -199,8 +227,8 @@ final class Game {
         checkComplete()
     }
 
-    func toggleNote(_ d: Int) {
-        guard !isComplete, let c = selected, values[c] == 0 else { return }
+    func toggleNote(_ d: Int, at c: Int) {
+        guard !isComplete, values[c] == 0 else { return }
         pushUndo()
         notes[c] ^= Mask.bit(d)
     }
@@ -233,6 +261,7 @@ final class Game {
             isComplete = true
             pauseClock()
             selected = nil
+            armed = nil
             hint = nil
         }
     }

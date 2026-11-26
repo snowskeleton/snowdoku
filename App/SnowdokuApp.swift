@@ -42,6 +42,10 @@ struct RootView: View {
                 guard let g = store.game else { return }
                 g.fillNotes()
                 g.selected = g.values.firstIndex(of: 0)
+                if let j = args.firstIndex(of: "-arm"), j + 1 < args.count, let d = Int(args[j + 1]) {
+                    g.selected = nil
+                    g.tapDigit(d, small: false)
+                }
                 if i + 2 < args.count, let lvl = Int(args[i + 2]) {
                     for _ in 0...lvl { g.requestHint() }
                 }

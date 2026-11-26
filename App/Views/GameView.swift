@@ -20,7 +20,7 @@ struct GameView: View {
                             hintArea
                             Spacer(minLength: 0)
                             ControlsView(game: game)
-                            NumberPad(game: game, columns: 3)
+                            DigitPads(game: game)
                         }
                         .frame(maxWidth: 360)
                     }
@@ -31,7 +31,7 @@ struct GameView: View {
                         hintArea
                         Spacer(minLength: 0)
                         ControlsView(game: game)
-                        NumberPad(game: game, columns: 9)
+                        DigitPads(game: game)
                     }
                 }
             }
@@ -82,9 +82,18 @@ struct GameView: View {
         }
     }
 
+    /// Shifted number-row symbols (US layout) map to small digits.
+    static let shiftedDigits: [Character: Int] = ["!": 1, "@": 2, "#": 3, "$": 4, "%": 5, "^": 6, "&": 7, "*": 8, "(": 9]
+
+    /// Number = big digit, Shift+number = small (note) digit.
     func handleKey(_ press: KeyPress) -> KeyPress.Result {
-        if let ch = press.characters.first, let d = ch.wholeNumberValue, (1...9).contains(d) {
-            game.input(d); return .handled
+        if let ch = press.characters.first {
+            if let d = ch.wholeNumberValue, (1...9).contains(d) {
+                game.tapDigit(d, small: press.modifiers.contains(.shift)); return .handled
+            }
+            if let d = Self.shiftedDigits[ch] {
+                game.tapDigit(d, small: true); return .handled
+            }
         }
         switch press.key {
         case .upArrow: game.moveSelection(dr: -1, dc: 0)
@@ -92,9 +101,9 @@ struct GameView: View {
         case .leftArrow: game.moveSelection(dr: 0, dc: -1)
         case .rightArrow: game.moveSelection(dr: 0, dc: 1)
         case .delete, .deleteForward: game.erase()
+        case .escape: game.clearSelection()
         default:
             switch press.characters.lowercased() {
-            case "n", "p": game.pencil.toggle()
             case "h": withAnimation { game.requestHint() }
             case "z" where press.modifiers.contains(.command): press.modifiers.contains(.shift) ? game.redo() : game.undo()
             case "u": game.undo()
@@ -117,7 +126,6 @@ struct ControlsView: View {
         HStack {
             control("Undo", "arrow.uturn.backward", disabled: !game.canUndo) { game.undo() }
             control("Erase", "eraser") { game.erase() }
-            control("Notes", game.pencil ? "pencil.circle.fill" : "pencil.circle", active: game.pencil) { game.pencil.toggle() }
             control("Fill", "square.grid.3x3.middle.filled") { game.fillNotes() }
             control("Hint", "lightbulb") { withAnimation { game.requestHint() } }
         }
@@ -139,32 +147,84 @@ struct ControlsView: View {
     }
 }
 
-struct NumberPad: View {
+/// Two digit pads: big digits (values) and small digits (notes). With a cell selected they enter
+/// into it; with none selected, tapping arms a digit to apply to many cells.
+/// Wide spaces get two single rows; narrower ones get two 3x3 grids side by side.
+struct DigitPads: View {
     @Bindable var game: Game
-    let columns: Int
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: columns), spacing: 6) {
-            ForEach(1...9, id: \.self) { d in
-                let left = game.remaining(d)
-                Button { game.input(d) } label: {
-                    VStack(spacing: 0) {
-                        Text("\(d)")
-                            .font(.system(size: game.pencil ? 22 : 30, weight: .medium, design: .rounded))
-                            .foregroundStyle(game.pencil ? .secondary : .primary)
-                        Text(left > 0 ? "\(left)" : " ")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: columns == 9 ? 58 : 64)
-                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-                .opacity(left == 0 ? 0.3 : 1)
-                .accessibilityLabel(game.pencil ? "Note \(d)" : "\(d), \(left) remaining")
+        ViewThatFits(in: .horizontal) {
+            VStack(spacing: 8) {
+                row(small: false)
+                row(small: true)
+            }
+            .frame(minWidth: 600)
+            HStack(spacing: 14) {
+                grid(small: false)
+                grid(small: true)
             }
         }
         .disabled(game.isComplete)
+    }
+
+    func row(small: Bool) -> some View {
+        HStack(spacing: 6) {
+            ForEach(1...9, id: \.self) { d in DigitKey(game: game, digit: d, small: small, height: small ? 44 : 56) }
+        }
+    }
+
+    func grid(small: Bool) -> some View {
+        Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+            ForEach(0..<3, id: \.self) { r in
+                GridRow {
+                    ForEach(1...3, id: \.self) { k in DigitKey(game: game, digit: r * 3 + k, small: small, height: 48) }
+                }
+            }
+        }
+    }
+}
+
+struct DigitKey: View {
+    @Bindable var game: Game
+    let digit: Int
+    let small: Bool
+    let height: CGFloat
+
+    var body: some View {
+        let left = game.remaining(digit)
+        let armed = game.armed == ArmedDigit(digit: digit, small: small)
+        Button { game.tapDigit(digit, small: small) } label: {
+            ZStack(alignment: small ? notePosition : .center) {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(armed ? Color.accentColor : Color.primary.opacity(0.06))
+                if small {
+                    Text("\(digit)")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .padding(.horizontal, 8).padding(.vertical, 5)
+                } else {
+                    VStack(spacing: 0) {
+                        Text("\(digit)").font(.system(size: 28, weight: .medium, design: .rounded))
+                        if left > 0 { Text("\(left)").font(.caption2).opacity(0.6) }
+                    }
+                }
+            }
+            .foregroundStyle(armed ? Color.white : (small ? Color.secondary : Color.primary))
+            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .opacity(!small && left == 0 ? 0.3 : 1)
+        .accessibilityLabel(small ? "Note \(digit)" : "\(digit), \(left) remaining")
+        .accessibilityAddTraits(armed ? .isSelected : [])
+    }
+
+    /// Small digits sit where they'd appear in a cell's notes.
+    var notePosition: Alignment {
+        let i = digit - 1
+        let h: [HorizontalAlignment] = [.leading, .center, .trailing]
+        let v: [VerticalAlignment] = [.top, .center, .bottom]
+        return Alignment(horizontal: h[i % 3], vertical: v[i / 3])
     }
 }
 

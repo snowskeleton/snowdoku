@@ -4,7 +4,8 @@ import SudokuCore
 /// Everything a cell needs to draw itself, computed once per board render.
 struct BoardContext {
     var selected: Int?
-    var selectedValue: Int
+    /// Digit to emphasize: the armed digit, else the selected cell's value.
+    var highlightDigit: Int
     var peers: CellSet
     var conflicts: Set<Int>
     var mistakeMode: MistakeMode
@@ -21,7 +22,7 @@ struct BoardContext {
     @MainActor
     init(game: Game, mistakeMode: MistakeMode, highlightSame: Bool, highlightPeers: Bool) {
         selected = game.selected
-        selectedValue = game.selected.map { game.value($0) } ?? 0
+        highlightDigit = game.armed?.digit ?? game.selected.map { game.value($0) } ?? 0
         peers = game.selected.map { Geometry.peerSets[$0] } ?? CellSet()
         conflicts = mistakeMode == .off ? [] : game.conflicts
         self.mistakeMode = mistakeMode
@@ -68,7 +69,8 @@ struct BoardView: View {
                     CellView(game: game, cell: c, ctx: ctx, size: cell)
                         .frame(width: cell, height: cell)
                         .offset(x: CGFloat(c % 9) * cell, y: CGFloat(c / 9) * cell)
-                        .onTapGesture { game.selected = c }
+                        .contentShape(Rectangle())
+                        .onTapGesture { game.tapCell(c) }
                 }
                 GridLines()
                     .stroke(Color.primary.opacity(0.25), lineWidth: 0.5)
@@ -128,7 +130,10 @@ struct CellView: View {
         if let roles = ctx.hintRoles[cell], roles[0] != nil { return .yellow.opacity(0.35) }
         if ctx.selected == cell { return .accentColor.opacity(0.38) }
         if ctx.conflicts.contains(cell) { return .red.opacity(0.18) }
-        if ctx.highlightSame && v != 0 && v == ctx.selectedValue { return .accentColor.opacity(0.24) }
+        if ctx.highlightSame && ctx.highlightDigit != 0 {
+            if v == ctx.highlightDigit { return .accentColor.opacity(0.28) }
+            if v == 0 && game.notes[cell] & Mask.bit(ctx.highlightDigit) != 0 { return .accentColor.opacity(0.16) }
+        }
         if ctx.hintHouses.contains(cell) { return .yellow.opacity(0.16) }
         if ctx.highlightPeers && ctx.peers.contains(cell) { return .accentColor.opacity(0.08) }
         return .clear
@@ -178,19 +183,19 @@ struct NotesView: View {
     }
 
     func noteWeight(_ d: Int, _ roles: [Int: Highlight.Role]) -> Font.Weight {
-        (roles[d] != nil || (ctx.highlightSame && d == ctx.selectedValue)) ? .bold : .regular
+        (roles[d] != nil || (ctx.highlightSame && d == ctx.highlightDigit)) ? .heavy : .regular
     }
 
     func noteColor(_ d: Int, _ roles: [Int: Highlight.Role], _ cand: Candidate) -> Color {
         if ctx.hintElims.contains(cand) { return .red }
         if ctx.hintMissing.contains(cand) { return .green }
         if roles[d] != nil { return .primary }
+        if ctx.highlightSame && d == ctx.highlightDigit { return .accentColor }
         return .secondary
     }
 
     func noteBackground(_ d: Int, _ roles: [Int: Highlight.Role], _ cand: Candidate) -> Color {
         if let role = roles[d] { return role.color.opacity(0.45) }
-        if ctx.highlightSame && d == ctx.selectedValue && game.notes[cell] & Mask.bit(d) != 0 { return .accentColor.opacity(0.25) }
         return .clear
     }
 }
