@@ -13,7 +13,9 @@ targets:
     type: application
     supportedDestinations: [iOS, macOS]
     sources:
+      # Synced folder: files added under App/ show up in Xcode without regenerating.
       - path: App
+        type: syncedFolder
     dependencies:
       - package: SudokuCore
         product: SudokuCore

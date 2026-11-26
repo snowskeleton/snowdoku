@@ -11,14 +11,11 @@ A sudoku app with no ads and no gimmicks, built to teach real solving techniques
 | `Engine/Sources/sudokugen` | macOS CLI for solving, rating and bulk-generating puzzle banks |
 | `Engine/Tests/SudokuCoreTests` | Swift Testing suite, including soundness checks for every technique |
 | `App/` | SwiftUI app: one codebase for iOS 17+, iPadOS and native macOS 14+ |
-| `project.yml` | XcodeGen spec (the `.xcodeproj` is generated, not committed) |
+| `project.yml` | XcodeGen spec that `Snowdoku.xcodeproj` is generated from (both committed) |
 
 ## Building the app
 
-```bash
-xcodegen generate
-open Snowdoku.xcodeproj
-```
+Open `Snowdoku.xcodeproj`. Source files under `App/` are a synced folder, so new files show up on their own. Project settings live in `project.yml`; after changing it, run `xcodegen generate`.
 
 Debug-only demo hook for screenshots: launch with `-demo hard 3`, which starts a Hard game with notes filled in and the hint already at level 3.
 
