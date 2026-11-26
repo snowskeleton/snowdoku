@@ -253,6 +253,10 @@ final class Game {
             values[c] = 0
             return
         }
+        writeValue(d, at: c)
+    }
+
+    private func writeValue(_ d: Int, at c: Int) {
         values[c] = UInt8(d)
         notes[c] = 0
         if Prefs.autoRemoveNotes {
@@ -269,6 +273,62 @@ final class Game {
         guard !autoCompleting, let a = armed, notes[c] & Mask.bit(a.digit) != 0 else { return }
         toggleNote(a.digit, at: c)
     }
+
+    // MARK: Drag strokes
+
+    /// A drag across cells with a digit armed: the first cell decides whether the stroke adds or
+    /// removes, and every cell it passes over gets the same change. One stroke is one undo step.
+    private struct Stroke {
+        var digit: Int
+        var asNote: Bool
+        var kind: NoteKind
+        var adding: Bool
+        var visited = CellSet()
+        var pushedUndo = false
+    }
+    private var stroke: Stroke?
+
+    /// Starts a stroke at cell `c` (does nothing with no digit armed). `asNote`: Shift held, as for
+    /// a Shift-click.
+    func beginStroke(at c: Int, asNote: Bool = false) {
+        guard !autoCompleting, !isComplete, let a = armed else { return }
+        let note = a.small || asNote
+        let kind = a.small ? a.kind : Prefs.noteNotation.kind
+        let adding = note ? (values[c] != 0 || notes[c] & Mask.bit(a.digit) == 0)
+            : values[c] != UInt8(a.digit)
+        stroke = Stroke(digit: a.digit, asNote: note, kind: kind, adding: adding)
+        extendStroke(to: c)
+    }
+
+    /// Applies the stroke's change to `c`, once per cell per stroke.
+    func extendStroke(to c: Int) {
+        guard var s = stroke, !isComplete, !s.visited.contains(c) else { return }
+        s.visited.insert(c)
+        defer { stroke = s }
+        let bit = Mask.bit(s.digit)
+        let changes: Bool
+        if s.asNote {
+            changes = values[c] == 0 && (notes[c] & bit != 0) != s.adding
+        } else if isGiven(c) {
+            changes = false
+        } else {
+            // Adding fills only empty cells; removing clears only this digit.
+            changes = s.adding ? values[c] == 0 : values[c] == UInt8(s.digit)
+        }
+        guard changes else { return }
+        if !s.pushedUndo { pushUndo(); s.pushedUndo = true }
+        if s.asNote {
+            notes[c] ^= bit
+            if s.adding { setNoteKind(s.kind, at: c) }
+        } else if s.adding {
+            writeValue(s.digit, at: c)
+        } else {
+            values[c] = 0
+            refreshAutoComplete()
+        }
+    }
+
+    func endStroke() { stroke = nil }
 
     /// Picking a mode on the one-pad switch. Notes or Center with a selected cell that has notes also
     /// redraws that cell's notes that way, so the button toggles the cell's style (undoably).

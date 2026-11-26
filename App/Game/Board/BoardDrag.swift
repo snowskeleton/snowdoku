@@ -1,0 +1,56 @@
+import SwiftUI
+
+/// A drag across the board, in board-local points. `changed` reports where the drag started (the
+/// touch-down point, not where it was recognized), where it is now, and whether Shift is held;
+/// `ended` follows when it finishes or is cancelled. Taps never trigger it, so it sits beside the
+/// board's tap handler. It is always on, even when a drag has nothing to apply, so a drag on the
+/// board never becomes the system's swipe back out of the game. iOS wraps UIPanGestureRecognizer for the modifier flags; the Mac uses a
+/// SwiftUI drag and reads Shift from NSEvent.
+enum BoardDragEvent {
+    case changed(start: CGPoint, location: CGPoint, shift: Bool)
+    case ended
+}
+
+#if os(iOS)
+struct BoardDrag: UIGestureRecognizerRepresentable {
+    let action: (BoardDragEvent) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let g = UIPanGestureRecognizer()
+        g.maximumNumberOfTouches = 1
+        return g
+    }
+
+    func handleUIGestureRecognizerAction(_ g: UIPanGestureRecognizer, context: Context) {
+        switch g.state {
+        case .began, .changed:
+            let p = context.converter.localLocation
+            let t = context.converter.localTranslation ?? .zero
+            action(.changed(start: CGPoint(x: p.x - t.x, y: p.y - t.y), location: p,
+                            shift: g.modifierFlags.contains(.shift)))
+        case .ended, .cancelled, .failed:
+            action(.ended)
+        default:
+            break
+        }
+    }
+}
+#endif
+
+extension View {
+    /// Reports drags on this view as `BoardDragEvent`s.
+    @ViewBuilder
+    func boardDrag(_ action: @escaping (BoardDragEvent) -> Void) -> some View {
+        #if os(iOS)
+        gesture(BoardDrag(action: action))
+        #else
+        simultaneousGesture(
+            DragGesture(minimumDistance: 4, coordinateSpace: .local)
+                .onChanged { v in
+                    action(.changed(start: v.startLocation, location: v.location,
+                                    shift: NSEvent.modifierFlags.contains(.shift)))
+                }
+                .onEnded { _ in action(.ended) })
+        #endif
+    }
+}

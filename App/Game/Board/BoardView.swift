@@ -8,6 +8,8 @@ struct BoardView: View {
     @AppStorage("highlightPeers") private var highlightPeers = true
     @AppStorage("shiftClickNotes") private var shiftClickNotes = true
     @AppStorage("rightClickRemovesNote") private var rightClickRemovesNote = true
+    /// The last point of the drag in progress, so a fast drag still reaches every cell it crosses.
+    @State private var dragLast: CGPoint?
 
     var body: some View {
         let ctx = BoardContext(game: game, mistakeMode: mistakeMode, highlightSame: highlightSame, highlightPeers: highlightPeers)
@@ -42,6 +44,8 @@ struct BoardView: View {
                 game.tapCell(cellIndex(at: p, cell: cell), asNote: shiftClickNotes && NSEvent.modifierFlags.contains(.shift))
             }
             #endif
+            // With a digit armed, dragging applies it to every cell the drag crosses.
+            .boardDrag { drag($0, cell: cell) }
             .modifier(RightClick { p in
                 if rightClickRemovesNote { game.removeArmedNote(at: cellIndex(at: p, cell: cell)) }
             })
@@ -50,6 +54,31 @@ struct BoardView: View {
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sudoku board")
+    }
+
+    func drag(_ e: BoardDragEvent, cell: CGFloat) {
+        switch e {
+        case let .changed(start, p, shift):
+            let from: CGPoint
+            if let last = dragLast {
+                from = last
+            } else {
+                game.beginStroke(at: cellIndex(at: start, cell: cell), asNote: shiftClickNotes && shift)
+                from = start
+            }
+            // Walk the segment in quarter-cell steps; points off the board touch nothing.
+            let steps = max(1, Int((hypot(p.x - from.x, p.y - from.y) / (cell / 4)).rounded(.up)))
+            for i in 1...steps {
+                let t = CGFloat(i) / CGFloat(steps)
+                let q = CGPoint(x: from.x + (p.x - from.x) * t, y: from.y + (p.y - from.y) * t)
+                guard q.x >= 0, q.y >= 0, q.x < cell * 9, q.y < cell * 9 else { continue }
+                game.extendStroke(to: cellIndex(at: q, cell: cell))
+            }
+            dragLast = p
+        case .ended:
+            game.endStroke()
+            dragLast = nil
+        }
     }
 
     func cellIndex(at p: CGPoint, cell: CGFloat) -> Int {
