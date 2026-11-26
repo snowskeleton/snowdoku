@@ -6,11 +6,21 @@ A sudoku app with no ads and no gimmicks, built to teach real solving techniques
 
 | Path | What |
 |---|---|
-| `Sources/SudokuCore` | Pure-Swift engine (iOS 16+/macOS 13+): grid, brute-force solver, human-style solver, techniques, rater, generator, hints |
-| `Sources/SudokuCore/Techniques` | One `Strategy` per technique (singles → forcing chains) |
-| `Sources/sudokugen` | macOS CLI for solving, rating and bulk-generating puzzle banks |
-| `Tests/SudokuCoreTests` | Swift Testing suite, including soundness checks for every technique |
-| `App/` | SwiftUI app (iOS, iPadOS, Mac) — not built yet |
+| `Engine/Sources/SudokuCore` | Pure-Swift engine (iOS 16+/macOS 13+): grid, brute-force solver, human-style solver, techniques, rater, generator, hints |
+| `Engine/Sources/SudokuCore/Techniques` | One `Strategy` per technique (singles → forcing chains) |
+| `Engine/Sources/sudokugen` | macOS CLI for solving, rating and bulk-generating puzzle banks |
+| `Engine/Tests/SudokuCoreTests` | Swift Testing suite, including soundness checks for every technique |
+| `App/` | SwiftUI app: one codebase for iOS 17+, iPadOS and native macOS 14+ |
+| `project.yml` | XcodeGen spec (the `.xcodeproj` is generated, not committed) |
+
+## Building the app
+
+```bash
+xcodegen generate
+open Snowdoku.xcodeproj
+```
+
+Debug-only demo hook for screenshots: launch with `-demo hard 3`, which starts a Hard game with notes filled in and the hint already at level 3.
 
 ## How it works
 
@@ -23,12 +33,12 @@ A sudoku app with no ads and no gimmicks, built to teach real solving techniques
 ## CLI
 
 ```bash
-swift build -c release
-.build/release/sudokugen techniques
-.build/release/sudokugen solve <81-char puzzle>
-.build/release/sudokugen generate --count 100 --difficulty expert
-.build/release/sudokugen generate --count 10 --technique swordfish
-.build/release/sudokugen stats --count 1000
+swift build -c release --package-path Engine
+Engine/.build/release/sudokugen techniques
+Engine/.build/release/sudokugen solve <81-char puzzle>
+Engine/.build/release/sudokugen generate --count 100 --difficulty expert
+Engine/.build/release/sudokugen generate --count 10 --technique swordfish
+Engine/.build/release/sudokugen stats --count 1000
 ```
 
 ## Techniques (scores are our own, tune in `Technique.swift`)
