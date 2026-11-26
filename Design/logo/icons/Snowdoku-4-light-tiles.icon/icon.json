@@ -1,0 +1,42 @@
+{
+  "fill": "system-light",
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "digits.png",
+          "name": "digits"
+        }
+      ],
+      "name": "Digits",
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
+      },
+      "specular": true
+    },
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "tiles.png",
+          "name": "tiles"
+        }
+      ],
+      "name": "Tiles",
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.6
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.15
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

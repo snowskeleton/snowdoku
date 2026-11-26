@@ -1,0 +1,61 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.47076,0.80415,1.00000,1.00000",
+      "display-p3:0.22069,0.50179,0.67348,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.7
+      }
+    }
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "digits.png",
+          "name" : "digits"
+        }
+      ],
+      "name" : "Digits",
+      "shadow" : {
+        "kind" : "none",
+        "opacity" : 0
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : true,
+          "image-name" : "tiles.png",
+          "name" : "tiles"
+        }
+      ],
+      "name" : "Tiles",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.25
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}

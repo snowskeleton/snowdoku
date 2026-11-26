@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#2F7DE1"/><stop offset="1" stop-color="#0E3A8C"/>
+  </linearGradient>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<rect x="98" y="98" width="828" height="828" rx="40" fill="#fff"/>
+<rect x="112.0" y="112.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="192.0" y="192.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">1</text>
+<rect x="432.0" y="112.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="512.0" y="192.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">3</text>
+<rect x="752.0" y="112.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="832.0" y="192.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">5</text>
+<rect x="272.0" y="272.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="352.0" y="352.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">5</text>
+<rect x="432.0" y="272.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="512.0" y="352.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">6</text>
+<rect x="592.0" y="272.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="672.0" y="352.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">7</text>
+<rect x="112.0" y="432.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="192.0" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">7</text>
+<rect x="272.0" y="432.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="352.0" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">8</text>
+<rect x="432.0" y="432.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="512.0" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">9</text>
+<rect x="592.0" y="432.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="672.0" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">1</text>
+<rect x="752.0" y="432.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="832.0" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">2</text>
+<rect x="272.0" y="592.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="352.0" y="672.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">3</text>
+<rect x="432.0" y="592.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="512.0" y="672.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">4</text>
+<rect x="592.0" y="592.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="672.0" y="672.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">5</text>
+<rect x="112.0" y="752.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="192.0" y="832.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">5</text>
+<rect x="432.0" y="752.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="512.0" y="832.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">7</text>
+<rect x="752.0" y="752.0" width="160.0" height="160.0" fill="#2563D4"/>
+<text x="832.0" y="832.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="96" fill="#fff">9</text>
+<line x1="272.0" y1="112" x2="272.0" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="272.0" x2="912" y2="272.0" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="432.0" y1="112" x2="432.0" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="432.0" x2="912" y2="432.0" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="592.0" y1="112" x2="592.0" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="592.0" x2="912" y2="592.0" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="752.0" y1="112" x2="752.0" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="752.0" x2="912" y2="752.0" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+</svg>

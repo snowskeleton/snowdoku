@@ -1,0 +1,63 @@
+{
+  "fill": {
+    "linear-gradient": [
+      "srgb:0.18431,0.49020,0.88235,1.00000",
+      "srgb:0.05490,0.22745,0.54902,1.00000"
+    ],
+    "orientation": {
+      "start": {
+        "x": 0.5,
+        "y": 0
+      },
+      "stop": {
+        "x": 0.5,
+        "y": 1
+      }
+    }
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "digits.png",
+          "name": "digits"
+        }
+      ],
+      "name": "Digits",
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
+      },
+      "specular": true
+    },
+    {
+      "layers": [
+        {
+          "glass": false,
+          "image-name": "tiles.png",
+          "name": "tiles"
+        },
+        {
+          "glass": false,
+          "image-name": "grid.png",
+          "name": "grid"
+        },
+        {
+          "glass": false,
+          "image-name": "board.png",
+          "name": "board"
+        }
+      ],
+      "name": "Board",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.6
+      },
+      "specular": true
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

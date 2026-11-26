@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#2F7DE1"/><stop offset="1" stop-color="#0E3A8C"/>
+  </linearGradient>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<rect x="98" y="98" width="828" height="828" rx="40" fill="#fff"/>
+<rect x="112.0" y="112.0" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="169.1" y="169.1" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">1</text>
+<rect x="454.9" y="112.0" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="512.0" y="169.1" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">4</text>
+<rect x="797.7" y="112.0" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="854.9" y="169.1" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">7</text>
+<rect x="226.3" y="226.3" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="283.4" y="283.4" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">5</text>
+<rect x="454.9" y="226.3" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="512.0" y="283.4" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">7</text>
+<rect x="683.4" y="226.3" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="740.6" y="283.4" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">9</text>
+<rect x="340.6" y="340.6" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="397.7" y="397.7" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">9</text>
+<rect x="454.9" y="340.6" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="512.0" y="397.7" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">1</text>
+<rect x="569.1" y="340.6" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="626.3" y="397.7" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">2</text>
+<rect x="112.0" y="454.9" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="169.1" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">2</text>
+<rect x="226.3" y="454.9" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="283.4" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">3</text>
+<rect x="340.6" y="454.9" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="397.7" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">4</text>
+<rect x="454.9" y="454.9" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="512.0" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">5</text>
+<rect x="569.1" y="454.9" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="626.3" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">6</text>
+<rect x="683.4" y="454.9" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="740.6" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">7</text>
+<rect x="797.7" y="454.9" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="854.9" y="512.0" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">8</text>
+<rect x="340.6" y="569.1" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="397.7" y="626.3" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">7</text>
+<rect x="454.9" y="569.1" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="512.0" y="626.3" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">8</text>
+<rect x="569.1" y="569.1" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="626.3" y="626.3" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">9</text>
+<rect x="226.3" y="683.4" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="283.4" y="740.6" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">9</text>
+<rect x="454.9" y="683.4" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="512.0" y="740.6" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">2</text>
+<rect x="683.4" y="683.4" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="740.6" y="740.6" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">4</text>
+<rect x="112.0" y="797.7" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="169.1" y="854.9" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">3</text>
+<rect x="454.9" y="797.7" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="512.0" y="854.9" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">6</text>
+<rect x="797.7" y="797.7" width="114.3" height="114.3" fill="#2563D4"/>
+<text x="854.9" y="854.9" dy="0.36em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, sans-serif" font-weight="700" font-size="69" fill="#fff">9</text>
+<line x1="226.3" y1="112" x2="226.3" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="226.3" x2="912" y2="226.3" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="340.6" y1="112" x2="340.6" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="340.6" x2="912" y2="340.6" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="454.9" y1="112" x2="454.9" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="454.9" x2="912" y2="454.9" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="569.1" y1="112" x2="569.1" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="569.1" x2="912" y2="569.1" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="683.4" y1="112" x2="683.4" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="683.4" x2="912" y2="683.4" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="797.7" y1="112" x2="797.7" y2="912" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+<line x1="112" y1="797.7" x2="912" y2="797.7" stroke="#0E3A8C" stroke-opacity="0.18" stroke-width="3"/>
+</svg>
