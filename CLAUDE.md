@@ -14,7 +14,7 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 
 ## Ground rules from the user
 
-- **Never hand the user setup steps.** Run tooling yourself. After editing `project.yml`, run `xcodegen generate` and commit the regenerated project. New files under `App/` or `UITests/` need no regeneration.
+- **Never hand the user setup steps.** Run tooling yourself. After editing `project.yml`, run `xcodegen generate` and commit the regenerated project. New files under `App/` or `UITests/` need no regeneration. **`project.yml` is the source of truth:** before regenerating, check `git diff Snowdoku.xcodeproj` for settings the user changed in Xcode (signing team, capabilities, build settings) and port them into `project.yml` first, or `xcodegen generate` will wipe them.
 - **Always commit and push** (remote: `github.com/snowskeleton/snowdoku`, branch `main`). End commit messages with the `Co-Authored-By` trailer.
 - **Prove UI fixes before claiming them.** A guessed fix once shipped broken. For interaction bugs, write or extend a UI test that reproduces the bug, check it fails on the old code, then fix it.
 - **Overlays, not layout shifts.** Transient UI (hint panel, Finish pill) floats over the controls and never resizes the board. The user explicitly hated an inline banner.
