@@ -7,11 +7,19 @@ struct CellView: View {
     let ctx: BoardContext
     let size: CGFloat
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         let v = game.value(cell)
         ZStack {
             Rectangle().fill(background(v))
+            // The selected cell gets an outline too, so it stands out from same-digit tints.
+            if ctx.selected == cell {
+                Rectangle()
+                    .strokeBorder(Color.accentColor, lineWidth: max(2, size * 0.05))
+                    .allowsHitTesting(false)
+            }
             // A flash (a completed digit, an auto-completed cell) snaps on and fades slowly.
             Rectangle()
                 .fill(Color.accentColor)
@@ -48,17 +56,18 @@ struct CellView: View {
     }
 
     func background(_ v: Int) -> Color {
-        if ctx.hintWrong.contains(cell) { return .red.opacity(0.35) }
-        if ctx.hintPlacements.contains(where: { $0.cell == cell }) { return .green.opacity(0.35) }
-        if let roles = ctx.hintRoles[cell], roles[0] != nil { return .yellow.opacity(0.35) }
-        if ctx.selected == cell { return .accentColor.opacity(0.38) }
-        if ctx.conflicts.contains(cell) { return .red.opacity(0.18) }
+        let t = CellTint(colorScheme: colorScheme, contrast: contrast)
+        if ctx.hintWrong.contains(cell) { return .red.opacity(t.hint) }
+        if ctx.hintPlacements.contains(where: { $0.cell == cell }) { return .green.opacity(t.hint) }
+        if let roles = ctx.hintRoles[cell], roles[0] != nil { return .yellow.opacity(t.hint) }
+        if ctx.selected == cell { return .accentColor.opacity(t.selected) }
+        if ctx.conflicts.contains(cell) { return .red.opacity(t.conflict) }
         if ctx.highlightSame && ctx.highlightDigit != 0 {
-            if v == ctx.highlightDigit { return .accentColor.opacity(0.28) }
-            if v == 0 && game.notes[cell] & Mask.bit(ctx.highlightDigit) != 0 { return .accentColor.opacity(0.16) }
+            if v == ctx.highlightDigit { return .accentColor.opacity(t.sameDigit) }
+            if v == 0 && game.notes[cell] & Mask.bit(ctx.highlightDigit) != 0 { return .accentColor.opacity(t.noteDigit) }
         }
-        if ctx.hintHouses.contains(cell) { return .yellow.opacity(0.16) }
-        if ctx.highlightPeers && ctx.peers.contains(cell) { return .accentColor.opacity(0.08) }
+        if ctx.hintHouses.contains(cell) { return .yellow.opacity(t.hintHouse) }
+        if ctx.highlightPeers && ctx.peers.contains(cell) { return .accentColor.opacity(t.peer) }
         return .clear
     }
 
