@@ -9,6 +9,8 @@ struct SettingsView: View {
     @AppStorage("showTimer") private var showTimer = true
     @AppStorage("autoComplete") private var autoComplete = true
     @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
+    @AppStorage("shiftClickNotes") private var shiftClickNotes = true
+    @AppStorage("rightClickRemovesNote") private var rightClickRemovesNote = true
 
     var body: some View {
         Form {
@@ -32,11 +34,30 @@ struct SettingsView: View {
             } footer: {
                 Text("Shows a Finish button when only singles are left and nothing is wrong. Not offered on Beginner puzzles.")
             }
+            if showsPointerSettings {
+                Section {
+                    Toggle("Shift-click enters a note", isOn: $shiftClickNotes)
+                    Toggle("Right-click removes a note", isOn: $rightClickRemovesNote)
+                } header: {
+                    Text("Mouse and trackpad")
+                } footer: {
+                    Text("With a digit chosen on either pad, Shift-click puts it in a cell as a note, and right-click takes that note out.")
+                }
+            }
             Section("Display") {
                 Toggle("Show timer", isOn: $showTimer)
             }
         }
         .formStyle(.grouped)
         .navigationTitle("Settings")
+    }
+
+    /// Mac and iPad have a pointer; iPhone doesn't.
+    var showsPointerSettings: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        true
+        #endif
     }
 }

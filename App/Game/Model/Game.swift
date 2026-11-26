@@ -192,10 +192,11 @@ final class Game {
     // MARK: Input
 
     /// Tapping a cell applies the armed digit, or toggles selection.
-    func tapCell(_ c: Int) {
+    /// `asNote`: shift-click, which enters the armed digit as a note whichever pad it was armed from.
+    func tapCell(_ c: Int, asNote: Bool = false) {
         guard !autoCompleting else { return }
         if let a = armed {
-            if a.small { toggleNote(a.digit, at: c) } else { place(a.digit, at: c) }
+            if a.small || asNote { toggleNote(a.digit, at: c) } else { place(a.digit, at: c) }
             return
         }
         selected = selected == c ? nil : c
@@ -245,6 +246,12 @@ final class Game {
         if d != solution[c] { mistakes += 1 }
         flashIfCompleted(d)
         checkComplete()
+    }
+
+    /// Right-click: remove the armed digit's note from a cell (never adds one).
+    func removeArmedNote(at c: Int) {
+        guard !autoCompleting, let a = armed, notes[c] & Mask.bit(a.digit) != 0 else { return }
+        toggleNote(a.digit, at: c)
     }
 
     func toggleNote(_ d: Int, at c: Int) {
