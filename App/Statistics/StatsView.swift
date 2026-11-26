@@ -3,19 +3,54 @@ import SudokuCore
 
 struct StatsView: View {
     @Environment(StatsStore.self) private var store
+    #if DEBUG
+    @State private var debugDetail: Difficulty?
+    #endif
+
+    private var stats: Stats { store.stats }
+    private var played: [Difficulty] {
+        Difficulty.allCases.filter { (stats.started[$0] ?? 0) > 0 || (stats.completed[$0] ?? 0) > 0 }
+    }
 
     var body: some View {
         List {
-            Section("Daily") {
-                LabeledContent("Completed", value: store.stats.dailyCompleted.count, format: .number)
-                LabeledContent("Current streak", value: store.stats.streak, format: .number)
+            if !store.isEmpty {
+                Section {
+                    SummaryTiles {
+                        SummaryTile(title: "Solved", value: stats.completed.values.reduce(0, +).formatted(),
+                                    systemImage: "checkmark.circle")
+                        SummaryTile(title: "Time played", value: formatTime(stats.totalTime.values.reduce(0, +)),
+                                    systemImage: "clock")
+                        SummaryTile(title: "Daily streak", value: DailyStreaks.current(stats.dailyCompleted).formatted(),
+                                    systemImage: "flame")
+                        SummaryTile(title: "Longest streak", value: DailyStreaks.longest(stats.dailyCompleted).formatted(),
+                                    systemImage: "trophy")
+                    }
+                }
+                Section("Daily puzzles") {
+                    DailyHeatmap(solved: stats.dailyCompleted)
+                    LabeledContent("Solved", value: stats.dailyCompleted.count, format: .number)
+                }
             }
-            ForEach(Difficulty.allCases.filter { (store.stats.started[$0] ?? 0) > 0 }, id: \.self) { d in
-                Section(d.name) {
-                    let done = store.stats.completed[d] ?? 0
-                    LabeledContent("Solved", value: "\(done) of \(store.stats.started[d] ?? 0)")
-                    if let best = store.stats.bestTime[d] { LabeledContent("Best (no hints)", value: formatTime(best)) }
-                    if done > 0 { LabeledContent("Average", value: formatTime((store.stats.totalTime[d] ?? 0) / Double(done))) }
+            if !played.isEmpty {
+                Section("By difficulty") {
+                    DifficultyChart(stats: stats)
+                    ForEach(played, id: \.self) { d in
+                        NavigationLink(value: d) {
+                            LabeledContent(d.name) {
+                                Text("\(stats.completed[d] ?? 0) of \(stats.started[d] ?? 0)")
+                            }
+                        }
+                    }
+                }
+            }
+            if !stats.solves.isEmpty {
+                Section {
+                    TechniqueBreakdown(solves: stats.solves)
+                } header: {
+                    Text("Hardest technique needed")
+                } footer: {
+                    Text("The toughest step in each puzzle you've solved.")
                 }
             }
         }
@@ -29,5 +64,17 @@ struct StatsView: View {
             }
         }
         .navigationTitle("Statistics")
+        .navigationDestination(for: Difficulty.self) { DifficultyStatsView(difficulty: $0) }
+        .navigationDestination(for: Technique.self, destination: TechniqueDetailView.init)
+        #if DEBUG
+        .navigationDestination(item: $debugDetail) { DifficultyStatsView(difficulty: $0) }
+        .task {
+            let args = ProcessInfo.processInfo.arguments
+            try? await Task.sleep(for: .milliseconds(600))
+            if let i = args.firstIndex(of: "-statsDetail"), i + 1 < args.count {
+                debugDetail = Difficulty.allCases.first { $0.name.lowercased() == args[i + 1] }
+            }
+        }
+        #endif
     }
 }

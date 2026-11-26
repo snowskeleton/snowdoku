@@ -57,7 +57,10 @@ struct RootView: View {
         .alert("Hmm", item: $store.errorMessage) { _ in } message: { Text($0) }
         .environment(store)
         #if DEBUG
-        .task { await store.applyDebugArguments() }
+        .task {
+            if ProcessInfo.processInfo.arguments.contains("-statsTab") { tab = .statistics }
+            await store.applyDebugArguments()
+        }
         #endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { store.game?.resumeClock() } else { store.game?.pauseClock(); store.save() }
