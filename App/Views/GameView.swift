@@ -17,10 +17,8 @@ struct GameView: View {
                         BoardView(game: game)
                         VStack(spacing: 16) {
                             header
-                            hintArea
                             Spacer(minLength: 0)
-                            ControlsView(game: game)
-                            DigitPads(game: game)
+                            inputArea
                         }
                         .frame(maxWidth: 360)
                     }
@@ -28,10 +26,8 @@ struct GameView: View {
                     VStack(spacing: 12) {
                         header
                         BoardView(game: game)
-                        hintArea
                         Spacer(minLength: 0)
-                        ControlsView(game: game)
-                        DigitPads(game: game)
+                        inputArea
                     }
                 }
             }
@@ -75,10 +71,18 @@ struct GameView: View {
         .font(.subheadline)
     }
 
-    @ViewBuilder var hintArea: some View {
-        if game.hint != nil {
-            HintPanel(game: game)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+    /// Controls and pads. The hint panel floats over them (never over the board, whose
+    /// highlights it refers to) so nothing moves when it appears.
+    var inputArea: some View {
+        VStack(spacing: 12) {
+            ControlsView(game: game)
+            DigitPads(game: game)
+        }
+        .overlay(alignment: .bottom) {
+            if game.hint != nil {
+                HintPanel(game: game)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
     }
 
@@ -263,7 +267,9 @@ struct HintPanel: View {
                 }
             }
             .padding()
-            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.primary.opacity(0.08)))
+            .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
         }
     }
 

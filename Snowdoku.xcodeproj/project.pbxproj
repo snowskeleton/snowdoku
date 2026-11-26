@@ -22,26 +22,18 @@
 
 /* Begin PBXFileReference section */
 		165E4DFA071995C00EB4AAF1 /* SnowdokuUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SnowdokuUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		1A5490CDF41D996F1EA029E7 /* Snowdoku.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Snowdoku.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D3F1FCFE5ED359508E5BBCAC /* Engine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Engine; path = Engine; sourceTree = SOURCE_ROOT; };
+		1A5490CDF41D996F1EA029E7 /* Snowdoku.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Snowdoku.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3F1FCFE5ED359508E5BBCAC /* Engine */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Engine; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6B54AE75B56E5DF090FAEBAF /* UITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = UITests;
 			sourceTree = "<group>";
 		};
 		829DCDD18435DD9F8D26A0AA /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
 			path = App;
 			sourceTree = "<group>";
 		};
@@ -242,6 +234,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PK7HCG46US;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -276,6 +269,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PK7HCG46US;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
