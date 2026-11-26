@@ -265,6 +265,16 @@ final class Game {
         toggleNote(a.digit, at: c)
     }
 
+    /// Picking a mode on the one-pad switch. Notes or Center with a selected cell that has notes also
+    /// redraws that cell's notes that way, so the button toggles the cell's style (undoably).
+    func choosePadMode(_ m: PadMode) {
+        padMode = m
+        guard m != .digits, !isComplete, let c = selected, values[c] == 0, notes[c] != 0,
+              centeredNotes.contains(c) != (m == .centerNotes) else { return }
+        pushUndo()
+        if m == .centerNotes { centeredNotes.insert(c) } else { centeredNotes.remove(c) }
+    }
+
     /// Adding a note also sets how the cell draws its notes: centered or in the grid.
     func toggleNote(_ d: Int, at c: Int, centered: Bool = false) {
         guard !isComplete, values[c] == 0 else { return }

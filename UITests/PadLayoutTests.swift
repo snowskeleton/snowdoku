@@ -56,8 +56,8 @@ final class PadLayoutTests: XCTestCase {
         XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, centered notes 1 2")
 
         // Grid notes elsewhere stay in the grid.
-        app.buttons["Notes"].tap()
         cell(1, 4).tap()
+        app.buttons["Notes"].tap()
         app.buttons["Note 6"].tap()
         XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, notes 6")
         XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, centered notes 1 2")
@@ -69,7 +69,17 @@ final class PadLayoutTests: XCTestCase {
         app.buttons["Undo"].tap()
         XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, centered notes 1 2")
 
+        // With a cell selected, the mode buttons restyle its notes (undoably).
+        cell(1, 4).tap()
         app.buttons["Center"].tap()
+        XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, centered notes 6", "Center restyles the selected cell")
+        app.buttons["Notes"].tap()
+        XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, notes 6", "Notes restyles it back")
+        app.buttons["Undo"].tap()
+        XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, centered notes 6")
+
+        app.buttons["Center"].tap()
+        Thread.sleep(forTimeInterval: 0.5) // let the key's highlight settle for the screenshot
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "center notes"; shot.lifetime = .keepAlways
         add(shot)

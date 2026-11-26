@@ -58,9 +58,9 @@ struct DigitPads: View {
 
     /// The Digits / Notes / Center switch of the one-pad layout.
     @ViewBuilder var modeKeys: some View {
-        ModeKey(title: "Digits", systemImage: "textformat.123", on: game.padMode == .digits) { game.padMode = .digits }
-        ModeKey(title: "Notes", systemImage: "square.grid.3x3", on: game.padMode == .notes) { game.padMode = .notes }
-        ModeKey(title: "Center", systemImage: "square.dashed.inset.filled", on: game.padMode == .centerNotes) { game.padMode = .centerNotes }
+        ModeKey(title: "Digits", mode: .digits, on: game.padMode == .digits) { game.choosePadMode(.digits) }
+        ModeKey(title: "Notes", mode: .notes, on: game.padMode == .notes) { game.choosePadMode(.notes) }
+        ModeKey(title: "Center", mode: .centerNotes, on: game.padMode == .centerNotes) { game.choosePadMode(.centerNotes) }
     }
 
     func row(small: Bool, centered: Bool = false) -> some View {

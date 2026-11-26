@@ -109,7 +109,7 @@ struct GameView: View {
         default:
             switch press.characters.lowercased() {
             case "h": showHint()
-            case "n" where padLayout == .onePad: game.padMode = game.padMode.next
+            case "n" where padLayout == .onePad: game.choosePadMode(game.padMode.next)
             case "z" where press.modifiers.contains(.command): press.modifiers.contains(.shift) ? game.redo() : game.undo()
             case "u": game.undo()
             default: return .ignored
