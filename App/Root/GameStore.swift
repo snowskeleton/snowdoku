@@ -12,9 +12,9 @@ final class GameStore {
     var generating: String?
     var errorMessage: String?
 
-    /// Levels offered for random games. Extreme puzzles are too rare to mine on-device;
-    /// they'll come from the bundled bank.
-    static let playable: [Difficulty] = [.beginner, .easy, .medium, .hard, .expert, .master]
+    /// Levels offered for random games. Extreme puzzles are too rare to generate on device,
+    /// so Extreme is offered only when the bundled bank has some.
+    static let playable: [Difficulty] = Difficulty.allCases.filter { $0 < .extreme || PuzzleBank.hasPuzzles($0) }
 
     private let stats: StatsStore
     private let defaults = UserDefaults.standard
@@ -69,7 +69,10 @@ final class GameStore {
         start(GeneratedPuzzle(puzzle: puzzle, solution: solution, rating: Rater.rate(puzzle, solution: solution)))
     }
 
+    /// Serves a puzzle from the bundled bank, randomly transformed; generates one on device
+    /// only if the bank has none for this level.
     func newGame(_ difficulty: Difficulty) async {
+        if let p = PuzzleBank.random(difficulty) { start(p); return }
         generating = "Building a \(difficulty.name.lowercased()) puzzle…"
         defer { generating = nil }
         // Generation is CPU-heavy; keep it off the main actor.
@@ -114,6 +117,8 @@ final class GameStore {
         if let g = game, g.dailyKey == key, !g.isComplete { resume(); return }
         let difficulty = DailySchedule.difficulty()
         let seed = DailySchedule.seed()
+        // From the bank, so the day's puzzle doesn't change when the generator does.
+        if let p = PuzzleBank.daily(difficulty, seed: seed) { start(p, dailyKey: key); return }
         generating = "Preparing today's puzzle…"
         defer { generating = nil }
         let p = await Task.detached(priority: .userInitiated) { () -> GeneratedPuzzle? in

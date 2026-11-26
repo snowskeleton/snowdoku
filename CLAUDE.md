@@ -10,7 +10,8 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 | `Engine/Sources/SudokuCore/Techniques/` | One `Strategy` per technique |
 | `App/` | SwiftUI app in feature folders: `Root/` (window root, per-window `GameStore`), `Game/` (model, board, pads, hint), `Home/`, `Techniques/`, `Statistics/` (shared `StatsStore`), `Settings/`, `Shared/`. One type per file. A **synced folder**, so new files show up in Xcode automatically. |
 | `App/Resources/Drills.json` | The drill bank: for each technique, up to 20 mid-solve positions whose next move is that technique. Mined offline (see below); the app applies a random `GridTransform` to each drill it serves. |
-| `Engine/Data/extreme-puzzles.txt` | 404 puzzles that need forcing chains, found by `sudokugen mutate` (random generation essentially never reaches Extreme). Seeds the forcing drills and, later, Extreme in the puzzle bank. |
+| `App/Resources/Puzzles.tsv` | The puzzle bank: 500 rated puzzles per tier from Beginner to Master plus 150 Extreme, one per line (`BankedPuzzle`: givens, hardest technique, total score, step count, technique counts). New games and dailies come from it with a random `GridTransform`; on-device generation is only the fallback. ~690 KB (~140 KB compressed). |
+| `Engine/Data/extreme-puzzles.txt` | 404 puzzles that need forcing chains, found by `sudokugen mutate` (random generation essentially never reaches Extreme). Seeds the forcing drills; good seeds for more Extreme bank puzzles. |
 | `App/AppIcon.icon` | The app icon, an Icon Composer package. Its look (`icon.json`) is tuned by hand in Icon Composer; its layer images are drawn by `Design/logo/make_icons.py`, which never overwrites `icon.json`. |
 | `Design/logo/` | Logo concepts and the icon generator. |
 | `UITests/` | XCUITest target `SnowdokuUITests` (iOS simulator). Also a synced folder. |
@@ -29,7 +30,7 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 ```bash
 # Engine
 swift build -c release --package-path Engine
-swift test  -c release --package-path Engine          # ~2 min; soundness tests are the important ones
+swift test  -c release --package-path Engine          # ~2 min; soundness tests and the bundled-bank checks are the important ones
 Engine/.build/release/sudokugen techniques | solve <81 chars> | rate <puzzles> | stats --count 1000
 Engine/.build/release/sudokugen generate --count 50 --difficulty expert   # or --technique xWing
 
@@ -48,6 +49,18 @@ $G drills --per 20 --from Engine/Data/extreme-puzzles.txt > $T/extreme.json   # 
 # more extremes: $G mutate --from Engine/Data/extreme-puzzles.txt --minutes 4 --count 400
 $G merge-drills $T/random.json $T/extreme.json > App/Resources/Drills.json
 ```
+
+Building the puzzle bank (`PuzzleBankTests.bundledRatingsStillMatch` fails when an engine change moves any stored rating):
+
+```bash
+G=Engine/.build/release/sudokugen; T=$(mktemp -d)
+for d in beginner easy medium hard expert master; do $G generate --count 800 --difficulty $d > $T/$d.tsv; done
+$G mutate --from Engine/Data/extreme-puzzles.txt --minutes 6 --count 300 > $T/extreme.txt
+$G bank --per 500 $T/{beginner,easy,medium,hard,expert,master}.tsv $T/extreme.txt > App/Resources/Puzzles.tsv   # ~2 min; rating Extremes is slow
+# then trim Extreme to ~150 lines: rating them dominates the engine test's time
+```
+
+When only ratings drifted, **re-rate in place** instead: `$G bank App/Resources/Puzzles.tsv > $T/p.tsv && mv $T/p.tsv App/Resources/Puzzles.tsv`. `bank` keeps input order within a tier, and a daily is `pool[seed % count]` of its tier (`Daily.pick`), so keeping lines in order (and only appending) keeps past and future dailies the same. A puzzle that changes tier, or a re-mined bank, changes dailies.
 
 Some techniques never come up as the *next* move, because an easier technique always finds the same thing first (see the drill counts `merge-drills` prints). They have no drills, and their pages hide the drill button.
 
@@ -80,7 +93,8 @@ UI tests find cells by accessibility label `Row r, column c, …` and big pad di
 - `HumanSolver`: repeatedly applies the easiest `Strategy`, ordered by `Technique.score`. Each `Strategy` emits exactly one `Technique`. Strategies with `ranked == true` (chains) collect every step and present the simplest (`complexity`).
 - `Step`: technique, placements, eliminations, houses, highlights (with roles), chain links, explanation. Hints, highlighting and explanations all come from it.
 - `Rater`: the hardest technique in a full solve; its `Difficulty` tier is the puzzle's level.
-- `Generator`: random grid → remove clues while the solution stays unique (optional `Symmetry`) → rate. `GridTransform` (relabel digits, shuffle rows/columns within bands, transpose) preserves the rating exactly. `Daily.seed` makes daily puzzles deterministic with no server.
+- `Generator`: random grid → remove clues while the solution stays unique (optional `Symmetry`) → rate. `GridTransform` (relabel digits, shuffle rows/columns within bands, transpose) preserves the rating exactly. `Daily.seed` + `Daily.pick` choose the day's bank puzzle and transform deterministically with no server.
+- `BankedPuzzle` (`PuzzleBank.swift`): one bank line, parsed without re-rating; `generated(transform)` solves it for play.
 - `HintEngine`: wrong values first, then removed-correct notes, then the next step from the player's own notes. `Step.hintText(level)` gives nudge → technique → region → pattern → answer.
 - The engine is built with `-O` even in Debug (`Engine/Package.swift`) because generation is hot code.
 
@@ -102,12 +116,11 @@ Deliberately not implemented: Exocet, MSLS, SK-loops (rare; forcing nets cover t
 - Technique pages: summary, a hand-written "How it works" guide, a worked example (the bank's first drill, drawn like an answer-level hint), and two practice buttons: a drill ("the next move is X") and a full puzzle that needs it.
 - Drills start mid-solve with the solver's own candidates as notes (singles drills have no notes). The header says what to find, with no timer. Making any instance of the move shows a floating result card (Keep solving / Next drill). Drills don't count toward statistics.
 - Hints are progressive, and the panel floats over the controls. Auto-complete ("Finish puzzle" pill) is offered only above Beginner, with no wrong entries, ≤ N empty cells (default 15), and singles finishing the rest.
-- Random games run from Beginner to Master and are generated on device. Extreme isn't offered yet.
+- Random games run from Beginner to Extreme and come from the bundled bank (`App/Root/PuzzleBank.swift`), so they start instantly. A tier with no bank puzzles falls back to on-device generation; Extreme is offered only when the bank has some. Dailies come from the bank too. Daily days are UTC (`DailySchedule`), so everyone gets the same puzzle at the same moment.
 - Accessibility: basic labels and Dynamic Type only. A full VoiceOver mode was explicitly deferred.
 
 ## Roadmap / known gaps
 
-- Bundled puzzle bank, mined offline with `sudokugen`: instant starts, Extreme puzzles, and stable daily puzzles across engine changes. (Today the daily puzzle depends on the generator code; changing the generator changes past and future dailies.) Daily days are UTC (`DailySchedule`), so everyone gets the same puzzle at the same moment.
 - Technique training: a "how you could have spotted this" replay. (Drills and the long-form guides with a worked example exist: `Technique+Guide.swift`, `DrillBank`, `TechniqueExample`.)
 - Draw chain links on the board (`Step.links` exists but isn't rendered).
 - iPad and Mac layout polish, an accent color (no asset catalog yet), dark mode check.
