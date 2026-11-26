@@ -10,6 +10,7 @@ struct TechniqueDetailView: View {
             Section {
                 Text(technique.summary).font(.headline)
                 LabeledContent("Difficulty", value: technique.difficulty.name)
+                LabeledContent("Category", value: technique.category.name)
                 if technique.assumesUniqueness {
                     Text("Relies on the puzzle having exactly one solution.").font(.footnote).foregroundStyle(.secondary)
                 }
