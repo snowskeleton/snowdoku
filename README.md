@@ -35,12 +35,12 @@ swift build -c release
 
 Singles: Full House, Hidden Single (box/line), Naked Single.
 Intersections/subsets: Pointing, Claiming, Naked/Hidden Pair/Triple/Quad.
-Fish: X-Wing, Swordfish, Jellyfish, plus finned and sashimi variants.
+Fish: X-Wing, Swordfish, Jellyfish, finned and sashimi variants, Franken, Mutant and Kraken fish.
 Single-digit: Skyscraper, 2-String Kite, Turbot Fish, Empty Rectangle, Simple Coloring, Multi-Coloring.
 Wings: XY, XYZ, W, WXYZ.
-Uniqueness: UR types 1–4, Hidden Rectangle, BUG+1.
-Chains: Remote Pair, X-Chain, XY-Chain, AIC, Grouped AIC.
-ALS: Sue de Coq, ALS-XZ, ALS-XY-Wing, Death Blossom.
-Forcing: Cell/Unit Forcing Chains, Forcing Contradiction. Trial and Error is the last-resort fallback.
+Uniqueness: UR types 1–6, Hidden Rectangle, Avoidable Rectangle, BUG+1.
+Chains: Remote Pair, X-Chain, XY-Chain, Continuous Nice Loop, AIC, Grouped AIC.
+ALS: Sue de Coq, ALS-XZ, ALS-XY-Wing, ALS Chain, Death Blossom.
+Forcing: Cell/Unit Forcing Chains, Forcing Contradiction, Forcing Nets (with locked candidates and pairs). Trial and Error is the last-resort fallback.
 
-Not yet: Franken/Mutant/Kraken fish, UR 5/6, Avoidable Rectangles, ALS chains, continuous Nice Loops, Exocet, MSLS, SK-loops, forcing nets stronger than singles.
+Not implemented: Exocet, MSLS and SK-loops. They show up almost only in puzzles hand-built by enthusiasts, and forcing nets cover those puzzles.

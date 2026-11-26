@@ -32,15 +32,18 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
     // Wings
     case xyWing, xyzWing, wWing, wxyzWing
     // Uniqueness
-    case uniqueRectangle1, uniqueRectangle2, uniqueRectangle3, uniqueRectangle4, hiddenRectangle, bugPlusOne
+    case uniqueRectangle1, uniqueRectangle2, uniqueRectangle3, uniqueRectangle4, uniqueRectangle5, uniqueRectangle6
+    case hiddenRectangle, avoidableRectangle, bugPlusOne
     // Coloring
     case simpleColoring, multiColoring
     // Chains
-    case remotePair, xChain, xyChain, aic, groupedAIC
+    case remotePair, xChain, xyChain, niceLoop, aic, groupedAIC
+    // Exotic fish
+    case frankenFish, mutantFish, krakenFish
     // Almost locked sets
-    case sueDeCoq, alsXZ, alsXYWing, deathBlossom
+    case sueDeCoq, alsXZ, alsXYWing, alsChain, deathBlossom
     // Forcing
-    case cellForcingChain, unitForcingChain, forcingContradiction
+    case cellForcingChain, unitForcingChain, forcingContradiction, forcingNet
     // Last resort
     case bruteForce
 
@@ -79,22 +82,31 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .uniqueRectangle2: "Unique Rectangle Type 2"
         case .uniqueRectangle3: "Unique Rectangle Type 3"
         case .uniqueRectangle4: "Unique Rectangle Type 4"
+        case .uniqueRectangle5: "Unique Rectangle Type 5"
+        case .uniqueRectangle6: "Unique Rectangle Type 6"
         case .hiddenRectangle: "Hidden Rectangle"
+        case .avoidableRectangle: "Avoidable Rectangle"
         case .bugPlusOne: "BUG+1"
         case .simpleColoring: "Simple Coloring"
         case .multiColoring: "Multi-Coloring"
         case .remotePair: "Remote Pair"
         case .xChain: "X-Chain"
         case .xyChain: "XY-Chain"
+        case .niceLoop: "Continuous Nice Loop"
         case .aic: "Alternating Inference Chain"
+        case .frankenFish: "Franken Fish"
+        case .mutantFish: "Mutant Fish"
+        case .krakenFish: "Kraken Fish"
         case .groupedAIC: "Grouped AIC"
         case .sueDeCoq: "Sue de Coq"
         case .alsXZ: "ALS-XZ"
         case .alsXYWing: "ALS-XY-Wing"
+        case .alsChain: "ALS Chain"
         case .deathBlossom: "Death Blossom"
         case .cellForcingChain: "Cell Forcing Chain"
         case .unitForcingChain: "Unit Forcing Chain"
         case .forcingContradiction: "Forcing Chain Contradiction"
+        case .forcingNet: "Forcing Net"
         case .bruteForce: "Trial and Error"
         }
     }
@@ -129,6 +141,9 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .wWing: 175
         case .uniqueRectangle3: 180
         case .hiddenRectangle: 185
+        case .avoidableRectangle: 178
+        case .uniqueRectangle5: 182
+        case .uniqueRectangle6: 188
         case .simpleColoring: 190
         case .finnedXWing: 200
         case .sashimiXWing: 205
@@ -142,15 +157,21 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .finnedJellyfish: 260
         case .sashimiJellyfish: 265
         case .xyChain: 270
+        case .niceLoop: 285
         case .aic: 300
+        case .frankenFish: 340
+        case .mutantFish: 420
+        case .krakenFish: 450
         case .sueDeCoq: 310
         case .alsXZ: 320
         case .groupedAIC: 330
         case .alsXYWing: 360
+        case .alsChain: 380
         case .deathBlossom: 400
         case .cellForcingChain: 500
         case .unitForcingChain: 520
         case .forcingContradiction: 550
+        case .forcingNet: 600
         case .bruteForce: 1000
         }
     }
@@ -170,7 +191,8 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
     /// Whether the technique relies on the puzzle having a unique solution.
     public var assumesUniqueness: Bool {
         switch self {
-        case .uniqueRectangle1, .uniqueRectangle2, .uniqueRectangle3, .uniqueRectangle4, .hiddenRectangle, .bugPlusOne: true
+        case .uniqueRectangle1, .uniqueRectangle2, .uniqueRectangle3, .uniqueRectangle4, .uniqueRectangle5, .uniqueRectangle6,
+             .hiddenRectangle, .avoidableRectangle, .bugPlusOne: true
         default: false
         }
     }
@@ -207,6 +229,9 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .uniqueRectangle2: "Two rectangle corners share one extra candidate; one of them must be it."
         case .uniqueRectangle3: "The rectangle's extra candidates act as one cell in a naked subset."
         case .uniqueRectangle4: "One rectangle digit is locked to the roof cells, so the other digit can go from both."
+        case .uniqueRectangle5: "Several rectangle corners share one extra candidate; one of them must hold it."
+        case .uniqueRectangle6: "A rectangle digit forms an X-Wing on the rectangle, so it must sit on the bivalue diagonal."
+        case .avoidableRectangle: "Three solved (non-given) corners would let the fourth complete a swappable rectangle."
         case .hiddenRectangle: "Strong links around a rectangle force one corner to avoid the deadly pattern."
         case .bugPlusOne: "Every cell but one is bivalue; the extra candidate in that cell must be true."
         case .simpleColoring: "Color a digit's strong-link chain in two colors; one color is true."
@@ -214,15 +239,21 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .remotePair: "A chain of identical bivalue cells; cells seeing both ends of opposite parity lose both digits."
         case .xChain: "An alternating chain of strong and weak links on one digit."
         case .xyChain: "A chain through bivalue cells; the end digit is eliminated from cells seeing both ends."
+        case .niceLoop: "A chain that closes on itself: every weak link in the loop becomes strong."
+        case .frankenFish: "A fish whose base or cover sets include boxes."
+        case .mutantFish: "A fish mixing rows, columns and boxes freely in its base and cover sets."
+        case .krakenFish: "A fish with fins where every fin, if true, still eliminates the target."
         case .aic: "An alternating chain of strong and weak inferences mixing digits and cells."
         case .groupedAIC: "An alternating chain that uses groups of cells as links."
         case .sueDeCoq: "A box/line intersection paired with cells in the box and line forms two locked sets."
         case .alsXZ: "Two almost locked sets linked by a restricted common digit."
         case .alsXYWing: "Three almost locked sets in an XY-Wing shape."
+        case .alsChain: "A chain of almost locked sets joined by restricted common digits."
         case .deathBlossom: "A stem cell whose every candidate locks an almost locked set petal."
         case .cellForcingChain: "Every candidate of one cell leads to the same conclusion."
         case .unitForcingChain: "Every position of a digit in a house leads to the same conclusion."
         case .forcingContradiction: "Assuming a candidate leads to a contradiction, so it is false."
+        case .forcingNet: "Trying each option with deeper reasoning (locked candidates, pairs) reaches the same conclusion."
         case .bruteForce: "No known technique applies; a value is revealed from the solution."
         }
     }

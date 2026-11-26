@@ -42,18 +42,20 @@ func propagateSingles(_ start: Board) -> Board? {
 struct ForcingChain: Strategy {
     enum Kind: Sendable { case cell, unit, contradiction }
     let kind: Kind
+    var net = false
     var technique: Technique {
+        if net { return .forcingNet }
         switch kind {
-        case .cell: .cellForcingChain
-        case .unit: .unitForcingChain
-        case .contradiction: .forcingContradiction
+        case .cell: return .cellForcingChain
+        case .unit: return .unitForcingChain
+        case .contradiction: return .forcingContradiction
         }
     }
 
     func assume(_ b: Board, _ c: Int, _ d: Int) -> Board? {
         var x = b
         x.place(c, d)
-        return propagateSingles(x)
+        return net ? propagateNet(x) : propagateSingles(x)
     }
 
     /// Conclusions shared by every branch.
@@ -81,7 +83,7 @@ struct ForcingChain: Strategy {
                 for d in Mask.digits(b.candidates[c]) where assume(b, c, d) == nil {
                     out.add(Step(technique, eliminations: [Candidate(c, d)], houses: Geometry.housesOfCell[c],
                                  highlights: [Highlight(c, d, .pattern)],
-                                 explanation: "Assume \(Geometry.cellName(c)) is \(d). Following the singles that result leads to a contradiction, so \(Geometry.cellName(c)) can't be \(d)."))
+                                 explanation: "Assume \(Geometry.cellName(c)) is \(d). Following the consequences leads to a contradiction, so \(Geometry.cellName(c)) can't be \(d)."))
                     if out.done { return }
                 }
             }
@@ -119,6 +121,34 @@ struct ForcingChain: Strategy {
                     }
                 }
             }
+        }
+    }
+}
+
+/// Stronger propagation: singles plus locked candidates and naked/hidden pairs, to a fixpoint.
+func propagateNet(_ start: Board) -> Board? {
+    let helpers: [any Strategy] = [Pointing(), Claiming(), NakedSubset(size: 2), HiddenSubset(size: 2)]
+    guard var b = propagateSingles(start) else { return nil }
+    while true {
+        var changed = false
+        for h in helpers {
+            var out = StepCollector(findAll: true)
+            h.find(b, &out)
+            for s in out.steps { for e in s.eliminations where b.eliminate(e.cell, e.digit) { changed = true } }
+        }
+        guard changed else { return b }
+        guard let next = propagateSingles(b) else { return nil }
+        b = next
+    }
+}
+
+/// Forcing chains using the stronger net propagation.
+struct ForcingNet: Strategy {
+    let technique = Technique.forcingNet
+    func find(_ b: Board, _ out: inout StepCollector) {
+        for kind in [ForcingChain.Kind.contradiction, .cell, .unit] {
+            ForcingChain(kind: kind, net: true).find(b, &out)
+            if out.done { return }
         }
     }
 }

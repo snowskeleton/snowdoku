@@ -3,7 +3,7 @@
 /// A chain A1 = A2 - A3 = A4 ... = An (strong "=" / weak "-" alternating, starting and ending strong)
 /// proves "A1 or An is true". Anything that conflicts with both endpoints is eliminated.
 struct ChainStrategy: Strategy {
-    enum Mode: Sendable { case remotePair, x, xy, aic, grouped }
+    enum Mode: Sendable { case remotePair, x, xy, niceLoop, aic, grouped }
     let mode: Mode
     var ranked: Bool { true }
     var technique: Technique {
@@ -11,6 +11,7 @@ struct ChainStrategy: Strategy {
         case .remotePair: .remotePair
         case .x: .xChain
         case .xy: .xyChain
+        case .niceLoop: .niceLoop
         case .aic: .aic
         case .grouped: .groupedAIC
         }
@@ -59,6 +60,15 @@ struct ChainStrategy: Strategy {
                     guard !on, dcur + 1 >= 3 else { continue }
                     let path = reconstruct(ns, parent: parent, start: s * 2)
                     guard pathIsValid(path, g) else { continue }
+                    if mode == .niceLoop {
+                        guard nb != s, g.weak[nb].contains(s) else { continue }
+                        let elims = loopEliminations(path, g, b)
+                        guard !elims.isEmpty, let step = makeStep(path, g, b, elims, [], loop: true) else { continue }
+                        out.add(step)
+                        best = min(best, dcur + 1)
+                        found = true
+                        break
+                    }
                     let (elims, places) = conclusions(s, nb, g, b)
                     guard !elims.isEmpty || !places.isEmpty else { continue }
                     if let step = makeStep(path, g, b, elims, places) {
@@ -93,7 +103,31 @@ struct ChainStrategy: Strategy {
         if mode == .grouped {
             return path.contains { g.nodes[$0 >> 1].isGroup }
         }
+        if mode == .niceLoop {
+            return Set(path.map { $0 >> 1 }).count == path.count
+        }
         return true
+    }
+
+    /// In a continuous loop each weak link holds exactly one true end.
+    func loopEliminations(_ path: [Int], _ g: ChainGraph, _ b: Board) -> [Candidate] {
+        let nodes = path.map { g.nodes[$0 >> 1] }
+        var inLoop = Set<Candidate>()
+        for n in nodes { for c in n.cells { inLoop.insert(Candidate(c, n.digit)) } }
+        var weakPairs: [(ChainGraph.Node, ChainGraph.Node)] = []
+        var i = 1
+        while i + 1 < nodes.count { weakPairs.append((nodes[i], nodes[i + 1])); i += 2 }
+        weakPairs.append((nodes[nodes.count - 1], nodes[0]))
+        var out = Set<Candidate>()
+        for (p, q) in weakPairs {
+            if p.digit == q.digit {
+                for c in b.filter(Geometry.commonPeers(p.cells | q.cells), p.digit) { out.insert(Candidate(c, p.digit)) }
+            } else if !p.isGroup && !q.isGroup && p.cells == q.cells {
+                let c = p.cells.first!
+                for d in Mask.digits(b.candidates[c] & ~(Mask.bit(p.digit) | Mask.bit(q.digit))) { out.insert(Candidate(c, d)) }
+            }
+        }
+        return out.subtracting(inLoop).sorted { ($0.cell, $0.digit) < ($1.cell, $1.digit) }
     }
 
     func conclusions(_ s: Int, _ e: Int, _ g: ChainGraph, _ b: Board) -> ([Candidate], [Candidate]) {
@@ -121,7 +155,7 @@ struct ChainStrategy: Strategy {
         return ([], [])
     }
 
-    func makeStep(_ path: [Int], _ g: ChainGraph, _ b: Board, _ elims: [Candidate], _ places: [Candidate]) -> Step? {
+    func makeStep(_ path: [Int], _ g: ChainGraph, _ b: Board, _ elims: [Candidate], _ places: [Candidate], loop: Bool = false) -> Step? {
         var hl: [Highlight] = []
         var links: [ChainLink] = []
         var text = ""
@@ -139,6 +173,13 @@ struct ChainStrategy: Strategy {
             text += "(\(node.digit))\(Geometry.cellsName(node.cells))"
         }
         // Name refinement: the generic AIC mode reports chains that happen to be simpler as AIC anyway.
+        if loop {
+            let first = g.nodes[path[0] >> 1], last = g.nodes[path[path.count - 1] >> 1]
+            links.append(ChainLink(from: last.cells.map { Candidate($0, last.digit) }, to: first.cells.map { Candidate($0, first.digit) }, isStrong: false))
+            text += " - (\(first.digit))\(Geometry.cellsName(first.cells))"
+            return Step(technique, eliminations: elims, highlights: hl, links: links, complexity: path.count + 1,
+                        explanation: "Continuous Nice Loop: \(text). The loop closes on itself, so every weak link in it behaves like a strong one (exactly one end is true): \(describeEliminations(elims)).")
+        }
         let what = places.isEmpty ? describeEliminations(elims) : "place " + places.map(\.description).joined(separator: ", ")
         return Step(technique, placements: places, eliminations: elims, highlights: hl, links: links,
                     complexity: path.count,

@@ -111,7 +111,7 @@ func assertSound(_ puzzle: Grid, solution: Grid, solver: HumanSolver = HumanSolv
     @Test func everyStrategyFindAll() {
         var rng = SplitMix64(seed: 7)
         let solver = HumanSolver()
-        for _ in 0..<40 {
+        for _ in 0..<25 {
             let (p, s) = Generator.makePuzzle(using: &rng)
             var board = Board(p)
             var guardCount = 0

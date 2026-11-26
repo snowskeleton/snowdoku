@@ -17,12 +17,14 @@ public struct HumanSolver: Sendable {
             EmptyRectangle(),
             XYWing(), XYZWing(), WWing(), WXYZWing(),
             UniqueRectangle(type: 1), UniqueRectangle(type: 2), UniqueRectangle(type: 3), UniqueRectangle(type: 4),
+            UniqueRectangle(type: 5), UniqueRectangle(type: 6), AvoidableRectangle(),
             HiddenRectangle(), BUGPlusOne(),
             SimpleColoring(), MultiColoring(),
-            ChainStrategy(mode: .remotePair), ChainStrategy(mode: .x), ChainStrategy(mode: .xy),
+            ChainStrategy(mode: .remotePair), ChainStrategy(mode: .x), ChainStrategy(mode: .xy), ChainStrategy(mode: .niceLoop),
             ChainStrategy(mode: .aic), ChainStrategy(mode: .grouped),
-            SueDeCoq(), ALSXZ(), ALSXYWing(), DeathBlossom(),
-            ForcingChain(kind: .cell), ForcingChain(kind: .unit), ForcingChain(kind: .contradiction),
+            SueDeCoq(), ALSXZ(), ALSXYWing(), ALSChain(), DeathBlossom(),
+            GeneralFish(kind: .franken), GeneralFish(kind: .mutant), KrakenFish(),
+            ForcingChain(kind: .cell), ForcingChain(kind: .unit), ForcingChain(kind: .contradiction), ForcingNet(),
         ]
         // Stable sort by score so the list order is the teaching order.
         return list.enumerated().sorted {
