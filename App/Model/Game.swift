@@ -19,6 +19,8 @@ enum MistakeMode: String, CaseIterable, Identifiable {
 enum Prefs {
     static func bool(_ key: String, _ def: Bool) -> Bool { UserDefaults.standard.object(forKey: key) as? Bool ?? def }
     static var autoRemoveNotes: Bool { bool("autoRemoveNotes", true) }
+    static var autoComplete: Bool { bool("autoComplete", true) }
+    static var autoCompleteThreshold: Int { UserDefaults.standard.object(forKey: "autoCompleteThreshold") as? Int ?? 15 }
     static var mistakeMode: MistakeMode { MistakeMode(rawValue: UserDefaults.standard.string(forKey: "mistakeMode") ?? "") ?? .conflicts }
 }
 
@@ -75,6 +77,9 @@ final class Game {
     private(set) var hintsUsed: Int
     private(set) var isComplete: Bool
     var hint: HintSession?
+    /// True when the rest of the puzzle is obvious and the player may finish it with one tap.
+    private(set) var canAutoComplete = false
+    private(set) var autoCompleting = false
 
     private var accumulated: Double
     private var resumedAt: Date?
@@ -100,6 +105,7 @@ final class Game {
         isComplete = false
         accumulated = 0
         resumedAt = Date()
+        refreshAutoComplete()
     }
 
     init(record r: GameRecord) {
@@ -119,6 +125,7 @@ final class Game {
         isComplete = r.completed
         accumulated = r.elapsed
         resumedAt = r.completed ? nil : Date()
+        refreshAutoComplete()
     }
 
     var record: GameRecord {
@@ -174,23 +181,26 @@ final class Game {
     }
 
     func undo() {
-        guard let s = undoStack.popLast() else { return }
+        guard !autoCompleting, let s = undoStack.popLast() else { return }
         redoStack.append(Snapshot(values: values, notes: notes))
         values = s.values; notes = s.notes
         hint = nil
+        refreshAutoComplete()
     }
 
     func redo() {
-        guard let s = redoStack.popLast() else { return }
+        guard !autoCompleting, let s = redoStack.popLast() else { return }
         undoStack.append(Snapshot(values: values, notes: notes))
         values = s.values; notes = s.notes
         hint = nil
+        refreshAutoComplete()
     }
 
     // MARK: Input
 
     /// Tapping a cell applies the armed digit, or toggles selection.
     func tapCell(_ c: Int) {
+        guard !autoCompleting else { return }
         if let a = armed {
             if a.small { toggleNote(a.digit, at: c) } else { place(a.digit, at: c) }
             return
@@ -203,6 +213,7 @@ final class Game {
     /// Tapping a pad digit (or typing it): with a selected cell, enter it there;
     /// otherwise arm the digit so it can be applied to many cells. Tapping the armed digit disarms it.
     func tapDigit(_ d: Int, small: Bool) {
+        guard !autoCompleting else { return }
         if let c = selected {
             if small {
                 toggleNote(d, at: c)
@@ -249,9 +260,10 @@ final class Game {
     }
 
     func erase() {
-        guard !isComplete, let c = selected, !isGiven(c), values[c] != 0 || notes[c] != 0 else { return }
+        guard !isComplete, !autoCompleting, let c = selected, !isGiven(c), values[c] != 0 || notes[c] != 0 else { return }
         pushUndo()
         if values[c] != 0 { values[c] = 0 } else { notes[c] = 0 }
+        refreshAutoComplete()
     }
 
     /// Fills every empty cell with all candidates that don't conflict with placed values.
@@ -287,6 +299,7 @@ final class Game {
     }
 
     private func checkComplete() {
+        refreshAutoComplete()
         if values == solution.cells {
             isComplete = true
             pauseClock()
@@ -295,6 +308,56 @@ final class Game {
             hint = nil
         }
     }
+
+    // MARK: Auto-complete
+
+    static let singlesSolver = HumanSolver(allowing: [.fullHouse, .hiddenSingleBox, .hiddenSingleLine, .nakedSingle])
+
+    /// Offered above Beginner when there are no wrong entries, few cells remain, and
+    /// singles alone finish the puzzle from here.
+    func refreshAutoComplete() {
+        canAutoComplete = remainingPlacements() != nil
+    }
+
+    /// The remaining placements in the order a singles-only solve finds them, or nil if not eligible.
+    private func remainingPlacements() -> [Candidate]? {
+        guard difficulty > .beginner, Prefs.autoComplete, !isComplete, !autoCompleting else { return nil }
+        let empty = values.reduce(0) { $0 + ($1 == 0 ? 1 : 0) }
+        guard empty > 0, empty <= Prefs.autoCompleteThreshold else { return nil }
+        guard !(0..<81).contains(where: { isWrong($0) }) else { return nil }
+        let log = Self.singlesSolver.solve(Board(Grid(cells: values)))
+        guard log.solved, log.final.values == solution.cells else { return nil }
+        return log.steps.flatMap(\.placements)
+    }
+
+    /// Fills the rest of the board, one cell at a time unless `animated` is false.
+    func autoComplete(animated: Bool) async {
+        guard let placements = remainingPlacements() else { return }
+        pushUndo()
+        pauseClock()
+        autoCompleting = true
+        canAutoComplete = false
+        selected = nil
+        armed = nil
+        for p in placements {
+            values[p.cell] = UInt8(p.digit)
+            notes[p.cell] = 0
+            lastDigit = p.digit
+            if animated { try? await Task.sleep(for: .milliseconds(45)) }
+        }
+        autoCompleting = false
+        checkComplete()
+    }
+
+    #if DEBUG
+    /// Test hook: fill every empty cell from the solution except the last `leaving` ones.
+    func debugPrefill(leaving: Int, wrong: Bool) {
+        let empties = (0..<81).filter { values[$0] == 0 }
+        for c in empties.dropLast(leaving) { values[c] = UInt8(solution[c]) }
+        if wrong, let c = empties.first { values[c] = UInt8(solution[c] % 9 + 1) }
+        refreshAutoComplete()
+    }
+    #endif
 
     // MARK: Hints
 

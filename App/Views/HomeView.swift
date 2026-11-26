@@ -170,6 +170,8 @@ struct SettingsView: View {
     @AppStorage("highlightSame") private var highlightSame = true
     @AppStorage("highlightPeers") private var highlightPeers = true
     @AppStorage("showTimer") private var showTimer = true
+    @AppStorage("autoComplete") private var autoComplete = true
+    @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
 
     var body: some View {
         Form {
@@ -182,6 +184,16 @@ struct SettingsView: View {
                 Toggle("Remove notes when placing a digit", isOn: $autoRemoveNotes)
                 Toggle("Highlight matching digits", isOn: $highlightSame)
                 Toggle("Highlight row, column and box", isOn: $highlightPeers)
+            }
+            Section {
+                Toggle("Offer to finish obvious endgames", isOn: $autoComplete)
+                if autoComplete {
+                    Stepper("When \(autoCompleteThreshold) or fewer cells remain", value: $autoCompleteThreshold, in: 5...40, step: 5)
+                }
+            } header: {
+                Text("Auto-complete")
+            } footer: {
+                Text("Shows a Finish button when only singles are left and nothing is wrong. Not offered on Beginner puzzles.")
             }
             Section("Display") {
                 Toggle("Show timer", isOn: $showTimer)

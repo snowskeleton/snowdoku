@@ -6,6 +6,9 @@ struct GameView: View {
     @Environment(GameStore.self) private var store
     @AppStorage("showTimer") private var showTimer = true
     @AppStorage("mistakeMode") private var mistakeMode: MistakeMode = .conflicts
+    @AppStorage("autoComplete") private var autoCompletePref = true
+    @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -44,6 +47,8 @@ struct GameView: View {
         .onKeyPress(phases: .down, action: handleKey)
         .onChange(of: game.isComplete) { _, done in if done { store.recordCompletion(game) } }
         .onChange(of: game.values) { store.save() }
+        .onChange(of: autoCompletePref) { game.refreshAutoComplete() }
+        .onChange(of: autoCompleteThreshold) { game.refreshAutoComplete() }
         .sensoryFeedback(.success, trigger: game.isComplete)
         .sensoryFeedback(.error, trigger: game.mistakes)
         .overlay {
@@ -84,6 +89,25 @@ struct GameView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .overlay(alignment: .top) {
+            if game.canAutoComplete && game.hint == nil {
+                Button {
+                    Task { await game.autoComplete(animated: !reduceMotion) }
+                } label: {
+                    Label("Finish puzzle", systemImage: "wand.and.stars")
+                        .font(.headline)
+                        .padding(.horizontal, 18).padding(.vertical, 10)
+                        .background(Color.accentColor, in: Capsule())
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
+                }
+                .buttonStyle(.plain)
+                // Float just above the controls row, never over the buttons.
+                .offset(y: -54)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.3), value: game.canAutoComplete)
     }
 
     /// Arrow = one cell, Option+arrow = same spot in the next box, Command+arrow = board edge.

@@ -38,6 +38,9 @@ struct RootView: View {
             let args = ProcessInfo.processInfo.arguments
             if let i = args.firstIndex(of: "-puzzle"), i + 1 < args.count, let grid = Grid(args[i + 1]) {
                 store.start(puzzle: grid)
+                if let j = args.firstIndex(of: "-prefill"), j + 1 < args.count, let n = Int(args[j + 1]) {
+                    store.game?.debugPrefill(leaving: n, wrong: args.contains("-wrong"))
+                }
                 return
             }
             if let i = args.firstIndex(of: "-demo"), i + 1 < args.count,
