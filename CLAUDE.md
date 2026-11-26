@@ -19,7 +19,6 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 - **Prove UI fixes before claiming them.** A guessed fix once shipped broken. For interaction bugs, write or extend a UI test that reproduces the bug, check it fails on the old code, then fix it.
 - **Overlays, not layout shifts.** Transient UI (hint panel, Finish pill) floats over the controls and never resizes the board. The user explicitly hated an inline banner.
 - **Ask the user's taste, then commit to it.** v1 decisions are below; don't re-litigate them.
-- Ignore Xcode's `~/Library/Developer/Xcode/UntitledProjects/Untitled Project`. It's Xcode's scratch project, unrelated to this app.
 
 ## Commands
 
