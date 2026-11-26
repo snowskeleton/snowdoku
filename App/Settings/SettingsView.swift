@@ -9,6 +9,8 @@ struct SettingsView: View {
     @AppStorage("showTimer") private var showTimer = true
     @AppStorage("autoComplete") private var autoComplete = true
     @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
+    @AppStorage("padLayout") private var padLayout: PadLayout = .twoPads
+    @AppStorage("noteStyle") private var noteStyle: NoteStyle = .grid
     @AppStorage("shiftClickNotes") private var shiftClickNotes = true
     @AppStorage("rightClickRemovesNote") private var rightClickRemovesNote = true
 
@@ -18,6 +20,20 @@ struct SettingsView: View {
                 Picker("Show mistakes", selection: $mistakeMode) {
                     ForEach(MistakeMode.allCases) { Text($0.label).tag($0) }
                 }
+            }
+            Section {
+                Picker("Layout", selection: $padLayout) {
+                    ForEach(PadLayout.allCases) { Text($0.label).tag($0) }
+                }
+                Picker("Notes in cells", selection: $noteStyle) {
+                    ForEach(NoteStyle.allCases) { Text($0.label).tag($0) }
+                }
+            } header: {
+                Text("Number pad")
+            } footer: {
+                Text(padLayout == .twoPads
+                     ? "One pad enters values, the other enters notes."
+                     : "The Digits and Notes buttons beside the pad choose what it enters.")
             }
             Section("Assistance") {
                 Toggle("Remove notes when placing a digit", isOn: $autoRemoveNotes)

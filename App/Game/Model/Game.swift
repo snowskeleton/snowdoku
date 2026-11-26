@@ -23,6 +23,11 @@ final class Game {
     private(set) var notes: [DigitMask] { didSet { checkDrill() } }
     var selected: Int?
     var armed: ArmedDigit?
+    /// One-pad layout: true when the pad enters notes instead of values.
+    var noteMode = false {
+        // An armed digit follows the switch, so it keeps applying what the pad now shows.
+        didSet { if let a = armed { armed = ArmedDigit(digit: a.digit, small: noteMode) } }
+    }
     /// Digit just entered via a selected cell; keeps matching digits highlighted after the selection clears.
     var lastDigit: Int?
     /// Last selected cell, so arrow keys continue from it after the selection clears.

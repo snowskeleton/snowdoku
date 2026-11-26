@@ -6,6 +6,7 @@ struct DigitKey: View {
     let digit: Int
     let small: Bool
     let height: Double
+    @AppStorage("noteStyle") private var noteStyle: NoteStyle = .grid
     @ScaledMetric(relativeTo: .title) private var digitSize = 28.0
     @ScaledMetric(relativeTo: .body) private var noteSize = 15.0
 
@@ -35,6 +36,7 @@ struct DigitKey: View {
 
     /// Small digits sit where they'd appear in a cell's notes.
     var notePosition: Alignment {
+        if noteStyle == .center { return .center }
         let i = digit - 1
         let h: [HorizontalAlignment] = [.leading, .center, .trailing]
         let v: [VerticalAlignment] = [.top, .center, .bottom]

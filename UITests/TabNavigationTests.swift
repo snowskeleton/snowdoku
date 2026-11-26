@@ -23,7 +23,7 @@ final class TabNavigationTests: XCTestCase {
 
         tabs.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["Show timer"].exists)
+        XCTAssertTrue(app.scroll(to: app.switches["Show timer"]).exists)
 
         tabs.buttons["Play"].tap()
         XCTAssertTrue(app.staticTexts["Today's puzzle"].waitForExistence(timeout: 5))

@@ -6,6 +6,7 @@ struct GameView: View {
     @Environment(GameStore.self) private var store
     @AppStorage("autoComplete") private var autoCompletePref = true
     @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
+    @AppStorage("padLayout") private var padLayout: PadLayout = .twoPads
     @FocusState private var focused: Bool
     /// Landscape-ish space: board on the left, pads on the right, actions in the toolbar.
     @State private var isWide = false
@@ -85,11 +86,13 @@ struct GameView: View {
     /// Shifted number-row symbols (US layout) map to small digits.
     static let shiftedDigits: [Character: Int] = ["!": 1, "@": 2, "#": 3, "$": 4, "%": 5, "^": 6, "&": 7, "*": 8, "(": 9]
 
-    /// Number = big digit, Shift+number = small (note) digit.
+    /// Number = big digit, Shift+number = small (note) digit. With one pad in Notes mode, a plain
+    /// number is a note too, and N flips the switch.
     func handleKey(_ press: KeyPress) -> KeyPress.Result {
         if let ch = press.characters.first {
             if let d = ch.wholeNumberValue, (1...9).contains(d) {
-                game.tapDigit(d, small: press.modifiers.contains(.shift)); return .handled
+                let notes = press.modifiers.contains(.shift) || (padLayout == .onePad && game.noteMode)
+                game.tapDigit(d, small: notes); return .handled
             }
             if let d = Self.shiftedDigits[ch] {
                 game.tapDigit(d, small: true); return .handled
@@ -105,6 +108,7 @@ struct GameView: View {
         default:
             switch press.characters.lowercased() {
             case "h": showHint()
+            case "n" where padLayout == .onePad: game.noteMode.toggle()
             case "z" where press.modifiers.contains(.command): press.modifiers.contains(.shift) ? game.redo() : game.undo()
             case "u": game.undo()
             default: return .ignored
