@@ -7,9 +7,8 @@ final class TechniqueLibraryTests: XCTestCase {
     func testSwitchingBetweenDifficultyAndCategory() {
         let app = XCUIApplication()
         app.launch()
-        let tabs = app.tabBars.firstMatch
-        XCTAssertTrue(tabs.waitForExistence(timeout: 10))
-        tabs.buttons["Techniques"].tap()
+        XCTAssertTrue(app.tab("Techniques").waitForExistence(timeout: 10))
+        app.tab("Techniques").tap()
 
         app.buttons["By difficulty"].tap()
         XCTAssertTrue(app.staticTexts["Beginner"].waitForExistence(timeout: 5))
@@ -23,8 +22,8 @@ final class TechniqueLibraryTests: XCTestCase {
         // The choice survives a relaunch.
         app.terminate()
         app.launch()
-        XCTAssertTrue(tabs.waitForExistence(timeout: 10))
-        tabs.buttons["Techniques"].tap()
+        XCTAssertTrue(app.tab("Techniques").waitForExistence(timeout: 10))
+        app.tab("Techniques").tap()
         XCTAssertTrue(app.staticTexts["Singles"].waitForExistence(timeout: 5))
         app.buttons["By difficulty"].tap()
     }

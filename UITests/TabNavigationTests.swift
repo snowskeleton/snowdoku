@@ -12,37 +12,35 @@ final class TabNavigationTests: XCTestCase {
     }
 
     func testTabsShowTheirScreens() {
-        let tabs = app.tabBars.firstMatch
-        XCTAssertTrue(tabs.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.tab("Play").waitForExistence(timeout: 10))
 
-        tabs.buttons["Techniques"].tap()
+        app.tab("Techniques").tap()
         XCTAssertTrue(app.navigationBars["Techniques"].waitForExistence(timeout: 5))
 
-        tabs.buttons["Statistics"].tap()
+        app.tab("Statistics").tap()
         XCTAssertTrue(app.navigationBars["Statistics"].waitForExistence(timeout: 5))
 
-        tabs.buttons["Settings"].tap()
+        app.tab("Settings").tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.scroll(to: app.switches["Show timer"]).exists)
 
-        tabs.buttons["Play"].tap()
+        app.tab("Play").tap()
         XCTAssertTrue(app.staticTexts["Today's puzzle"].waitForExistence(timeout: 5))
     }
 
     func testPracticeFromTechniquesOpensBoardInPlayTab() {
-        let tabs = app.tabBars.firstMatch
-        XCTAssertTrue(tabs.waitForExistence(timeout: 10))
-        tabs.buttons["Techniques"].tap()
+        XCTAssertTrue(app.tab("Play").waitForExistence(timeout: 10))
+        app.tab("Techniques").tap()
         app.staticTexts["Naked Single"].firstMatch.tap()
         app.scroll(to: app.buttons["Play a puzzle that needs it"]).tap()
 
         let cell = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Row 1, column 1,")).firstMatch
         XCTAssertTrue(cell.waitForExistence(timeout: 60), "practice game should open on the board")
-        XCTAssertFalse(app.tabBars.firstMatch.isHittable, "tab bar is hidden during a game")
+        XCTAssertFalse(app.tab("Play").exists && app.tab("Play").isHittable, "tabs are hidden during a game")
 
         app.navigationBars.buttons.firstMatch.tap() // back
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertTrue(tabs.buttons["Play"].isSelected)
+        XCTAssertTrue(app.tab("Play").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tab("Play").isSelected)
     }
 }

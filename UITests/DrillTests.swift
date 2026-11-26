@@ -40,9 +40,8 @@ final class DrillTests: XCTestCase {
     func testTechniquePageExplainsAndStartsADrill() {
         let app = XCUIApplication()
         app.launch()
-        let tabs = app.tabBars.firstMatch
-        XCTAssertTrue(tabs.waitForExistence(timeout: 10))
-        tabs.buttons["Techniques"].tap()
+        XCTAssertTrue(app.tab("Techniques").waitForExistence(timeout: 10))
+        app.tab("Techniques").tap()
         app.scroll(to: app.staticTexts["X-Wing"].firstMatch).tap()
         XCTAssertTrue(app.navigationBars["X-Wing"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "rectangle")).firstMatch.exists,

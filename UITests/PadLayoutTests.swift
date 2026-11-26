@@ -27,8 +27,12 @@ final class PadLayoutTests: XCTestCase {
         XCTAssertFalse(app.buttons["Erase"].exists, "one pad drops Erase")
         let undo = app.buttons["Undo"], hint = app.buttons["Hint"]
         XCTAssertTrue(undo.exists && app.buttons["Fill"].exists && hint.exists)
-        XCTAssertGreaterThan(undo.frame.minX, app.buttons["Digits"].frame.maxX, "actions are the pad's last column")
-        XCTAssertGreaterThan(hint.frame.minY, undo.frame.maxY)
+        XCTAssertGreaterThan(undo.frame.minX, app.buttons["Center"].frame.maxX, "actions come after the mode keys")
+        if undo.frame.minY == app.buttons["Digits"].frame.minY && hint.frame.minY == undo.frame.minY {
+            XCTAssertGreaterThan(hint.frame.minX, undo.frame.maxX, "wide: one row of keys")
+        } else {
+            XCTAssertGreaterThan(hint.frame.minY, undo.frame.maxY, "narrow: actions are the pad's last column")
+        }
         cell(1, 3).tap()
         bigDigit(4).tap()
         XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, 4")
