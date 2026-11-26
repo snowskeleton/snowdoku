@@ -42,6 +42,13 @@ final class PointerInputTests: XCTestCase {
         XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, 4")
     }
 
+    func testShiftClickFollowsAutoNotation() {
+        launch(["-noteNotation", "auto"])
+        bigDigit(4).tap()
+        shiftClick(cell(1, 3))
+        XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, centered notes 4")
+    }
+
     func testRightClickRemovesOnlyTheArmedNote() {
         launch()
         app.buttons["Note 4"].tap()

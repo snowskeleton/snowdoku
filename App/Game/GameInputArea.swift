@@ -4,13 +4,11 @@ import SwiftUI
 /// whose highlights the hint refers to) so nothing moves when they appear.
 struct GameInputArea: View {
     @Bindable var game: Game
-    /// False when the controls live in the toolbar instead (wide layouts).
-    let showsControls: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 12) {
-            if showsControls { ControlsView(game: game) }
+            ControlsView(game: game)
             DigitPads(game: game)
         }
         .overlay(alignment: .bottom) {

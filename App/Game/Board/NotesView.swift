@@ -48,8 +48,8 @@ struct NotesView: View {
 
     var roles: [Int: Highlight.Role] { ctx.hintRoles[cell] ?? [:] }
 
-    /// The cell's last note was entered centered.
-    var centered: Bool { game.centeredNotes.contains(cell) }
+    /// Drawn centered: a Center note, or few notes under Auto.
+    var centered: Bool { game.drawsCentered(cell) }
 
     func note(_ d: Int, shown: Bool, fontSize: CGFloat) -> some View {
         let cand = Candidate(cell, d)

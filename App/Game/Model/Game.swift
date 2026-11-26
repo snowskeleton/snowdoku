@@ -21,15 +21,16 @@ final class Game {
 
     private(set) var values: [UInt8] { didSet { checkDrill() } }
     private(set) var notes: [DigitMask] { didSet { checkDrill() } }
-    /// Cells whose notes are drawn centered instead of in the 3x3 grid: the last note added to the
-    /// cell was a centered one. Only matters while the cell has notes.
+    /// How each cell draws its notes (`NoteKind`), set by the note last added to it: cells in
+    /// `centeredNotes` are centered, cells in `autoNotes` go by count, the rest use the grid.
     private(set) var centeredNotes = CellSet()
+    private(set) var autoNotes = CellSet()
     var selected: Int?
     var armed: ArmedDigit?
     /// One-pad layout: what the pad enters.
     var padMode = PadMode.digits {
         // An armed digit follows the switch, so it keeps applying what the pad now shows.
-        didSet { if let a = armed { armed = ArmedDigit(digit: a.digit, small: padMode != .digits, centered: padMode == .centerNotes) } }
+        didSet { if let a = armed { armed = ArmedDigit(digit: a.digit, small: padMode != .digits, kind: padMode.noteKind) } }
     }
     /// Digit just entered via a selected cell; keeps matching digits highlighted after the selection clears.
     var lastDigit: Int?
@@ -51,9 +52,9 @@ final class Game {
     private var accumulated: Double
     private var resumedAt: Date?
 
-    private struct Snapshot { var values: [UInt8]; var notes: [DigitMask]; var centered: CellSet }
-    private var snapshot: Snapshot { Snapshot(values: values, notes: notes, centered: centeredNotes) }
-    private func restore(_ s: Snapshot) { values = s.values; notes = s.notes; centeredNotes = s.centered }
+    private struct Snapshot { var values: [UInt8]; var notes: [DigitMask]; var centered: CellSet; var auto: CellSet }
+    private var snapshot: Snapshot { Snapshot(values: values, notes: notes, centered: centeredNotes, auto: autoNotes) }
+    private func restore(_ s: Snapshot) { values = s.values; notes = s.notes; centeredNotes = s.centered; autoNotes = s.auto }
     private var undoStack: [Snapshot] = []
     private var redoStack: [Snapshot] = []
 
@@ -116,6 +117,7 @@ final class Game {
         values = r.values
         notes = r.notes
         centeredNotes = r.centeredNotes ?? CellSet()
+        autoNotes = r.autoNotes ?? CellSet()
         mistakes = r.mistakes
         hintsUsed = r.hintsUsed
         isComplete = r.completed
@@ -126,7 +128,7 @@ final class Game {
     }
 
     var record: GameRecord {
-        GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, centeredNotes: centeredNotes, elapsed: elapsed(),
+        GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, centeredNotes: centeredNotes, autoNotes: autoNotes, elapsed: elapsed(),
                    mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
                    techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
                    drill: drill, drillState: drill == nil ? nil : drillState)
@@ -207,7 +209,9 @@ final class Game {
     func tapCell(_ c: Int, asNote: Bool = false) {
         guard !autoCompleting else { return }
         if let a = armed {
-            if a.small || asNote { toggleNote(a.digit, at: c, centered: a.small && a.centered) } else { place(a.digit, at: c) }
+            if a.small { toggleNote(a.digit, at: c, kind: a.kind) }
+            else if asNote { toggleNote(a.digit, at: c, kind: Prefs.noteNotation.kind) }
+            else { place(a.digit, at: c) }
             return
         }
         selected = selected == c ? nil : c
@@ -217,11 +221,12 @@ final class Game {
 
     /// Tapping a pad digit (or typing it): with a selected cell, enter it there;
     /// otherwise arm the digit so it can be applied to many cells. Tapping the armed digit disarms it.
-    func tapDigit(_ d: Int, small: Bool, centered: Bool = false) {
+    /// `kind`: how an added note is drawn (the one-pad mode, or the Manual / Auto setting).
+    func tapDigit(_ d: Int, small: Bool, kind: NoteKind = .grid) {
         guard !autoCompleting else { return }
         if let c = selected {
             if small {
-                toggleNote(d, at: c, centered: centered)
+                toggleNote(d, at: c, kind: kind)
             } else {
                 // A value finishes with that cell: clear the selection so the next digit tap arms a digit.
                 place(d, at: c)
@@ -231,7 +236,7 @@ final class Game {
             return
         }
         lastDigit = nil
-        let a = ArmedDigit(digit: d, small: small, centered: small && centered)
+        let a = ArmedDigit(digit: d, small: small, kind: small ? kind : .grid)
         armed = armed == a ? nil : a
     }
 
@@ -270,19 +275,39 @@ final class Game {
     func choosePadMode(_ m: PadMode) {
         padMode = m
         guard m != .digits, !isComplete, let c = selected, values[c] == 0, notes[c] != 0,
-              centeredNotes.contains(c) != (m == .centerNotes) else { return }
+              noteKind(c) != m.noteKind else { return }
         pushUndo()
-        if m == .centerNotes { centeredNotes.insert(c) } else { centeredNotes.remove(c) }
+        setNoteKind(m.noteKind, at: c)
     }
 
-    /// Adding a note also sets how the cell draws its notes: centered or in the grid.
-    func toggleNote(_ d: Int, at c: Int, centered: Bool = false) {
+    func noteKind(_ c: Int) -> NoteKind {
+        centeredNotes.contains(c) ? .center : autoNotes.contains(c) ? .auto : .grid
+    }
+
+    /// Whether the cell's notes are drawn centered right now.
+    func drawsCentered(_ c: Int) -> Bool {
+        switch noteKind(c) {
+        case .grid: false
+        case .center: true
+        case .auto: notes[c].nonzeroBitCount <= 3
+        }
+    }
+
+    private func setNoteKind(_ k: NoteKind, at c: Int) {
+        centeredNotes.remove(c); autoNotes.remove(c)
+        switch k {
+        case .grid: break
+        case .center: centeredNotes.insert(c)
+        case .auto: autoNotes.insert(c)
+        }
+    }
+
+    /// Adding a note also sets how the cell draws its notes.
+    func toggleNote(_ d: Int, at c: Int, kind: NoteKind = .grid) {
         guard !isComplete, values[c] == 0 else { return }
         pushUndo()
         notes[c] ^= Mask.bit(d)
-        if notes[c] & Mask.bit(d) != 0 {
-            if centered { centeredNotes.insert(c) } else { centeredNotes.remove(c) }
-        }
+        if notes[c] & Mask.bit(d) != 0 { setNoteKind(kind, at: c) }
     }
 
     func erase() {
@@ -296,8 +321,9 @@ final class Game {
     func fillNotes() {
         guard !isComplete else { return }
         pushUndo()
-        // Cells that had no notes get grid notes; cells with notes keep their style.
-        for c in 0..<81 where values[c] == 0 && notes[c] == 0 { centeredNotes.remove(c) }
+        // Cells that had no notes get the Manual / Auto notation; cells with notes keep theirs.
+        let kind = Prefs.noteNotation.kind
+        for c in 0..<81 where values[c] == 0 && notes[c] == 0 { setNoteKind(kind, at: c) }
         for c in 0..<81 where values[c] == 0 {
             var m = Mask.all
             for p in Geometry.peers[c] where values[p] != 0 { m &= ~Mask.bit(Int(values[p])) }

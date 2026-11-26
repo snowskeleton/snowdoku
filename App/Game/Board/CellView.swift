@@ -82,7 +82,7 @@ struct CellView: View {
         let pos = "Row \(cell / 9 + 1), column \(cell % 9 + 1)"
         if v != 0 { return "\(pos), \(v)\(game.isGiven(cell) ? ", given" : "")\(isMarkedWrong ? ", mistake" : "")" }
         let n = Mask.digits(game.notes[cell])
-        let kind = game.centeredNotes.contains(cell) ? "centered notes" : "notes"
+        let kind = game.drawsCentered(cell) ? "centered notes" : "notes"
         return n.isEmpty ? "\(pos), empty" : "\(pos), \(kind) \(n.map(String.init).joined(separator: " "))"
     }
 }

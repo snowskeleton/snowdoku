@@ -9,6 +9,9 @@ enum PadMode: CaseIterable {
     /// Notes drawn centered in the cell.
     case centerNotes
 
+    /// The kind of note this mode enters (digits mode enters values, not notes).
+    var noteKind: NoteKind { self == .centerNotes ? .center : .grid }
+
     var title: String {
         switch self {
         case .digits: "Digits"

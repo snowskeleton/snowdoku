@@ -7,8 +7,9 @@ struct GameView: View {
     @AppStorage("autoComplete") private var autoCompletePref = true
     @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
     @AppStorage("padLayout") private var padLayout: PadLayout = .twoPads
+    @AppStorage("noteNotation") private var notation: NoteNotation = .manual
     @FocusState private var focused: Bool
-    /// Landscape-ish space: board on the left, pads on the right, actions in the toolbar.
+    /// Landscape-ish space: board on the left, controls and pads on the right.
     @State private var isWide = false
 
     var body: some View {
@@ -19,7 +20,7 @@ struct GameView: View {
                     VStack(spacing: 16) {
                         GameHeader(game: game)
                         Spacer(minLength: 0)
-                        GameInputArea(game: game, showsControls: false)
+                        GameInputArea(game: game)
                     }
                     .frame(maxWidth: 360)
                 }
@@ -33,24 +34,13 @@ struct GameView: View {
                 .frame(maxHeight: .infinity)
                 // Controls and pads are pinned to the bottom; the board takes the rest.
                 .safeAreaInset(edge: .bottom) {
-                    GameInputArea(game: game, showsControls: true)
+                    GameInputArea(game: game)
                         .padding([.horizontal, .bottom])
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: Bool.self) { $0.size.width > $0.size.height * 1.15 } action: { isWide = $0 }
-        .toolbar {
-            if isWide {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button("Undo", systemImage: "arrow.uturn.backward", action: game.undo)
-                        .disabled(!game.canUndo)
-                    Button("Erase", systemImage: "eraser", action: game.erase)
-                    Button("Fill notes", systemImage: "square.grid.3x3.middle.filled", action: game.fillNotes)
-                    Button("Hint", systemImage: "lightbulb", action: showHint)
-                }
-            }
-        }
         .navigationTitle(game.title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -91,12 +81,12 @@ struct GameView: View {
     func handleKey(_ press: KeyPress) -> KeyPress.Result {
         if let ch = press.characters.first {
             if let d = ch.wholeNumberValue, (1...9).contains(d) {
-                if press.modifiers.contains(.shift) { game.tapDigit(d, small: true); return .handled }
+                if press.modifiers.contains(.shift) { game.tapDigit(d, small: true, kind: notation.kind); return .handled }
                 let mode = padLayout == .onePad ? game.padMode : .digits
-                game.tapDigit(d, small: mode != .digits, centered: mode == .centerNotes); return .handled
+                game.tapDigit(d, small: mode != .digits, kind: padLayout == .onePad ? mode.noteKind : notation.kind); return .handled
             }
             if let d = Self.shiftedDigits[ch] {
-                game.tapDigit(d, small: true); return .handled
+                game.tapDigit(d, small: true, kind: notation.kind); return .handled
             }
         }
         switch press.key {

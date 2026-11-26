@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage("autoComplete") private var autoComplete = true
     @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
     @AppStorage("padLayout") private var padLayout: PadLayout = .twoPads
+    @AppStorage("noteNotation") private var noteNotation: NoteNotation = .manual
     @AppStorage("shiftClickNotes") private var shiftClickNotes = true
     @AppStorage("rightClickRemovesNote") private var rightClickRemovesNote = true
 
@@ -24,12 +25,16 @@ struct SettingsView: View {
                 Picker("Layout", selection: $padLayout) {
                     ForEach(PadLayout.allCases) { Text($0.label).tag($0) }
                 }
+                Picker("Note style", selection: $noteNotation) {
+                    ForEach(NoteNotation.allCases) { Text($0.label).tag($0) }
+                }
             } header: {
                 Text("Number pad")
             } footer: {
-                Text(padLayout == .twoPads
-                     ? "One pad enters values, the other enters notes."
-                     : "Buttons beside the pad choose what it enters: digits, notes in the cell's 3×3 grid, or notes centered in the cell.")
+                Text((padLayout == .twoPads
+                      ? "One pad enters values, the other enters notes."
+                      : "Keys beside the pad choose what it enters: digits, notes in the cell's 3×3 grid, or notes centered in the cell.")
+                     + " Note style sets how the notes pad, Shift and Fill draw notes: Manual uses the 3×3 grid; Auto centers up to three notes and uses the grid from four.")
             }
             Section("Assistance") {
                 Toggle("Remove notes when placing a digit", isOn: $autoRemoveNotes)

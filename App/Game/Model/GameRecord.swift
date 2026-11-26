@@ -11,6 +11,8 @@ struct GameRecord: Codable {
     var notes: [UInt16]
     /// Cells whose notes are drawn centered (missing in saves from before centered notes).
     var centeredNotes: CellSet?
+    /// Cells whose notes are centered or gridded by count (Auto notation).
+    var autoNotes: CellSet?
     var elapsed: Double
     var mistakes: Int
     var hintsUsed: Int

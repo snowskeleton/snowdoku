@@ -6,6 +6,6 @@ import SudokuCore
 struct ArmedDigit: Equatable {
     var digit: Int
     var small: Bool
-    /// A centered note (one-pad Center mode) rather than a grid note.
-    var centered = false
+    /// For a small digit: how the notes it adds are drawn.
+    var kind = NoteKind.grid
 }

@@ -8,6 +8,7 @@ import SudokuCore
 struct DigitPads: View {
     @Bindable var game: Game
     @AppStorage("padLayout") private var layout: PadLayout = .twoPads
+    @AppStorage("noteNotation") private var notation: NoteNotation = .manual
     @ScaledMetric private var rowKeyHeight = 56.0
     @ScaledMetric private var noteRowKeyHeight = 44.0
     @ScaledMetric private var gridKeyHeight = 48.0
@@ -42,11 +43,11 @@ struct DigitPads: View {
     /// end of the row), all the same size. Keys keep one height in every mode so nothing jumps, and
     /// skip the remaining counts.
     var onePad: some View {
-        let small = game.padMode != .digits, centered = game.padMode == .centerNotes
+        let small = game.padMode != .digits, kind = game.padMode.noteKind
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 6) {
                 ForEach(1...9, id: \.self) { d in
-                    DigitKey(game: game, digit: d, small: small, height: rowKeyHeight, centered: centered, showsRemaining: false)
+                    DigitKey(game: game, digit: d, small: small, height: rowKeyHeight, noteKind: kind, showsRemaining: false)
                 }
                 Color.clear.frame(width: 6, height: 1)
                 ForEach(PadMode.allCases, id: \.self) { modeKey($0, height: rowKeyHeight) }
@@ -56,7 +57,7 @@ struct DigitPads: View {
                 ForEach(0..<3, id: \.self) { r in
                     GridRow {
                         ForEach(1...3, id: \.self) { k in
-                            DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight, centered: centered, showsRemaining: false)
+                            DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight, noteKind: kind, showsRemaining: false)
                         }
                         modeKey(PadMode.allCases[r], height: gridKeyHeight)
                     }
@@ -70,20 +71,21 @@ struct DigitPads: View {
         ModeKey(title: m.title, mode: m, on: game.padMode == m, height: height) { game.choosePadMode(m) }
     }
 
-    func row(small: Bool, centered: Bool = false) -> some View {
+    /// The two-pad layout's rows and grids; its notes pad uses the Manual / Auto notation.
+    func row(small: Bool) -> some View {
         HStack(spacing: 6) {
             ForEach(1...9, id: \.self) { d in
-                DigitKey(game: game, digit: d, small: small, height: small ? noteRowKeyHeight : rowKeyHeight, centered: centered)
+                DigitKey(game: game, digit: d, small: small, height: small ? noteRowKeyHeight : rowKeyHeight, noteKind: notation.kind)
             }
         }
     }
 
-    func grid(small: Bool, centered: Bool = false) -> some View {
+    func grid(small: Bool) -> some View {
         Grid(horizontalSpacing: 6, verticalSpacing: 6) {
             ForEach(0..<3, id: \.self) { r in
                 GridRow {
                     ForEach(1...3, id: \.self) { k in
-                        DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight, centered: centered)
+                        DigitKey(game: game, digit: r * 3 + k, small: small, height: gridKeyHeight, noteKind: notation.kind)
                     }
                 }
             }

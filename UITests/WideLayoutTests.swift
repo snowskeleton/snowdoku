@@ -1,24 +1,24 @@
 import XCTest
 
-/// In wide space the controls move into the toolbar; in tall space they sit above the pads.
+/// In wide space the board sits beside the pads, and the controls stay above the pads
+/// (not in the toolbar), as in tall space.
 final class WideLayoutTests: XCTestCase {
     override func tearDown() {
         XCUIDevice.shared.orientation = .portrait
     }
 
-    func testControlsMoveToToolbarWhenWide() throws {
+    func testControlsStayAbovePadsWhenWide() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPhone is portrait-only")
-        XCUIDevice.shared.orientation = .portrait
+        XCUIDevice.shared.orientation = .landscapeLeft
         let app = XCUIApplication()
         app.launchArguments = ["-puzzle", BoardInputTests.puzzle]
         app.launch()
 
-        let toolbarHint = app.navigationBars.buttons["Hint"]
-        XCTAssertTrue(app.buttons["Hint"].waitForExistence(timeout: 10))
-        XCTAssertFalse(toolbarHint.exists, "tall layout keeps controls above the pads")
-
-        XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(toolbarHint.waitForExistence(timeout: 5), "wide layout puts controls in the toolbar")
+        let hint = app.buttons["Hint"]
+        XCTAssertTrue(hint.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.navigationBars.buttons["Hint"].exists, "controls are not in the toolbar")
+        let pad = app.buttons.matching(NSPredicate(format: "label BEGINSWITH '1,'")).firstMatch
+        XCTAssertLessThan(hint.frame.maxY, pad.frame.minY, "controls sit above the pads")
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "wide"; shot.lifetime = .keepAlways
         add(shot)

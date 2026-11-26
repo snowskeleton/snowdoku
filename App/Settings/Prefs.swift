@@ -12,5 +12,7 @@ enum Prefs {
     static var shiftClickNotes: Bool { bool("shiftClickNotes", true) }
     /// Right-click on a cell removes the armed digit's note.
     static var rightClickRemovesNote: Bool { bool("rightClickRemovesNote", true) }
+    /// The note kind for the notes pad, Shift and Fill.
+    static var noteNotation: NoteNotation { NoteNotation(rawValue: UserDefaults.standard.string(forKey: "noteNotation") ?? "") ?? .manual }
     static var mistakeMode: MistakeMode { MistakeMode(rawValue: UserDefaults.standard.string(forKey: "mistakeMode") ?? "") ?? .conflicts }
 }
