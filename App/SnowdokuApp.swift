@@ -16,21 +16,59 @@ struct SnowdokuApp: App {
     }
 }
 
+enum AppTab: Hashable { case play, techniques, statistics, settings }
+
 struct RootView: View {
     @Environment(GameStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
+    @State private var tab: AppTab = .play
 
     var body: some View {
-        NavigationStack {
-            HomeView()
-                .navigationDestination(isPresented: Binding(
-                    get: { store.isPlaying },
-                    set: { if !$0 { store.leaveGame() } }
-                )) {
-                    if let game = store.game {
-                        GameView(game: game)
+        TabView(selection: $tab) {
+            NavigationStack {
+                HomeView()
+                    .navigationDestination(isPresented: Binding(
+                        get: { store.isPlaying },
+                        set: { if !$0 { store.leaveGame() } }
+                    )) {
+                        if let game = store.game {
+                            GameView(game: game)
+                                #if os(iOS)
+                                .toolbar(.hidden, for: .tabBar)
+                                #endif
+                        }
                     }
-                }
+            }
+            .tabItem { Label("Play", systemImage: "square.grid.3x3") }
+            .tag(AppTab.play)
+
+            NavigationStack { TechniqueLibraryView() }
+                .tabItem { Label("Techniques", systemImage: "book") }
+                .tag(AppTab.techniques)
+
+            NavigationStack { StatsView() }
+                .tabItem { Label("Statistics", systemImage: "chart.bar") }
+                .tag(AppTab.statistics)
+
+            NavigationStack { SettingsView() }
+                .tabItem { Label("Settings", systemImage: "gear") }
+                .tag(AppTab.settings)
+        }
+        // Starting a game from any tab (e.g. Practice in Techniques) lands on the board.
+        .onChange(of: store.isPlaying) { _, playing in if playing { tab = .play } }
+        // Generation can start from Play or Techniques, so block the whole app while it runs.
+        .disabled(store.generating != nil)
+        .overlay {
+            if let msg = store.generating {
+                ProgressView(msg)
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .alert("Hmm", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(store.errorMessage ?? "")
         }
         #if DEBUG
         .task {

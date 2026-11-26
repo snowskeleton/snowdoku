@@ -53,25 +53,6 @@ struct HomeView: View {
                     }
                 }
             }
-
-            Section {
-                NavigationLink { TechniqueLibraryView() } label: { Label("Techniques", systemImage: "book") }
-                NavigationLink { StatsView() } label: { Label("Statistics", systemImage: "chart.bar") }
-                NavigationLink { SettingsView() } label: { Label("Settings", systemImage: "gear") }
-            }
-        }
-        .disabled(store.generating != nil)
-        .overlay {
-            if let msg = store.generating {
-                ProgressView(msg)
-                    .padding(24)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-            }
-        }
-        .alert("Hmm", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(store.errorMessage ?? "")
         }
         #if os(iOS)
         .navigationBarHidden(true)
@@ -130,12 +111,6 @@ struct TechniqueDetailView: View {
             }
         }
         .navigationTitle(technique.name)
-        .disabled(store.generating != nil)
-        .overlay {
-            if let msg = store.generating {
-                ProgressView(msg).padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-            }
-        }
     }
 }
 
