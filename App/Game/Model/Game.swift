@@ -25,7 +25,13 @@ final class Game {
     /// `centeredNotes` are centered, cells in `autoNotes` go by count, the rest use the grid.
     private(set) var centeredNotes = CellSet()
     private(set) var autoNotes = CellSet()
-    var selected: Int?
+    /// The selected cell. Setting it (to anything) ends a multi-selection.
+    var selected: Int? { didSet { multiSelection = CellSet() } }
+    /// Two or more cells selected by dragging with nothing armed (`selected` is the first of them).
+    /// Pad digits, Erase and the note-style switch then apply to all of them at once.
+    private(set) var multiSelection = CellSet()
+    /// Every selected cell: the multi-selection, else the selected cell.
+    var selectedCells: [Int] { multiSelection.isEmpty ? (selected.map { [$0] } ?? []) : multiSelection.array }
     var armed: ArmedDigit?
     /// One-pad layout: what the pad enters.
     var padMode = PadMode.digits {
@@ -214,7 +220,8 @@ final class Game {
             else { place(a.digit, at: c) }
             return
         }
-        selected = selected == c ? nil : c
+        // Tapping a cell of a multi-selection selects just that cell.
+        selected = selected == c && multiSelection.isEmpty ? nil : c
         lastCell = c
         lastDigit = nil
     }
@@ -224,6 +231,11 @@ final class Game {
     /// `kind`: how an added note is drawn (the one-pad mode, or the Manual / Auto setting).
     func tapDigit(_ d: Int, small: Bool, kind: NoteKind = .grid) {
         guard !autoCompleting else { return }
+        if !multiSelection.isEmpty {
+            applyToSelection(d, asNote: small, kind: kind)
+            if !small { selected = nil; lastDigit = d }
+            return
+        }
         if let c = selected {
             if small {
                 toggleNote(d, at: c, kind: kind)
@@ -274,70 +286,107 @@ final class Game {
         toggleNote(a.digit, at: c)
     }
 
-    // MARK: Drag strokes
+    // MARK: Drags and multi-selection
 
-    /// A drag across cells with a digit armed: the first cell decides whether the stroke adds or
-    /// removes, and every cell it passes over gets the same change. One stroke is one undo step.
-    private struct Stroke {
+    /// One digit applied to many cells, by a drag with a digit armed or to a multi-selection. It
+    /// either adds or removes everywhere (decided up front), and it is one undo step.
+    private struct Edit {
         var digit: Int
         var asNote: Bool
         var kind: NoteKind
         var adding: Bool
-        var visited = CellSet()
         var pushedUndo = false
+    }
+
+    /// A drag in progress: applying the armed digit (`edit`), or, with nothing armed, selecting.
+    private struct Stroke {
+        var edit: Edit?
+        var visited = CellSet()
     }
     private var stroke: Stroke?
 
-    /// Starts a stroke at cell `c` (does nothing with no digit armed). `asNote`: Shift held, as for
-    /// a Shift-click.
+    /// Starts a drag at cell `c`. With a digit armed, the first cell decides whether the drag adds
+    /// or removes, and every cell it crosses gets the same change. With nothing armed it selects
+    /// the cells it crosses. `asNote`: Shift held, as for a Shift-click.
     func beginStroke(at c: Int, asNote: Bool = false) {
-        guard !autoCompleting, !isComplete, let a = armed else { return }
+        guard !autoCompleting, !isComplete else { return }
+        guard let a = armed else {
+            stroke = Stroke()
+            selected = c
+            lastCell = c
+            lastDigit = nil
+            extendStroke(to: c)
+            return
+        }
         let note = a.small || asNote
-        let kind = a.small ? a.kind : Prefs.noteNotation.kind
         let adding = note ? (values[c] != 0 || notes[c] & Mask.bit(a.digit) == 0)
             : values[c] != UInt8(a.digit)
-        stroke = Stroke(digit: a.digit, asNote: note, kind: kind, adding: adding)
+        stroke = Stroke(edit: Edit(digit: a.digit, asNote: note, kind: a.small ? a.kind : Prefs.noteNotation.kind,
+                                   adding: adding))
         extendStroke(to: c)
     }
 
-    /// Applies the stroke's change to `c`, once per cell per stroke.
+    /// Applies the drag to `c`, once per cell per drag.
     func extendStroke(to c: Int) {
         guard var s = stroke, !isComplete, !s.visited.contains(c) else { return }
         s.visited.insert(c)
         defer { stroke = s }
-        let bit = Mask.bit(s.digit)
+        if s.edit != nil {
+            apply(&s.edit!, to: c)
+        } else if s.visited.count > 1 {
+            // Leaving the first cell turns the selection into a multi-selection.
+            multiSelection = s.visited
+        }
+    }
+
+    func endStroke() { stroke = nil }
+
+    /// A pad digit with several cells selected. A note is added to every empty selected cell unless
+    /// all of them have it, in which case it is removed from all. A big digit fills the empty ones,
+    /// or, with none empty, clears that digit from them.
+    private func applyToSelection(_ d: Int, asNote: Bool, kind: NoteKind) {
+        guard !isComplete else { return }
+        let cells = multiSelection.array
+        let bit = Mask.bit(d)
+        let adding = asNote ? cells.contains { values[$0] == 0 && notes[$0] & bit == 0 }
+            : cells.contains { values[$0] == 0 }
+        var e = Edit(digit: d, asNote: asNote, kind: kind, adding: adding)
+        for c in cells { apply(&e, to: c) }
+    }
+
+    private func apply(_ e: inout Edit, to c: Int) {
+        let bit = Mask.bit(e.digit)
         let changes: Bool
-        if s.asNote {
-            changes = values[c] == 0 && (notes[c] & bit != 0) != s.adding
+        if e.asNote {
+            changes = values[c] == 0 && (notes[c] & bit != 0) != e.adding
         } else if isGiven(c) {
             changes = false
         } else {
             // Adding fills only empty cells; removing clears only this digit.
-            changes = s.adding ? values[c] == 0 : values[c] == UInt8(s.digit)
+            changes = e.adding ? values[c] == 0 : values[c] == UInt8(e.digit)
         }
-        guard changes else { return }
-        if !s.pushedUndo { pushUndo(); s.pushedUndo = true }
-        if s.asNote {
+        guard changes, !isComplete else { return }
+        if !e.pushedUndo { pushUndo(); e.pushedUndo = true }
+        if e.asNote {
             notes[c] ^= bit
-            if s.adding { setNoteKind(s.kind, at: c) }
-        } else if s.adding {
-            writeValue(s.digit, at: c)
+            if e.adding { setNoteKind(e.kind, at: c) }
+        } else if e.adding {
+            writeValue(e.digit, at: c)
         } else {
             values[c] = 0
             refreshAutoComplete()
         }
     }
 
-    func endStroke() { stroke = nil }
-
-    /// Picking a mode on the one-pad switch. Notes or Center with a selected cell that has notes also
-    /// redraws that cell's notes that way, so the button toggles the cell's style (undoably).
+    /// Picking a mode on the one-pad switch. Notes or Center with selected cells that have notes also
+    /// redraws their notes that way, so the button toggles the cells' style (undoably).
     func choosePadMode(_ m: PadMode) {
         padMode = m
-        guard m != .digits, !isComplete, let c = selected, values[c] == 0, notes[c] != 0,
-              noteKind(c) != m.noteKind else { return }
+        guard m != .digits, !isComplete else { return }
+        let cells = selectedCells.filter { values[$0] == 0 && notes[$0] != 0 && noteKind($0) != m.noteKind }
+        guard !cells.isEmpty else { return }
         pushUndo()
-        setNoteKind(m.noteKind, at: c)
+        for c in cells { setNoteKind(m.noteKind, at: c) }
     }
 
     func noteKind(_ c: Int) -> NoteKind {
@@ -371,9 +420,13 @@ final class Game {
     }
 
     func erase() {
-        guard !isComplete, !autoCompleting, let c = selected, !isGiven(c), values[c] != 0 || notes[c] != 0 else { return }
+        guard !isComplete, !autoCompleting else { return }
+        let cells = selectedCells.filter { !isGiven($0) && (values[$0] != 0 || notes[$0] != 0) }
+        guard !cells.isEmpty else { return }
         pushUndo()
-        if values[c] != 0 { values[c] = 0 } else { notes[c] = 0 }
+        for c in cells {
+            if values[c] != 0 { values[c] = 0 } else { notes[c] = 0 }
+        }
         refreshAutoComplete()
     }
 

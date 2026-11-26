@@ -58,8 +58,40 @@ final class DragInputTests: XCTestCase {
         XCTAssertEqual(cell(1, 4).label, "Row 1, column 4, 4, mistake")
     }
 
-    func testDraggingWithNothingArmedChangesNothing() {
+    func testDraggingWithNothingArmedSelectsCellsForThePads() {
         drag(cell(1, 3), cell(1, 7))
+        for c in 3...7 { XCTAssertTrue(cell(1, c).isSelected, "column \(c) is selected") }
+        XCTAssertFalse(cell(1, 8).isSelected)
+
+        // A note goes into every empty selected cell, and the selection stays.
+        app.buttons["Note 4"].tap()
+        for c in [3, 4, 6, 7] { XCTAssertEqual(cell(1, c).label, "Row 1, column \(c), notes 4") }
+        XCTAssertEqual(cell(1, 5).label, "Row 1, column 5, 7, given")
+        XCTAssertTrue(cell(1, 7).isSelected)
+
+        // Once every cell has it, the same note comes out of all of them.
+        app.buttons["Note 4"].tap()
         for c in [3, 4, 6, 7] { XCTAssertEqual(cell(1, c).label, "Row 1, column \(c), empty") }
+
+        // Each pad tap is one undo step.
+        app.buttons["Undo"].tap()
+        for c in [3, 4, 6, 7] { XCTAssertEqual(cell(1, c).label, "Row 1, column \(c), notes 4") }
+
+        // Tapping one selected cell selects just it.
+        cell(1, 4).tap()
+        XCTAssertTrue(cell(1, 4).isSelected)
+        XCTAssertFalse(cell(1, 3).isSelected)
+        XCTAssertFalse(cell(1, 6).isSelected)
+    }
+
+    func testABigDigitFillsTheSelectionThenClearsIt() {
+        drag(cell(2, 2), cell(2, 3))
+        XCTAssertTrue(cell(2, 2).isSelected)
+        XCTAssertTrue(cell(2, 3).isSelected)
+        bigDigit(2).tap()
+        XCTAssertEqual(cell(2, 2).label, "Row 2, column 2, 2, mistake")
+        XCTAssertEqual(cell(2, 3).label, "Row 2, column 3, 2, mistake")
+        XCTAssertFalse(cell(2, 2).isSelected, "a big digit ends the selection, as with one cell")
+        XCTAssertFalse(cell(2, 3).isSelected)
     }
 }

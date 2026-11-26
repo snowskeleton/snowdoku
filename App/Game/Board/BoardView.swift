@@ -44,7 +44,7 @@ struct BoardView: View {
                 game.tapCell(cellIndex(at: p, cell: cell), asNote: shiftClickNotes && NSEvent.modifierFlags.contains(.shift))
             }
             #endif
-            // With a digit armed, dragging applies it to every cell the drag crosses.
+            // Dragging applies the armed digit to every cell it crosses, or with none armed selects them.
             .boardDrag { drag($0, cell: cell) }
             .modifier(RightClick { p in
                 if rightClickRemovesNote { game.removeArmedNote(at: cellIndex(at: p, cell: cell)) }

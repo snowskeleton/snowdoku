@@ -4,6 +4,8 @@ import SudokuCore
 /// Everything a cell needs to draw itself, computed once per board render.
 struct BoardContext {
     var selected: Int?
+    /// Two or more selected cells (see `Game.multiSelection`).
+    var multiSelection = CellSet()
     /// Digit to emphasize: the armed digit, else the selected cell's value.
     var highlightDigit: Int
     var peers: CellSet
@@ -19,11 +21,16 @@ struct BoardContext {
     var hintWrong: Set<Int> = []
     var hintMissing: Set<Candidate> = []
 
+    func isSelected(_ c: Int) -> Bool { multiSelection.isEmpty ? selected == c : multiSelection.contains(c) }
+
     @MainActor
     init(game: Game, mistakeMode: MistakeMode, highlightSame: Bool, highlightPeers: Bool) {
         selected = game.selected
-        highlightDigit = game.armed?.digit ?? game.selected.map { game.value($0) } ?? game.lastDigit ?? 0
-        peers = game.selected.map { Geometry.peerSets[$0] } ?? CellSet()
+        multiSelection = game.multiSelection
+        // With several cells selected, no one cell's digit or peers stands out.
+        let single = multiSelection.isEmpty ? game.selected : nil
+        highlightDigit = game.armed?.digit ?? single.map { game.value($0) } ?? game.lastDigit ?? 0
+        peers = single.map { Geometry.peerSets[$0] } ?? CellSet()
         conflicts = mistakeMode == .off ? [] : game.conflicts
         self.mistakeMode = mistakeMode
         self.highlightSame = highlightSame

@@ -15,7 +15,7 @@ struct CellView: View {
         ZStack {
             Rectangle().fill(background(v))
             // The selected cell gets an outline too, so it stands out from same-digit tints.
-            if ctx.selected == cell {
+            if ctx.isSelected(cell) {
                 Rectangle()
                     .strokeBorder(Color.accentColor, lineWidth: max(2, size * 0.05))
                     .allowsHitTesting(false)
@@ -51,7 +51,7 @@ struct CellView: View {
         }
         .accessibilityElement()
         .accessibilityLabel(accessibilityText(v))
-        .accessibilityAddTraits(ctx.selected == cell ? [.isSelected, .isButton] : .isButton)
+        .accessibilityAddTraits(ctx.isSelected(cell) ? [.isSelected, .isButton] : .isButton)
         .accessibilityAction { game.tapCell(cell) }
     }
 
@@ -60,7 +60,7 @@ struct CellView: View {
         if ctx.hintWrong.contains(cell) { return .red.opacity(t.hint) }
         if ctx.hintPlacements.contains(where: { $0.cell == cell }) { return .green.opacity(t.hint) }
         if let roles = ctx.hintRoles[cell], roles[0] != nil { return .yellow.opacity(t.hint) }
-        if ctx.selected == cell { return .accentColor.opacity(t.selected) }
+        if ctx.isSelected(cell) { return .accentColor.opacity(t.selected) }
         if ctx.conflicts.contains(cell) { return .red.opacity(t.conflict) }
         if ctx.highlightSame && ctx.highlightDigit != 0 {
             if v == ctx.highlightDigit { return .accentColor.opacity(t.sameDigit) }
