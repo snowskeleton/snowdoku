@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Controls and pads. The hint panel, drill result and Finish pill float over them (never over the board,
-/// whose highlights the hint refers to) so nothing moves when they appear.
+/// Controls and pads. The hint panel, drill result and Finish pill float over them so nothing moves when they
+/// appear. The hint panel sits on the controls row and grows upward over the board, never over the pads, so
+/// the player can act on the hint while it stays open. With one pad (no controls row) it sits just above the pad.
 struct GameInputArea: View {
     @Bindable var game: Game
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -10,14 +11,18 @@ struct GameInputArea: View {
     var body: some View {
         VStack(spacing: 12) {
             // One pad carries its own Undo / Fill / Hint keys.
-            if padLayout == .twoPads { ControlsView(game: game) }
-            DigitPads(game: game)
-        }
-        .overlay(alignment: .bottom) {
-            if game.hint != nil {
-                HintPanel(game: game)
-                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            if padLayout == .twoPads {
+                ControlsView(game: game)
+                    .overlay(alignment: .bottom) { hintPanel }
             }
+            DigitPads(game: game)
+                .overlay(alignment: .top) {
+                    if padLayout == .onePad {
+                        // A zero-height anchor on the pad's top edge; the panel's bottom sits just above it.
+                        Color.clear.frame(height: 0)
+                            .overlay(alignment: .bottom) { hintPanel.padding(.bottom, 8) }
+                    }
+                }
         }
         .overlay(alignment: .bottom) {
             if game.drillState == .found && game.drill != nil && game.hint == nil && !game.isComplete {
@@ -40,6 +45,15 @@ struct GameInputArea: View {
         }
         .animation(.spring(duration: 0.3), value: game.canAutoComplete)
         .animation(.spring(duration: 0.3), value: game.drillState)
+    }
+
+    /// Taller than its anchor, so it overflows upward from the anchor's bottom edge.
+    @ViewBuilder var hintPanel: some View {
+        if game.hint != nil {
+            HintPanel(game: game)
+                .fixedSize(horizontal: false, vertical: true)
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     func finish() {
