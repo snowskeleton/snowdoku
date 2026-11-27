@@ -109,15 +109,10 @@ extension Drill: Codable {
         }
         puzzle = try grid(.p)
         values = try grid(.v)
-        let hex = Array(try k.decode(String.self, forKey: .c).utf8)
-        guard hex.count == 243 else {
+        guard let cands = CandidateHex.decode(try k.decode(String.self, forKey: .c)) else {
             throw DecodingError.dataCorruptedError(forKey: .c, in: k, debugDescription: "Expected 243 hex digits")
         }
-        candidates = (0..<81).map { i in
-            hex[i * 3..<i * 3 + 3].reduce(0) { acc, ch in
-                acc << 4 | DigitMask(ch <= 57 ? ch - 48 : ch - 87)
-            }
-        }
+        candidates = cands
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -125,8 +120,22 @@ extension Drill: Codable {
         try k.encode(technique, forKey: .t)
         try k.encode(puzzle.string, forKey: .p)
         try k.encode(values.string, forKey: .v)
+        try k.encode(CandidateHex.encode(candidates), forKey: .c)
+    }
+}
+
+/// Candidates of all 81 cells as three hex digits per cell (the bundled drill and campaign files).
+enum CandidateHex {
+    static func encode(_ candidates: [DigitMask]) -> String {
         let digits = Array("0123456789abcdef")
-        let hex = candidates.map { m in String([digits[Int(m >> 8 & 0xF)], digits[Int(m >> 4 & 0xF)], digits[Int(m & 0xF)]]) }
-        try k.encode(hex.joined(), forKey: .c)
+        return candidates.map { m in String([digits[Int(m >> 8 & 0xF)], digits[Int(m >> 4 & 0xF)], digits[Int(m & 0xF)]]) }.joined()
+    }
+
+    static func decode(_ s: String) -> [DigitMask]? {
+        let hex = Array(s.utf8)
+        guard hex.count == 243 else { return nil }
+        return (0..<81).map { i in
+            hex[i * 3..<i * 3 + 3].reduce(0) { acc, ch in acc << 4 | DigitMask(ch <= 57 ? ch - 48 : ch - 87) }
+        }
     }
 }
