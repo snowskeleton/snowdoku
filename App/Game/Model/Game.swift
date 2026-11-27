@@ -707,7 +707,10 @@ extension Game {
     /// A hint about the next step counts against the move being worked on.
     fileprivate func noteHint(_ h: HintSession) {
         guard case .step = h.hint else { return }
-        segment?.hintLevel = max(segment?.hintLevel ?? h.level, h.level)
+        // Read first: reading `segment` inside its own modify access is an exclusivity violation.
+        guard var s = segment else { return }
+        s.hintLevel = max(s.hintLevel ?? h.level, h.level)
+        segment = s
     }
 
     /// Every move, once those still being computed are done, in the order they were made.
