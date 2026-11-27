@@ -6,12 +6,11 @@
 /// A chain A1 = A2 - A3 = A4 ... = An (strong "=" / weak "-" alternating, starting and ending strong)
 /// proves "A1 or An is true". Anything that conflicts with both endpoints is eliminated.
 struct ChainStrategy: Strategy {
-    enum Mode: Sendable { case remotePair, x, xy, niceLoop, discontinuous, aic, grouped }
+    enum Mode: Sendable { case x, xy, niceLoop, discontinuous, aic, grouped }
     let mode: Mode
     var ranked: Bool { true }
     var technique: Technique {
         switch mode {
-        case .remotePair: .remotePair
         case .x: .xChain
         case .xy: .xyChain
         case .niceLoop: .niceLoop
@@ -35,11 +34,20 @@ struct ChainStrategy: Strategy {
         let n = g.nodes.count
         guard n > 0 else { return }
         var best = Self.maxLinks
+        // Exhaustive (drills): every start explores to full length and keeps going after a hit,
+        // one step per distinct conclusion. Otherwise the shortest chain so far caps the search.
+        let exhaustive = out.exhaustive
+        var seen = Set<Set<Candidate>>()
+        func record(_ step: Step, _ len: Int) -> Bool {
+            guard exhaustive else { out.add(step); best = min(best, len); return true }
+            if seen.insert(Set(step.eliminations + step.placements)).inserted { out.add(step) }
+            return false
+        }
         var parent = [Int32](repeating: -1, count: n * 2)
         var dist = [Int32](repeating: -1, count: n * 2)
         var queue = [Int32](repeating: 0, count: n * 2)
         for s in 0..<n where !g.nodes[s].isGroup {
-            if mode == .remotePair || mode == .xy {
+            if mode == .xy {
                 // Starts in a bivalue cell.
                 guard g.strong[s].contains(where: { g.nodes[$0].cells == g.nodes[s].cells }) else { continue }
             }
@@ -68,19 +76,15 @@ struct ChainStrategy: Strategy {
                         guard nb != s, g.weak[nb].contains(s) else { continue }
                         let elims = loopEliminations(path, g, b)
                         guard !elims.isEmpty, let step = makeStep(path, g, b, elims, [], loop: true) else { continue }
-                        out.add(step)
-                        best = min(best, dcur + 1)
-                        found = true
-                        break
+                        if record(step, dcur + 1) { found = true; break }
+                        continue
                     }
                     if mode == .aic || mode == .discontinuous {
                         guard isDiscontinuousLoop(s, nb, g) == (mode == .discontinuous) else { continue }
                     }
                     let (elims, places) = conclusions(s, nb, g, b)
                     guard !elims.isEmpty || !places.isEmpty else { continue }
-                    if let step = makeStep(path, g, b, elims, places) {
-                        out.add(step)
-                        best = min(best, dcur + 1)
+                    if let step = makeStep(path, g, b, elims, places), record(step, dcur + 1) {
                         found = true
                         break
                     }
@@ -100,13 +104,7 @@ struct ChainStrategy: Strategy {
         return path.reversed()
     }
 
-    /// Remote pair chains must stay on one pair of digits.
     func pathIsValid(_ path: [Int], _ g: ChainGraph) -> Bool {
-        if mode == .remotePair {
-            let first = g.nodes[path[0] >> 1].cells.first!
-            let pair = g.board.candidates[first]
-            return path.allSatisfy { g.board.candidates[g.nodes[$0 >> 1].cells.first!] == pair }
-        }
         if mode == .grouped {
             return path.contains { g.nodes[$0 >> 1].isGroup }
         }
@@ -227,7 +225,7 @@ struct ChainGraph {
 
     init(_ b: Board, mode: ChainStrategy.Mode, digit: Int?) {
         board = b
-        let bivalueOnly = mode == .xy || mode == .remotePair
+        let bivalueOnly = mode == .xy
         func allowed(_ d: Int) -> Bool { digit == nil || digit == d }
 
         for c in 0..<81 where b.isEmpty(c) {

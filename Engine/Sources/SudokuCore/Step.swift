@@ -87,8 +87,11 @@ func describeEliminations(_ e: [Candidate]) -> String {
 /// Collects steps from a strategy. In first-only mode, strategies stop after the first hit.
 public struct StepCollector {
     public let findAll: Bool
+    /// Every instance, not just the simplest few: ranked strategies may otherwise skip ones they
+    /// can tell won't beat what they already have (drills need them all).
+    public let exhaustive: Bool
     public private(set) var steps: [Step] = []
-    public init(findAll: Bool) { self.findAll = findAll }
+    public init(findAll: Bool, exhaustive: Bool = false) { self.findAll = findAll; self.exhaustive = exhaustive && findAll }
     public var done: Bool { !findAll && !steps.isEmpty }
     public mutating func add(_ s: Step) {
         guard !s.placements.isEmpty || !s.eliminations.isEmpty else { return }

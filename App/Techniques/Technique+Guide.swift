@@ -255,8 +255,8 @@ extension Technique {
         // MARK: Chains
         case .remotePair:
             [
-                "A chain of cells that all have the same two candidates, X and Y, each seeing the next. Along the chain the values must alternate: X, Y, X, Y...",
-                "Two cells an odd number of steps apart hold opposite values, so between them they use both X and Y. A cell that sees both of them can hold neither.",
+                "Look for cells that all have the same two candidates, X and Y, linked by seeing each other. Two linked cells must hold opposite values, so the whole network splits into two colors: one color is all X and the other all Y. It can branch; it doesn't have to be a single line.",
+                "A cell that sees one cell of each color sees both an X and a Y, so it can hold neither. Color the whole network before you look: every cell that sees both colors loses both digits.",
             ]
         case .xChain:
             [

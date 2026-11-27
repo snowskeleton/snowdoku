@@ -107,7 +107,7 @@ func assertSound(_ puzzle: Grid, solution: Grid, solver: HumanSolver = HumanSolv
         #expect(used.count > 20, "expected broad technique coverage, got \(used.keys.map(\.name))")
     }
 
-    /// Each strategy alone, in find-all mode, on many mid-solve positions.
+    /// Each strategy alone, in exhaustive find-all mode (what drills use), on many mid-solve positions.
     @Test func everyStrategyFindAll() {
         var rng = SplitMix64(seed: 7)
         let solver = HumanSolver()
@@ -118,7 +118,8 @@ func assertSound(_ puzzle: Grid, solution: Grid, solver: HumanSolver = HumanSolv
             while !board.isSolved && guardCount < 200 {
                 guardCount += 1
                 for strat in solver.strategies {
-                    var out = StepCollector(findAll: true)
+                    // Exhaustive is a superset of plain find-all, so this checks both.
+                    var out = StepCollector(findAll: true, exhaustive: true)
                     strat.find(board, &out)
                     for step in out.steps {
                         for e in step.eliminations where e.digit == s[e.cell] {

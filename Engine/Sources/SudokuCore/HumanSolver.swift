@@ -20,7 +20,7 @@ public struct HumanSolver: Sendable {
             UniqueRectangle(type: 5), UniqueRectangle(type: 6), AvoidableRectangle(), AvoidableRectangle2(),
             HiddenRectangle(), BUGPlusOne(),
             SimpleColoring(), SimpleColoring(wrap: true), MultiColoring(),
-            ChainStrategy(mode: .remotePair), ChainStrategy(mode: .x), ChainStrategy(mode: .xy), ChainStrategy(mode: .niceLoop), ChainStrategy(mode: .discontinuous),
+            RemotePair(), ChainStrategy(mode: .x), ChainStrategy(mode: .xy), ChainStrategy(mode: .niceLoop), ChainStrategy(mode: .discontinuous),
             ChainStrategy(mode: .aic), ChainStrategy(mode: .grouped),
             SueDeCoq(), ALSXZ(), ALSXYWing(), ALSChain(), DeathBlossom(),
             GeneralFish(kind: .franken), GeneralFish(kind: .mutant), KrakenFish(),
@@ -53,7 +53,7 @@ public struct HumanSolver: Sendable {
 
     /// Every instance of one technique in the position (for training drills).
     public func allSteps(_ board: Board, technique: Technique) -> [Step] {
-        var out = StepCollector(findAll: true)
+        var out = StepCollector(findAll: true, exhaustive: true)
         for s in strategies where s.technique == technique { s.find(board, &out) }
         return out.steps
     }

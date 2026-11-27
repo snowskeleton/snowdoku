@@ -269,7 +269,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .simpleColoring: "Color a digit's strong-link chain in two colors; one color is true, so a cell seeing both colors loses the digit."
         case .colorWrap: "Color a digit's strong-link chain in two colors; if two cells of one color see each other, that whole color is false."
         case .multiColoring: "Two colored clusters on one digit interact to eliminate more."
-        case .remotePair: "A chain of identical bivalue cells; cells seeing both ends of opposite parity lose both digits."
+        case .remotePair: "A network of identical bivalue cells, two-colored; cells seeing both colors lose both digits."
         case .xChain: "An alternating chain of strong and weak links on one digit."
         case .xyChain: "A chain through bivalue cells; the end digit is eliminated from cells seeing both ends."
         case .discontinuousNiceLoop: "A chain that starts and ends in the same cell: the cell either keeps only the chain's digits or must take one of them."
