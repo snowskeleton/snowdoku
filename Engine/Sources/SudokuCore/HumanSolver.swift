@@ -41,6 +41,14 @@ public struct HumanSolver: Sendable {
         strategies = HumanSolver.allStrategies.filter { techniques.contains($0.technique) }
     }
 
+    /// A solver that knows only the techniques of `tier` and easier ones. Tiers follow the score
+    /// order, so it makes the same moves as the full solver until a harder technique is needed.
+    public static func upTo(_ tier: Difficulty) -> HumanSolver { byTier[tier.rawValue - 1] }
+
+    private static let byTier: [HumanSolver] = Difficulty.allCases.map { tier in
+        HumanSolver(strategies: allStrategies.filter { $0.technique.difficulty <= tier })
+    }
+
     /// The easiest available deduction, or nil if no known technique applies.
     public func nextStep(_ board: Board) -> Step? {
         for s in strategies {
@@ -93,13 +101,16 @@ public struct HumanSolver: Sendable {
 
     /// Solves from the given position, recording every step. If `solution` is supplied and the
     /// solver gets stuck, it falls back to revealing a cell (recorded as `.bruteForce`).
-    public func solve(_ start: Board, solution: Grid? = nil, maxSteps: Int = 2000) -> SolveLog {
+    /// `stop` sees each step as it's taken and can end the solve early by returning true.
+    public func solve(_ start: Board, solution: Grid? = nil, maxSteps: Int = 2000,
+                      stop: (Step) -> Bool = { _ in false }) -> SolveLog {
         var board = start
         var steps: [Step] = []
         while !board.isSolved && steps.count < maxSteps {
             if let step = nextStep(board) {
                 board.apply(step)
                 steps.append(step)
+                if stop(step) { break }
             } else if let sol = solution {
                 // Reveal the empty cell with the fewest candidates.
                 let c = board.emptyCells.min { board.candidates[$0].nonzeroBitCount < board.candidates[$1].nonzeroBitCount }!

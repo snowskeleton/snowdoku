@@ -35,6 +35,28 @@ public enum Rater {
         return rating(from: log.steps)
     }
 
+    /// Rates a puzzle only if it lands in `tier`, and gives up as soon as the solve shows it can't:
+    /// when it needs a technique above the tier, or its score already bumps it past the tier. Gives
+    /// the same answer as rating it fully and comparing, but skips the hardest part of the work on
+    /// puzzles that overshoot, which is most of them when generating for a tier.
+    public static func rate(_ puzzle: Grid, solution: Grid, ifIn tier: Difficulty) -> Rating? {
+        guard tier != .extreme else {
+            let r = rate(puzzle, solution: solution)
+            return r.difficulty == tier ? r : nil
+        }
+        var total = 0
+        var hardest = Technique.fullHouse
+        let log = HumanSolver.upTo(tier).solve(Board(puzzle)) { step in
+            total += step.technique.score
+            if step.technique.score > hardest.score { hardest = step.technique }
+            // The hardest technique only gets harder and the total only grows.
+            return hardest.difficulty == tier && tier.maxScore.map { total > $0 } == true
+        }
+        guard log.solved else { return nil }
+        let r = rating(from: log.steps)
+        return r.difficulty == tier ? r : nil
+    }
+
     public static func rating(from steps: [Step]) -> Rating {
         var counts: [Technique: Int] = [:]
         var total = 0

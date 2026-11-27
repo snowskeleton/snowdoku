@@ -4,6 +4,9 @@ public struct Board: Hashable, Sendable {
     /// Candidate masks; always 0 for solved cells.
     public internal(set) var candidates: [DigitMask]
     public let givens: CellSet
+    /// For each digit (index 1-9), the cells that hold it as a candidate. Kept in step with
+    /// `candidates` so house and digit lookups are a few bit operations instead of cell scans.
+    public private(set) var digitCells: [CellSet]
 
     /// Builds a board from a puzzle with all candidates computed from the givens.
     public init(_ grid: Grid) {
@@ -15,6 +18,7 @@ public struct Board: Hashable, Sendable {
             for p in Geometry.peers[c] where values[p] != 0 { m &= ~Mask.bit(Int(values[p])) }
             candidates[c] = m
         }
+        digitCells = Board.digitCells(candidates)
     }
 
     /// Builds a board from an arbitrary state (e.g. the player's pencil marks).
@@ -22,6 +26,19 @@ public struct Board: Hashable, Sendable {
         self.values = values
         self.givens = givens
         self.candidates = (0..<81).map { values[$0] == 0 ? candidates[$0] : 0 }
+        digitCells = Board.digitCells(self.candidates)
+    }
+
+    private static func digitCells(_ candidates: [DigitMask]) -> [CellSet] {
+        var planes = [CellSet](repeating: CellSet(), count: 10)
+        for c in 0..<81 {
+            var m = candidates[c]
+            while m != 0 {
+                planes[m.trailingZeroBitCount + 1].insert(c)
+                m &= m &- 1
+            }
+        }
+        return planes
     }
 
     @inline(__always) public func value(_ c: Int) -> Int { Int(values[c]) }
@@ -35,9 +52,15 @@ public struct Board: Hashable, Sendable {
     /// Places a digit and removes it from all peers' candidates.
     public mutating func place(_ c: Int, _ d: Int) {
         values[c] = UInt8(d)
+        var m = candidates[c]
+        while m != 0 {
+            digitCells[m.trailingZeroBitCount + 1].remove(c)
+            m &= m &- 1
+        }
         candidates[c] = 0
         let b = ~Mask.bit(d)
         for p in Geometry.peers[c] { candidates[p] &= b }
+        digitCells[d] = digitCells[d] - Geometry.peerSets[c]
     }
 
     @discardableResult
@@ -45,6 +68,7 @@ public struct Board: Hashable, Sendable {
         let b = Mask.bit(d)
         guard candidates[c] & b != 0 else { return false }
         candidates[c] &= ~b
+        digitCells[d].remove(c)
         return true
     }
 
@@ -55,17 +79,27 @@ public struct Board: Hashable, Sendable {
 
     /// Cells in `house` that have `d` as a candidate.
     public func positions(_ d: Int, _ house: Int) -> [Int] {
-        let b = Mask.bit(d)
-        return Geometry.houses[house].filter { candidates[$0] & b != 0 }
+        let cells = Geometry.houses[house]
+        var m = positionMask(d, house), out: [Int] = []
+        while m != 0 {
+            out.append(cells[m.trailingZeroBitCount])
+            m &= m &- 1
+        }
+        return out
     }
 
     /// Bit k set when the k-th cell of `house` has candidate `d`.
     public func positionMask(_ d: Int, _ house: Int) -> UInt16 {
-        let b = Mask.bit(d)
-        let cells = Geometry.houses[house]
-        var m: UInt16 = 0
-        for k in 0..<9 where candidates[cells[k]] & b != 0 { m |= 1 << UInt16(k) }
-        return m
+        let p = digitCells[d]
+        if house < 9 { return UInt16(p.bits(house * 9, 9)) }
+        if house < 18 {
+            let col = house - 9
+            var m: UInt16 = 0
+            for k in 0..<9 where p.contains(k * 9 + col) { m |= 1 << UInt16(k) }
+            return m
+        }
+        let box = house - 18, first = (box / 3) * 27 + (box % 3) * 3
+        return UInt16(p.bits(first, 3) | p.bits(first + 9, 3) << 3 | p.bits(first + 18, 3) << 6)
     }
 
     public func isPlaced(_ d: Int, in house: Int) -> Bool {
@@ -73,20 +107,10 @@ public struct Board: Hashable, Sendable {
     }
 
     /// All cells holding candidate `d`.
-    public func cells(with d: Int) -> CellSet {
-        let b = Mask.bit(d)
-        var s = CellSet()
-        for c in 0..<81 where candidates[c] & b != 0 { s.insert(c) }
-        return s
-    }
+    public func cells(with d: Int) -> CellSet { digitCells[d] }
 
     /// Cells in `set` that hold candidate `d`.
-    public func filter(_ set: CellSet, _ d: Int) -> CellSet {
-        let b = Mask.bit(d)
-        var s = CellSet()
-        for c in set where candidates[c] & b != 0 { s.insert(c) }
-        return s
-    }
+    public func filter(_ set: CellSet, _ d: Int) -> CellSet { set & digitCells[d] }
 
     /// Union of candidates over the given cells.
     public func union<S: Sequence>(_ cells: S) -> DigitMask where S.Element == Int {

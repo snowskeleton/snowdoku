@@ -38,14 +38,13 @@ public enum Generator {
         var puzzle = solution
         var order = Array(0..<81)
         order.shuffle(using: &rng)
-        var tried = Set<Int>()
-        for cell in order where !tried.contains(cell) {
-            let orbit = symmetry.orbit(cell)
-            orbit.forEach { tried.insert($0) }
-            let saved = orbit.map { puzzle[$0] }
-            for c in orbit { puzzle[c] = 0 }
-            if !BruteForce.hasUniqueSolution(puzzle) {
-                for (c, v) in zip(orbit, saved) { puzzle[c] = v }
+        var tried = [Bool](repeating: false, count: 81)
+        for cell in order where !tried[cell] {
+            let orbit = symmetry == .none ? [cell] : symmetry.orbit(cell)
+            for c in orbit { tried[c] = true; puzzle[c] = 0 }
+            // The puzzle was unique before, so only a solution that changes a removed cell can appear.
+            if BruteForce.hasOtherSolution(puzzle, than: solution, differingIn: orbit) {
+                for c in orbit { puzzle[c] = solution[c] }
             }
         }
         return (puzzle, solution)
@@ -53,8 +52,10 @@ public enum Generator {
 
     /// Generates puzzles until one matches the requested constraints.
     /// - Parameters:
-    ///   - difficulty: required tier of the hardest technique (nil = any).
+    ///   - difficulty: required tier (nil = any). Puzzles are then rated with the full technique
+    ///     set by `Rater.rate(_:solution:ifIn:)`, which stops early on ones that overshoot.
     ///   - requiring: a technique the solve must use (nil = any).
+    ///   - solver: rates puzzles when no difficulty is given.
     public static func generate<R: RandomNumberGenerator>(difficulty: Difficulty? = nil,
                                                           requiring: Technique? = nil,
                                                           symmetry: Symmetry = .none,
@@ -63,8 +64,8 @@ public enum Generator {
                                                           using rng: inout R) -> GeneratedPuzzle? {
         for _ in 0..<maxAttempts {
             let (p, s) = makePuzzle(symmetry: symmetry, using: &rng)
-            let rating = Rater.rate(p, solution: s, solver: solver)
-            if let difficulty, rating.difficulty != difficulty { continue }
+            let rated = difficulty.map { Rater.rate(p, solution: s, ifIn: $0) } ?? Rater.rate(p, solution: s, solver: solver)
+            guard let rating = rated else { continue }
             if let requiring, rating.counts[requiring] == nil { continue }
             return GeneratedPuzzle(puzzle: p, solution: s, rating: rating)
         }

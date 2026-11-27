@@ -87,10 +87,11 @@ struct WXYZWing: Strategy {
         var seen = Set<CellSet>()
         for p in 0..<81 where b.isEmpty(p) && b.candidates[p].nonzeroBitCount <= 4 {
             let pool = Geometry.peers[p].filter { b.isEmpty($0) && (2...4).contains(b.candidates[$0].nonzeroBitCount) }
+            let pm = b.candidates[p]
             forEachCombination(pool.count, 3) { idx in
-                let cells = [p] + idx.map { pool[$0] }
-                let u = b.union(cells)
+                let u = pm | b.candidates[pool[idx[0]]] | b.candidates[pool[idx[1]]] | b.candidates[pool[idx[2]]]
                 guard u.nonzeroBitCount == 4 else { return true }
+                let cells = [p, pool[idx[0]], pool[idx[1]], pool[idx[2]]]
                 let set = CellSet(cells)
                 guard seen.insert(set).inserted else { return true }
                 var nonRestricted: [Int] = []

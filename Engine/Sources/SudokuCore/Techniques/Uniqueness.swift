@@ -1,5 +1,10 @@
 /// Rectangles spanning exactly two boxes whose four corners are all empty.
 func rectangles(_ b: Board) -> [[Int]] {
+    allRectangles.filter { b.isEmpty($0[0]) && b.isEmpty($0[1]) && b.isEmpty($0[2]) && b.isEmpty($0[3]) }
+}
+
+/// Every rectangle spanning exactly two boxes, as its four cells.
+private let allRectangles: [[Int]] = {
     var out: [[Int]] = []
     for r1 in 0..<8 {
         for r2 in (r1 + 1)..<9 {
@@ -7,14 +12,13 @@ func rectangles(_ b: Board) -> [[Int]] {
                 for c2 in (c1 + 1)..<9 {
                     let sameBand = r1 / 3 == r2 / 3, sameStack = c1 / 3 == c2 / 3
                     guard sameBand != sameStack else { continue }
-                    let cells = [r1 * 9 + c1, r1 * 9 + c2, r2 * 9 + c1, r2 * 9 + c2]
-                    if cells.allSatisfy({ b.isEmpty($0) }) { out.append(cells) }
+                    out.append([r1 * 9 + c1, r1 * 9 + c2, r2 * 9 + c1, r2 * 9 + c2])
                 }
             }
         }
     }
     return out
-}
+}()
 
 struct UniqueRectangle: Strategy {
     let type: Int
@@ -55,7 +59,7 @@ struct UniqueRectangle: Strategy {
                         } else if type == 4 {
                             for h in shared {
                                 for (lock, kill) in [(u, v), (v, u)] {
-                                    guard b.positions(lock, h).count == 2 else { continue }
+                                    guard b.positionMask(lock, h).nonzeroBitCount == 2 else { continue }
                                     let elims = roof.map { Candidate($0, kill) }
                                     out.add(Step(technique, eliminations: elims, houses: [h], highlights: hl,
                                                  explanation: "Unique Rectangle Type 4: in \(name), \(lock) must be in one of the roof cells \(Geometry.cellsName(roof)) (it has nowhere else in \(Geometry.houseName(h))). The other roof cell then can't be \(kill) without a deadly pattern: \(describeEliminations(elims))."))
@@ -101,8 +105,8 @@ struct UniqueRectangle: Strategy {
                         guard roof.count == 2, floor.count == 2, Geometry.sharedHouses(floor).isEmpty else { continue }
                         let rows = Array(Set(rect.map { Geometry.rowOf[$0] })), cols = Array(Set(rect.map { 9 + Geometry.colOf[$0] }))
                         for (x, other) in [(u, v), (v, u)] {
-                            let inRows = rows.allSatisfy { b.positions(x, $0).count == 2 }
-                            let inCols = cols.allSatisfy { b.positions(x, $0).count == 2 }
+                            let inRows = rows.allSatisfy { b.positionMask(x, $0).nonzeroBitCount == 2 }
+                            let inCols = cols.allSatisfy { b.positionMask(x, $0).nonzeroBitCount == 2 }
                             guard inRows || inCols else { continue }
                             let elims = roof.map { Candidate($0, x) }
                             out.add(Step(technique, eliminations: elims, houses: inRows ? rows : cols, highlights: hl,
@@ -133,7 +137,7 @@ struct HiddenRectangle: Strategy {
                         guard let d = rect.first(where: { Geometry.rowOf[$0] != Geometry.rowOf[a] && Geometry.colOf[$0] != Geometry.colOf[a] }) else { continue }
                         let rowD = Geometry.rowOf[d], colD = 9 + Geometry.colOf[d]
                         for (u, v) in [(pairs[i], pairs[j]), (pairs[j], pairs[i])] {
-                            guard b.positions(u, rowD).count == 2, b.positions(u, colD).count == 2 else { continue }
+                            guard b.positionMask(u, rowD).nonzeroBitCount == 2, b.positionMask(u, colD).nonzeroBitCount == 2 else { continue }
                             let elims = [Candidate(d, v)]
                             out.add(Step(technique, eliminations: elims, houses: [rowD, colD],
                                          highlights: rect.flatMap { [Highlight($0, pairs[i], .pattern), Highlight($0, pairs[j], .pattern)] },
@@ -159,7 +163,7 @@ struct BUGPlusOne: Strategy {
         }
         guard tri >= 0 else { return }
         for d in Mask.digits(b.candidates[tri]) {
-            if Geometry.housesOfCell[tri].contains(where: { b.positions(d, $0).count == 3 }) {
+            if Geometry.housesOfCell[tri].contains(where: { b.positionMask(d, $0).nonzeroBitCount == 3 }) {
                 out.add(Step(technique, placements: [Candidate(tri, d)], houses: Geometry.housesOfCell[tri],
                              highlights: [Highlight(tri, d, .pattern)],
                              explanation: "BUG+1: every empty cell except \(Geometry.cellName(tri)) has exactly two candidates. Without \(d) there, the puzzle would have two solutions, so \(Geometry.cellName(tri)) is \(d)."))
