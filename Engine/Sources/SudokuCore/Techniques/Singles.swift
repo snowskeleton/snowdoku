@@ -21,9 +21,9 @@ struct HiddenSingle: Strategy {
         let range = inBox ? 18..<27 : 0..<18
         for h in range {
             for d in 1...9 {
-                let pos = b.positions(d, h)
-                guard pos.count == 1, !b.isPlaced(d, in: h) else { continue }
-                let c = pos[0]
+                let m = b.positionMask(d, h)
+                guard m.nonzeroBitCount == 1, !b.isPlaced(d, in: h) else { continue }
+                let c = Geometry.houses[h][m.trailingZeroBitCount]
                 // If it's also a naked single in a "full house" sense we still report the hidden single.
                 out.add(Step(technique, placements: [Candidate(c, d)], houses: [h],
                              highlights: [Highlight(c, d, .pattern)],

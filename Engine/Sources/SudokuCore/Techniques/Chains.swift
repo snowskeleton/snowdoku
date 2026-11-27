@@ -70,10 +70,11 @@ struct ChainStrategy: Strategy {
                     queue[tail] = Int32(ns); tail += 1
                     // Arrived at an "on" node: the chain s ... nb proves (s or nb).
                     guard !on, dcur + 1 >= 3 else { continue }
-                    let path = reconstruct(ns, parent: parent, start: s * 2)
-                    guard pathIsValid(path, g) else { continue }
+                    // Checks on the two ends come first: they're cheap and usually fail.
                     if mode == .niceLoop {
                         guard nb != s, g.weak[nb].contains(s) else { continue }
+                        let path = reconstruct(ns, parent: parent, start: s * 2)
+                        guard pathIsValid(path, g) else { continue }
                         let elims = loopEliminations(path, g, b)
                         guard !elims.isEmpty, let step = makeStep(path, g, b, elims, [], loop: true) else { continue }
                         if record(step, dcur + 1) { found = true; break }
@@ -84,6 +85,8 @@ struct ChainStrategy: Strategy {
                     }
                     let (elims, places) = conclusions(s, nb, g, b)
                     guard !elims.isEmpty || !places.isEmpty else { continue }
+                    let path = reconstruct(ns, parent: parent, start: s * 2)
+                    guard pathIsValid(path, g) else { continue }
                     if let step = makeStep(path, g, b, elims, places), record(step, dcur + 1) {
                         found = true
                         break

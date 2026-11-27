@@ -4,8 +4,8 @@ struct Pointing: Strategy {
         for box in 0..<9 {
             let h = 18 + box
             for d in 1...9 {
+                guard b.positionMask(d, h).nonzeroBitCount >= 2 else { continue }
                 let pos = b.positions(d, h)
-                guard pos.count >= 2 else { continue }
                 for lineHouse in Geometry.sharedHouses(pos) where lineHouse < 18 {
                     let elims = Geometry.houses[lineHouse].filter { Geometry.boxOf[$0] != box && b.has($0, d) }
                     guard !elims.isEmpty else { continue }
@@ -24,8 +24,8 @@ struct Claiming: Strategy {
     func find(_ b: Board, _ out: inout StepCollector) {
         for h in 0..<18 {
             for d in 1...9 {
+                guard b.positionMask(d, h).nonzeroBitCount >= 2 else { continue }
                 let pos = b.positions(d, h)
-                guard pos.count >= 2 else { continue }
                 let box = Geometry.boxOf[pos[0]]
                 guard pos.allSatisfy({ Geometry.boxOf[$0] == box }) else { continue }
                 let bh = 18 + box

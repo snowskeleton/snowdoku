@@ -95,11 +95,20 @@ case "rate":
         lines = []
         while let l = readLine() { lines.append(l) }
     }
-    for l in lines where !l.trimmingCharacters(in: .whitespaces).isEmpty {
-        let raw = String(l.split(separator: "\t").first ?? "")
-        guard let g = Grid(raw), let r = Rater.rate(g) else { print("\(raw)\tINVALID"); continue }
-        print("\(g.string)\t\(r.difficulty.name)\t\(r.hardest.rawValue)\t\(r.totalScore)\t\(r.techniques.map(\.rawValue).joined(separator: ","))")
+    // Rated in parallel, printed in input order.
+    let raws = lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.map { String($0.split(separator: "\t").first ?? "") }
+    let outputs = Locked([String](repeating: "", count: raws.count))
+    DispatchQueue.concurrentPerform(iterations: raws.count) { i in
+        let raw = raws[i]
+        let line: String
+        if let g = Grid(raw), let r = Rater.rate(g) {
+            line = "\(g.string)\t\(r.difficulty.name)\t\(r.hardest.rawValue)\t\(r.totalScore)\t\(r.techniques.map(\.rawValue).joined(separator: ","))"
+        } else {
+            line = "\(raw)\tINVALID"
+        }
+        outputs.with { $0[i] = line }
     }
+    for line in outputs.with({ $0 }) { print(line) }
 
 case "generate", "stats":
     let count = Int(option("--count", in: args) ?? "") ?? (cmd == "stats" ? 200 : 10)
@@ -121,8 +130,8 @@ case "generate", "stats":
         while results.with({ $0.count }) < count {
             let (p, s) = Generator.makePuzzle(symmetry: symmetry, using: &rng)
             attempts.with { $0 += 1 }
-            let r = Rater.rate(p, solution: s, solver: solver)
-            if let difficulty, r.difficulty != difficulty { continue }
+            let rated = difficulty.map { Rater.rate(p, solution: s, ifIn: $0) } ?? Rater.rate(p, solution: s, solver: solver)
+            guard let r = rated else { continue }
             if let technique, r.counts[technique] == nil { continue }
             let gp = GeneratedPuzzle(puzzle: p, solution: s, rating: r)
             let emitted = results.with { list -> Bool in
@@ -247,8 +256,15 @@ case "mutate":
     let seed = UInt64(option("--seed", in: args) ?? "") ?? UInt64.random(in: 0...UInt64.max)
     // Gets stuck exactly when a puzzle needs a forcing technique (or trial and error).
     let nonForcing = HumanSolver(allowing: Set(Technique.allCases.filter { $0.difficulty < .extreme }))
-    let seeds = text.split(separator: "\n").compactMap { Grid(String($0.split(separator: "\t").first ?? "")) }
-        .filter { BruteForce.hasUniqueSolution($0) && !nonForcing.solve(Board($0)).solved }
+    let candidates = text.split(separator: "\n").compactMap { Grid(String($0.split(separator: "\t").first ?? "")) }
+    let keep = Locked([Bool](repeating: false, count: candidates.count))
+    DispatchQueue.concurrentPerform(iterations: candidates.count) { i in
+        let g = candidates[i]
+        let ok = BruteForce.hasUniqueSolution(g) && !nonForcing.solve(Board(g)).solved
+        keep.with { $0[i] = ok }
+    }
+    let kept = keep.with { $0 }
+    let seeds = candidates.indices.filter { kept[$0] }.map { candidates[$0] }
     guard !seeds.isEmpty else { fail("No extreme puzzles in \(path)") }
     let pool = Locked(seeds)
     let tries = Locked(0)

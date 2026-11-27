@@ -1,10 +1,14 @@
 struct StrongLink { let a: Int, b: Int, house: Int }
 
 func strongLinks(_ b: Board, _ d: Int) -> [StrongLink] {
-    (0..<27).compactMap { h in
-        let p = b.positions(d, h)
-        return p.count == 2 ? StrongLink(a: p[0], b: p[1], house: h) : nil
+    var links: [StrongLink] = []
+    for h in 0..<27 {
+        let m = b.positionMask(d, h)
+        guard m.nonzeroBitCount == 2 else { continue }
+        let cells = Geometry.houses[h]
+        links.append(StrongLink(a: cells[m.trailingZeroBitCount], b: cells[15 - m.leadingZeroBitCount], house: h))
     }
+    return links
 }
 
 /// Skyscraper, 2-String Kite and Turbot Fish: strong - weak - strong on one digit.
@@ -34,9 +38,13 @@ struct TurbotFamily: Strategy {
             for i in 0..<links.count {
                 for j in 0..<links.count where j != i {
                     let l1 = links[i], l2 = links[j]
-                    for (a1, a2) in [(l1.a, l1.b), (l1.b, l1.a)] {
-                        for (b1, b2) in [(l2.a, l2.b), (l2.b, l2.a)] {
-                            guard Set([a1, a2, b1, b2]).count == 4, Geometry.sees(a2, b1) else { continue }
+                    // The two links share no cell.
+                    guard l1.a != l2.a, l1.a != l2.b, l1.b != l2.a, l1.b != l2.b else { continue }
+                    for flip1 in 0..<2 {
+                        let a1 = flip1 == 0 ? l1.a : l1.b, a2 = flip1 == 0 ? l1.b : l1.a
+                        for flip2 in 0..<2 {
+                            let b1 = flip2 == 0 ? l2.a : l2.b, b2 = flip2 == 0 ? l2.b : l2.a
+                            guard Geometry.sees(a2, b1) else { continue }
                             // Skip if the ends are already in one house (it'd be a plain locked set).
                             guard classify(l1, l2, a2, b1) == kind else { continue }
                             let targets = Geometry.commonPeers(CellSet([a1, b2])) - CellSet([a1, a2, b1, b2])

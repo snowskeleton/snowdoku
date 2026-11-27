@@ -63,6 +63,14 @@ public struct CellSet: Hashable, Sendable, Sequence, Codable {
     }
     public var array: [Int] { Array(self) }
 
+    /// `n` (at most 64) consecutive membership bits starting at cell `start`, as the low bits.
+    @inline(__always) public func bits(_ start: Int, _ n: Int) -> UInt64 {
+        let mask: UInt64 = n == 64 ? ~0 : (1 << UInt64(n)) - 1
+        if start >= 64 { return (hi >> UInt64(start - 64)) & mask }
+        if start + n <= 64 { return (lo >> UInt64(start)) & mask }
+        return ((lo >> UInt64(start)) | (hi << UInt64(64 - start))) & mask
+    }
+
     public static func & (a: CellSet, b: CellSet) -> CellSet { var r = CellSet(); r.lo = a.lo & b.lo; r.hi = a.hi & b.hi; return r }
     public static func | (a: CellSet, b: CellSet) -> CellSet { var r = CellSet(); r.lo = a.lo | b.lo; r.hi = a.hi | b.hi; return r }
     public static func - (a: CellSet, b: CellSet) -> CellSet { var r = CellSet(); r.lo = a.lo & ~b.lo; r.hi = a.hi & ~b.hi; return r }

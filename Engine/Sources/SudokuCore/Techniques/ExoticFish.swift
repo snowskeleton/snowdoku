@@ -15,34 +15,55 @@ struct GeneralFish: Strategy {
         let pools: [([Int], [Int])] = kind == .franken
             ? [(Self.rows + Self.boxes, Self.cols + Self.boxes), (Self.cols + Self.boxes, Self.rows + Self.boxes)]
             : [(Array(0..<27), Array(0..<27))]
+        // Scratch space reused for every base set, so the search itself doesn't allocate.
+        var coverCands = [Int](repeating: 0, count: 27)
+        var coverCount = [Int](repeating: 0, count: 27)  // base cells each candidate covers
+        var suffixMax = [Int](repeating: 0, count: 28)   // largest coverCount from index i on
         for d in 1...9 {
             let hc: [CellSet] = (0..<27).map { b.filter(Geometry.houseSets[$0], d) }
             for (basePool, coverPool) in pools {
                 let bases = basePool.filter { !hc[$0].isEmpty }
-                for size in 2...3 {
-                    forEachCombination(bases.count, size) { idx in
-                        let bh = idx.map { bases[$0] }
-                        var baseCells = CellSet(), endo = CellSet()
-                        for h in bh {
-                            endo |= baseCells & hc[h]
-                            baseCells |= hc[h]
+                let nb = bases.count
+                for size in 2...3 where nb >= size {
+                    // Base sets in combination order. Cells in two base houses are endo fins, at most
+                    // two of them, so a pair that already shares more rules out every set containing it.
+                    func evaluate(_ b0: Int, _ b1: Int, _ b2: Int) -> Bool {
+                        var baseCells = hc[b0] | hc[b1]
+                        var endo = hc[b0] & hc[b1]
+                        var baseHouses: UInt32 = 1 << UInt32(b0) | 1 << UInt32(b1)
+                        var baseKinds = Self.kindBit[b0] | Self.kindBit[b1]
+                        if b2 >= 0 {
+                            endo |= baseCells & hc[b2]
+                            baseCells |= hc[b2]
+                            baseHouses |= 1 << UInt32(b2)
+                            baseKinds |= Self.kindBit[b2]
                         }
                         guard endo.count <= 2 else { return true }
-                        var baseKinds = 0
-                        for h in bh { baseKinds |= Self.kindBit[h] }
-                        let coverCands = coverPool.filter { !bh.contains($0) && !(hc[$0] & baseCells).isEmpty }
-                        guard coverCands.count >= size else { return true }
-                        forEachCombination(coverCands.count, size) { cidx in
-                            var coverCells = CellSet()
-                            var coverKinds = 0
-                            for i in cidx { coverCells |= hc[coverCands[i]]; coverKinds |= Self.kindBit[coverCands[i]] }
+                        var m = 0
+                        for h in coverPool where baseHouses & (1 << UInt32(h)) == 0 {
+                            let k = (hc[h] & baseCells).count
+                            if k > 0 { coverCands[m] = h; coverCount[m] = k; m += 1 }
+                        }
+                        guard m >= size else { return true }
+                        suffixMax[m] = 0
+                        for i in stride(from: m - 1, through: 0, by: -1) { suffixMax[i] = max(coverCount[i], suffixMax[i + 1]) }
+
+                        func tryCover(_ h0: Int, _ h1: Int, _ h2: Int) -> Bool {
+                            var coverCells = hc[h0] | hc[h1]
+                            var twice = hc[h0] & hc[h1]
+                            var coverKinds = Self.kindBit[h0] | Self.kindBit[h1]
+                            if h2 >= 0 {
+                                twice |= coverCells & hc[h2]
+                                coverCells |= hc[h2]
+                                coverKinds |= Self.kindBit[h2]
+                            }
                             let fins = (baseCells - coverCells) | endo
                             guard fins.count <= 3, Self.classify(baseKinds, coverKinds) == kind else { return true }
-                            let ch = cidx.map { coverCands[$0] }
-                            var targets = coverCells - baseCells
-                            for c in baseCells - fins where ch.filter({ hc[$0].contains(c) }).count >= 2 { targets.insert(c) }
+                            var targets = (coverCells - baseCells) | ((baseCells - fins) & twice)
                             if !fins.isEmpty { targets &= Geometry.commonPeers(fins) }
                             guard !targets.isEmpty else { return true }
+                            let bh = b2 >= 0 ? [b0, b1, b2] : [b0, b1]
+                            let ch = h2 >= 0 ? [h0, h1, h2] : [h0, h1]
                             let elims = targets.map { Candidate($0, d) }
                             out.add(Step(technique, eliminations: elims, houses: bh + ch,
                                          highlights: baseCells.map { Highlight($0, d, fins.contains($0) ? .fin : .pattern) },
@@ -50,7 +71,38 @@ struct GeneralFish: Strategy {
                                          explanation: "\(technique.name) on \(d): the base houses \(bh.map(Geometry.houseName).joined(separator: ", ")) hold \(size) separate \(d)s\(endo.isEmpty ? "" : " (\(Geometry.cellsName(endo)) belong to two of them, so they count as fins)"), all inside the cover houses \(ch.map(Geometry.houseName).joined(separator: ", "))\(fins.isEmpty ? "" : " apart from the fin\(fins.count > 1 ? "s" : "") \(Geometry.cellsName(fins))"). Each cover house is used up\(fins.isEmpty ? "" : " (or a fin is true)"): \(describeEliminations(elims))."))
                             return !out.done
                         }
-                        return !out.done
+
+                        // Base cells outside the cover are fins, at most three of them, so skip partial
+                        // covers that the remaining candidates can't bring under that.
+                        for i in 0..<m {
+                            let h0 = coverCands[i]
+                            guard (baseCells - hc[h0]).count - (size - 1) * suffixMax[i + 1] <= 3 else { continue }
+                            for j in (i + 1)..<m {
+                                let h1 = coverCands[j]
+                                if size == 2 {
+                                    if !tryCover(h0, h1, -1) { return false }
+                                    continue
+                                }
+                                guard (baseCells - hc[h0] - hc[h1]).count - suffixMax[j + 1] <= 3 else { continue }
+                                for k in (j + 1)..<m {
+                                    if !tryCover(h0, h1, coverCands[k]) { return false }
+                                }
+                            }
+                        }
+                        return true
+                    }
+
+                    search: for i in 0..<nb {
+                        for j in (i + 1)..<nb {
+                            if size == 2 {
+                                if !evaluate(bases[i], bases[j], -1) { break search }
+                                continue
+                            }
+                            guard (hc[bases[i]] & hc[bases[j]]).count <= 2 else { continue }
+                            for k in (j + 1)..<nb {
+                                if !evaluate(bases[i], bases[j], bases[k]) { break search }
+                            }
+                        }
                     }
                     if out.done { return }
                 }
@@ -98,22 +150,24 @@ struct KrakenFish: Strategy {
                 }
                 for size in 2...3 where lines.count >= size {
                     forEachCombination(lines.count, size) { idx in
-                        let base = idx.map { lines[$0] }
-                        let baseIdx = Set(base.map(\.0))
-                        var union: UInt16 = 0
-                        for l in base { union |= l.1 }
+                        var union: UInt16 = 0, baseSet: UInt16 = 0
+                        for i in idx { union |= lines[i].1; baseSet |= 1 << UInt16(lines[i].0) }
                         guard union.nonzeroBitCount > size else { return true }
+                        let base = idx.map { lines[$0] }
                         let crossList = Mask.indices(union)
                         forEachCombination(crossList.count, size) { cidx in
                             var cover: UInt16 = 0
                             for i in cidx { cover |= 1 << UInt16(crossList[i]) }
+                            var finCount = 0
+                            for l in base { finCount += (l.1 & ~cover).nonzeroBitCount }
+                            guard (1...3).contains(finCount) else { return true }
                             var fins: [Int] = []
                             for l in base { for k in Mask.indices(l.1 & ~cover) { fins.append(cellAt(l.0, k)) } }
                             guard (1...3).contains(fins.count) else { return true }
                             if fins.allSatisfy({ Geometry.boxOf[$0] == Geometry.boxOf[fins[0]] }) { return true }
                             var elims: [Candidate] = []
                             for cross in Mask.indices(cover) {
-                                for j in 0..<9 where !baseIdx.contains(j) {
+                                for j in 0..<9 where baseSet & (1 << UInt16(j)) == 0 {
                                     let t = cellAt(j, cross)
                                     guard b.has(t, d) else { continue }
                                     let killed = fins.allSatisfy { f in
