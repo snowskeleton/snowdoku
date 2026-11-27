@@ -20,6 +20,9 @@ final class TechniqueSkillTests: XCTestCase {
         app.launchArguments = ["-puzzle", Self.classic, "-prefill", "2"]
         app.launch()
         XCTAssertTrue(cell(app, 9, 6).waitForExistence(timeout: 10))
+        // A hint counts against the move being worked on (this once crashed on an exclusivity violation).
+        app.buttons["Hint"].firstMatch.tap()
+        app.buttons["Hint"].firstMatch.tap()
         cell(app, 9, 6).tap(); digit(app, 6).tap()
         cell(app, 9, 7).tap(); digit(app, 1).tap()
         XCTAssertTrue(app.staticTexts["Solved!"].waitForExistence(timeout: 5))
