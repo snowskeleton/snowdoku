@@ -20,6 +20,11 @@ struct BoardContext {
     var hintPlacements: Set<Candidate> = []
     var hintWrong: Set<Int> = []
     var hintMissing: Set<Candidate> = []
+    /// A hint is drawing on the board. Its colors then stand alone: the selection, peer and
+    /// same-digit tints are suppressed so the two kinds of highlighting don't mix.
+    var hintOnBoard: Bool {
+        !hintHouses.isEmpty || !hintRoles.isEmpty || !hintWrong.isEmpty || !hintMissing.isEmpty
+    }
 
     func isSelected(_ c: Int) -> Bool { multiSelection.isEmpty ? selected == c : multiSelection.contains(c) }
 
@@ -56,6 +61,10 @@ struct BoardContext {
                 hintElims = Set(s.eliminations)
                 hintPlacements = Set(s.placements)
             }
+        }
+        if hintOnBoard {
+            self.highlightSame = false
+            self.highlightPeers = false
         }
     }
 }
