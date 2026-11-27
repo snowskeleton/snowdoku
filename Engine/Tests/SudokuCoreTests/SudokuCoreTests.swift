@@ -185,3 +185,34 @@ func assertSound(_ puzzle: Grid, solution: Grid, solver: HumanSolver = HumanSolv
         #expect(!s.hintText(.technique).isEmpty)
     }
 }
+
+@Suite struct BottleneckTests {
+    let solver = HumanSolver()
+
+    @Test func solvedBoardHasNone() throws {
+        let g = try #require(Grid(classic))
+        let solved = try #require(BruteForce.solution(g))
+        #expect(solver.nextPlacementBottleneck(Board(solved)) == nil)
+    }
+
+    @Test func easyStartNeedsOnlyASingle() throws {
+        let g = try #require(Grid(classic))
+        let t = try #require(solver.nextPlacementBottleneck(Board(g)))
+        #expect(t.difficulty == .beginner)
+    }
+
+    /// Replaying a solve one placement at a time (values only, as a player's board is seen), the
+    /// hardest bottleneck along the way is the puzzle's rated hardest technique.
+    @Test func replayFindsTheHardestTechnique() throws {
+        let g = try #require(Grid("...165...6.....7......93.........3.98.19...7...5..7.1.........61.8.3...4..95.4.3."))
+        let log = solver.solve(g)
+        var values = g.cells
+        var hardest = try #require(solver.nextPlacementBottleneck(Board(g)))
+        for p in log.steps.flatMap(\.placements) {
+            values[p.cell] = UInt8(p.digit)
+            if let t = solver.nextPlacementBottleneck(Board(Grid(cells: values))), t.score > hardest.score { hardest = t }
+        }
+        let rated = try #require(log.steps.map(\.technique).max { $0.score < $1.score })
+        #expect(hardest == rated)
+    }
+}

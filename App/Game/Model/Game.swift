@@ -19,7 +19,7 @@ final class Game {
     /// Every instance of the drill's technique in the starting position, computed in the background.
     private(set) var drillTargets: [Step] = []
 
-    private(set) var values: [UInt8] { didSet { checkDrill() } }
+    private(set) var values: [UInt8] { didSet { checkDrill(); trackProgress() } }
     private(set) var notes: [DigitMask] { didSet { checkDrill() } }
     /// How each cell draws its notes (`NoteKind`), set by the note last added to it: cells in
     /// `centeredNotes` are centered, cells in `autoNotes` go by count, the rest use the grid.
@@ -58,6 +58,27 @@ final class Game {
     private var accumulated: Double
     private var resumedAt: Date?
 
+    /// Every move so far and the technique it needed (see `TechniqueMove`).
+    private(set) var moves: [TechniqueMove]
+    /// The move being worked on: since the last correct digit, with its bottleneck being computed.
+    private struct Segment {
+        var start: Double
+        var mistakes = 0
+        var hintLevel: HintLevel?
+        var technique: Task<Technique?, Never>
+    }
+    private var segment: Segment?
+    /// Correct digits on the board, givens included.
+    private var progress = 0
+    /// Set while undo, redo or auto-complete change the board, which aren't the player's moves.
+    private var untracked = false
+    /// Set while the hint's Apply button changes the board.
+    private var applyingHint = false
+    /// Moves whose technique is still being computed.
+    private var pendingMoves: [Task<Void, Never>] = []
+    /// Set once the moves have gone to the statistics, so they're counted once.
+    var movesRecorded = false
+
     private struct Snapshot { var values: [UInt8]; var notes: [DigitMask]; var centered: CellSet; var auto: CellSet }
     private var snapshot: Snapshot { Snapshot(values: values, notes: notes, centered: centeredNotes, auto: autoNotes) }
     private func restore(_ s: Snapshot) { values = s.values; notes = s.notes; centeredNotes = s.centered; autoNotes = s.auto }
@@ -82,7 +103,9 @@ final class Game {
         accumulated = 0
         resumedAt = Date.now
         drill = nil
+        moves = []
         refreshAutoComplete()
+        startTracking()
     }
 
     /// Starts a drill. `tracking` is false for the static examples on technique pages.
@@ -104,8 +127,9 @@ final class Game {
         isComplete = false
         accumulated = 0
         resumedAt = Date.now
+        moves = []
         refreshAutoComplete()
-        if tracking { loadDrillTargets() }
+        if tracking { loadDrillTargets(); startTracking() }
     }
 
     init(record r: GameRecord) {
@@ -129,15 +153,17 @@ final class Game {
         isComplete = r.completed
         accumulated = r.elapsed
         resumedAt = r.completed ? nil : Date.now
+        moves = r.moves ?? []
         refreshAutoComplete()
         if drill != nil && drillState == .searching { loadDrillTargets() }
+        startTracking()
     }
 
     var record: GameRecord {
         GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, centeredNotes: centeredNotes, autoNotes: autoNotes, elapsed: elapsed(),
                    mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
                    techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
-                   drill: drill, drillState: drill == nil ? nil : drillState)
+                   drill: drill, drillState: drill == nil ? nil : drillState, moves: moves)
     }
 
     var title: String {
@@ -195,7 +221,9 @@ final class Game {
     func undo() {
         guard !autoCompleting, let s = undoStack.popLast() else { return }
         redoStack.append(snapshot)
+        untracked = true
         restore(s)
+        untracked = false
         hint = nil
         refreshAutoComplete()
     }
@@ -203,7 +231,9 @@ final class Game {
     func redo() {
         guard !autoCompleting, let s = redoStack.popLast() else { return }
         undoStack.append(snapshot)
+        untracked = true
         restore(s)
+        untracked = false
         hint = nil
         refreshAutoComplete()
     }
@@ -275,7 +305,7 @@ final class Game {
             let bit = ~Mask.bit(d)
             for p in Geometry.peers[c] { notes[p] &= bit }
         }
-        if d != solution[c] { mistakes += 1 }
+        if d != solution[c] { mistakes += 1; segment?.mistakes += 1 }
         flashIfCompleted(d)
         checkComplete()
     }
@@ -515,6 +545,7 @@ final class Game {
         pushUndo()
         pauseClock()
         autoCompleting = true
+        untracked = true
         canAutoComplete = false
         selected = nil
         armed = nil
@@ -529,6 +560,7 @@ final class Game {
             if animated { try? await Task.sleep(for: .milliseconds(500)) }
         }
         autoCompleting = false
+        untracked = false
         checkComplete()
     }
 
@@ -536,8 +568,10 @@ final class Game {
     /// Test hook: fill every empty cell from the solution except the last `leaving` ones.
     func debugPrefill(leaving: Int, wrong: Bool) {
         let empties = (0..<81).filter { values[$0] == 0 }
+        untracked = true
         for c in empties.dropLast(leaving) { values[c] = UInt8(solution[c]) }
         if wrong, let c = empties.first { values[c] = UInt8(solution[c] % 9 + 1) }
+        untracked = false
         refreshAutoComplete()
     }
     #endif
@@ -566,6 +600,7 @@ final class Game {
     private func checkDrill() {
         guard drill != nil, drillState == .searching, drillFoundStep != nil else { return }
         drillState = .found
+        closeSegment()
     }
 
     // MARK: Hints
@@ -574,7 +609,7 @@ final class Game {
     func requestHint() {
         guard !isComplete else { return }
         if var h = hint {
-            if let next = HintLevel(rawValue: h.level.rawValue + 1) { h.level = next; hint = h }
+            if let next = HintLevel(rawValue: h.level.rawValue + 1) { h.level = next; hint = h; noteHint(h) }
             return
         }
         let result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution)
@@ -585,12 +620,15 @@ final class Game {
         default: start = .answer
         }
         hint = HintSession(hint: result, level: start)
+        noteHint(hint!)
     }
 
     /// Applies what the current hint shows (fixes mistakes, restores notes or performs the step).
     func applyHint() {
         guard let h = hint else { return }
         pushUndo()
+        applyingHint = true
+        defer { applyingHint = false }
         switch h.hint {
         case .solved: break
         case .wrongValues(let cells):
@@ -611,5 +649,72 @@ final class Game {
             checkComplete()
         }
         hint = nil
+    }
+}
+
+// MARK: Technique tracking
+
+extension Game {
+    nonisolated static let bottleneckSolver = HumanSolver()
+
+    /// Starts timing the first move (or, after a restore, the next one).
+    fileprivate func startTracking() {
+        progress = correctCount
+        startSegment()
+    }
+
+    private var correctCount: Int { (0..<81).reduce(0) { $0 + (values[$1] != 0 && !isWrong($1) ? 1 : 0) } }
+
+    /// Called whenever the values change. A new correct digit ends the move being worked on;
+    /// any change in the correct digits starts the next one from the new position.
+    fileprivate func trackProgress() {
+        guard drill == nil else { return }
+        let now = correctCount
+        guard now != progress else { return }
+        let advanced = now > progress
+        progress = now
+        if advanced && !untracked { closeSegment() } else { segment?.technique.cancel(); segment = nil }
+        startSegment()
+    }
+
+    private func startSegment() {
+        guard !isComplete else { segment = nil; return }
+        let task: Task<Technique?, Never>
+        if let drill {
+            guard drillState == .searching else { segment = nil; return }
+            let t = drill.technique
+            task = Task { t }
+        } else {
+            let board = Board(Grid(cells: (0..<81).map { isWrong($0) ? 0 : values[$0] }))
+            task = Task.detached(priority: .utility) { Game.bottleneckSolver.nextPlacementBottleneck(board) }
+        }
+        segment = Segment(start: elapsed(), technique: task)
+    }
+
+    /// Records the move being worked on, once its technique is known.
+    fileprivate func closeSegment() {
+        guard let s = segment else { return }
+        segment = nil
+        let at = elapsed()
+        let applied = applyingHint
+        pendingMoves.append(Task { [weak self] in
+            guard let t = await s.technique.value, let self else { return }
+            self.moves.append(TechniqueMove(technique: t, seconds: max(0, at - s.start), at: at, mistakes: s.mistakes,
+                                            hintLevel: s.hintLevel?.rawValue, applied: applied))
+        })
+    }
+
+    /// A hint about the next step counts against the move being worked on.
+    fileprivate func noteHint(_ h: HintSession) {
+        guard case .step = h.hint else { return }
+        segment?.hintLevel = max(segment?.hintLevel ?? h.level, h.level)
+    }
+
+    /// Every move, once those still being computed are done, in the order they were made.
+    func finishedMoves() async -> [TechniqueMove] {
+        let pending = pendingMoves
+        pendingMoves.removeAll()
+        for t in pending { await t.value }
+        return moves.sorted { $0.at < $1.at }
     }
 }

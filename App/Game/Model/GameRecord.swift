@@ -24,4 +24,6 @@ struct GameRecord: Codable {
     var completed: Bool
     var drill: Drill?
     var drillState: DrillState?
+    /// Moves so far and the technique each needed (missing in older saves).
+    var moves: [TechniqueMove]?
 }

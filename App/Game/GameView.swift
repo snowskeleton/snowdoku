@@ -4,6 +4,7 @@ import SudokuCore
 struct GameView: View {
     @Bindable var game: Game
     @Environment(GameStore.self) private var store
+    @Environment(StatsStore.self) private var stats
     @AppStorage("autoComplete") private var autoCompletePref = true
     @AppStorage("autoCompleteThreshold") private var autoCompleteThreshold = 15
     @AppStorage("padLayout") private var padLayout: PadLayout = .twoPads
@@ -50,7 +51,12 @@ struct GameView: View {
         .focusEffectDisabled()
         .onAppear { focused = true }
         .onKeyPress(phases: .down, action: handleKey)
-        .onChange(of: game.isComplete) { _, done in if done { store.recordCompletion(game) } }
+        .onChange(of: game.isComplete) { _, done in
+            if done { store.recordCompletion(game) }
+            if done && game.drill == nil { Task { await stats.recordMoves(game) } }
+        }
+        // A drill's move is the drill; whatever the player solves after it isn't tracked.
+        .onChange(of: game.drillState) { _, s in if s == .found { Task { await stats.recordMoves(game) } } }
         .onChange(of: game.values) { store.save() }
         .onChange(of: autoCompletePref) { game.refreshAutoComplete() }
         .onChange(of: autoCompleteThreshold) { game.refreshAutoComplete() }

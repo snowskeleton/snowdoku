@@ -67,6 +67,23 @@ public struct HumanSolver: Sendable {
         }
     }
 
+    /// The hardest technique the solver needs before it can place another digit: it solves on from
+    /// `board` and stops at the first step with a placement. This is what a player had to see to make
+    /// progress, so it's how player skill is attributed to techniques. `.bruteForce` when the known
+    /// techniques get stuck first; nil when the board is already solved.
+    public func nextPlacementBottleneck(_ board: Board, maxSteps: Int = 500) -> Technique? {
+        guard !board.isSolved else { return nil }
+        var b = board
+        var hardest: Technique?
+        for _ in 0..<maxSteps {
+            guard let s = nextStep(b) else { return .bruteForce }
+            if hardest.map({ s.technique.score > $0.score }) ?? true { hardest = s.technique }
+            if !s.placements.isEmpty { return hardest }
+            b.apply(s)
+        }
+        return .bruteForce
+    }
+
     static func simplest(_ steps: [Step]) -> Step? {
         steps.min { a, b in
             if a.complexity != b.complexity { return a.complexity < b.complexity }

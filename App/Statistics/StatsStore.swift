@@ -7,6 +7,8 @@ import SudokuCore
 final class StatsStore {
     private(set) var stats = Stats()
     private let defaults = UserDefaults.standard
+    /// Solve reports for crowd-sourced difficulty grading, waiting for a server.
+    let reports = ReportQueue()
 
     init() {
         if let data = defaults.data(forKey: "stats"), let s = try? JSONDecoder().decode(Stats.self, from: data) {
@@ -17,7 +19,7 @@ final class StatsStore {
         #endif
     }
 
-    var isEmpty: Bool { stats.started.isEmpty && stats.dailyCompleted.isEmpty }
+    var isEmpty: Bool { stats.started.isEmpty && stats.dailyCompleted.isEmpty && stats.skills.isEmpty }
     var dailyDone: Bool { stats.dailyCompleted.contains(DailySchedule.key()) }
 
     func recordStart(_ difficulty: Difficulty) {
@@ -40,6 +42,18 @@ final class StatsStore {
             stats.lastDaily = key
         }
         save()
+    }
+
+    /// Adds a finished game's (or found drill's) moves to the technique skills, and queues its
+    /// solve report. Each game counts once.
+    func recordMoves(_ g: Game) async {
+        guard !g.movesRecorded else { return }
+        g.movesRecorded = true
+        let moves = await g.finishedMoves()
+        guard !moves.isEmpty else { return }
+        for m in moves where m.technique != .bruteForce { stats.skills[m.technique, default: TechniqueSkill()].add(m) }
+        save()
+        reports.enqueue(SolveReport(g, moves: moves, installID: reports.installID))
     }
 
     #if DEBUG
@@ -71,6 +85,20 @@ final class StatsStore {
             }
         }
         for d in [Difficulty.easy, .hard, .expert] { s.started[d, default: 0] += Int.random(in: 1...6, using: &rng) }
+        // Strong on the basics, shakier the harder the technique.
+        let skilled: [(Technique, Int, Double)] = [
+            (.fullHouse, 200, 0.99), (.hiddenSingleBox, 900, 0.97), (.hiddenSingleLine, 400, 0.92),
+            (.nakedSingle, 600, 0.9), (.pointing, 120, 0.85), (.claiming, 60, 0.6), (.nakedPair, 50, 0.8),
+            (.hiddenPair, 25, 0.45), (.xWing, 12, 0.5), (.xyWing, 8, 0.25), (.skyscraper, 6, 0.7),
+        ]
+        for (t, n, rate) in skilled {
+            for _ in 0..<n {
+                let ok = Double.random(in: 0..<1, using: &rng) < rate
+                s.skills[t, default: TechniqueSkill()].add(TechniqueMove(
+                    technique: t, seconds: Double(t.score) / 4 * Double.random(in: 0.5...2, using: &rng), at: 0,
+                    mistakes: ok ? 0 : Int.random(in: 0...1, using: &rng), hintLevel: ok ? nil : 2, applied: false))
+            }
+        }
         return s
     }
     #endif

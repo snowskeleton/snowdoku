@@ -12,6 +12,8 @@ struct Stats: Codable, Equatable {
     var lastDaily: String?
     /// Every finished game, oldest first. Only games finished since this was added are here.
     var solves: [SolveRecord] = []
+    /// How the player does on each technique, from the moves that needed it (drills included).
+    var skills: [Technique: TechniqueSkill] = [:]
 
     init() {}
 
@@ -26,5 +28,6 @@ struct Stats: Codable, Equatable {
         streak = try c.decodeIfPresent(Int.self, forKey: .streak) ?? 0
         lastDaily = try c.decodeIfPresent(String.self, forKey: .lastDaily)
         solves = (try? c.decodeIfPresent([SolveRecord].self, forKey: .solves)) ?? []
+        skills = (try? c.decodeIfPresent([Technique: TechniqueSkill].self, forKey: .skills)) ?? [:]
     }
 }

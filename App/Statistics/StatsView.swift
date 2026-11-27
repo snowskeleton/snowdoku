@@ -53,6 +53,7 @@ struct StatsView: View {
                     Text("The toughest step in each puzzle you've solved.")
                 }
             }
+            TechniqueSkillSections(skills: stats.skills)
         }
         .overlay {
             if store.isEmpty {
