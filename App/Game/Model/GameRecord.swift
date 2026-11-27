@@ -26,4 +26,6 @@ struct GameRecord: Codable {
     var drillState: DrillState?
     /// Moves so far and the technique each needed (missing in older saves).
     var moves: [TechniqueMove]?
+    /// The campaign level or drill round this game belongs to.
+    var campaign: CampaignContext?
 }

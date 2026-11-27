@@ -25,15 +25,20 @@ sudokugen — Snowdoku puzzle tooling
       --minutes M       stop after M minutes even if some techniques are short (default 10)
       --from FILE       mine these puzzles (one per line) instead of random ones, each once
       --seed N, --threads N
-  sudokugen campaign [options]             Mine campaign puzzles (JSON to stdout, summary to stderr)
+  sudokugen campaign [options]             Mine campaign puzzles: every one found, best first per target
+                                           (JSON lines to stdout, summary to stderr)
       --chapter IDs     chapters (comma-separated ids, default all)
-      --kind K          spotlight,context,mixed,boss (comma-separated, default all four)
-      --per N           puzzles per chapter, kind and spotlight member (default 8)
+      --kind K          spotlight,context,mixed,boss,endless (comma-separated, default all)
       --minutes M       time budget for the whole run (default 5)
-      --bank FILE       also seed from these puzzles (first column), e.g. App/Resources/Puzzles.tsv
+      --enough N        stop favoring a target once it has N puzzles (endless: 3N; default 60)
+      --bank FILE       seed from these puzzles (first column), e.g. App/Resources/Puzzles.tsv;
+                        bank puzzles that qualify go straight into the endless pools
       --iterations N    hill-climb steps per seed (default 150)
       --coverage        instead, count the --bank puzzles that already qualify for each endless pool
       --seed N, --threads N
+  sudokugen campaign-merge [--per N] [--endless N] FILE...
+                                           Pick the bundled campaign from mined files: the best N per
+                                           chapter, kind and spotlight member (default 8; endless 150)
   sudokugen bank [--per N] FILE...        Rate puzzles (first column of each line) into the bundled
                                            bank format, easiest tier first; drops duplicates, invalid
                                            puzzles and ones that need trial and error
@@ -127,7 +132,7 @@ case "generate", "stats":
             }
             if emitted && cmd == "generate" {
                 let line = tsv(gp)
-                results.with { _ in print(line); fflush(stdout) }
+                results.with { _ in print(line); fflush(nil) }
             }
         }
     }
@@ -267,17 +272,18 @@ case "mutate":
                 list.append(g)
                 return true
             }
-            if added { pool.with { _ in print(g.string); fflush(stdout) } }
+            if added { pool.with { _ in print(g.string); fflush(nil) } }
         }
     }
     FileHandle.standardError.write("\(pool.with { $0.count } - seeds.count) new extreme puzzles from \(tries.with { $0 }) tries\n".data(using: .utf8)!)
 
 case "campaign":
-    let per = Int(option("--per", in: args) ?? "") ?? 8
     let minutes = Double(option("--minutes", in: args) ?? "") ?? 5
     let iterations = Int(option("--iterations", in: args) ?? "") ?? 150
     let threads = Int(option("--threads", in: args) ?? "") ?? ProcessInfo.processInfo.activeProcessorCount
     let seed = UInt64(option("--seed", in: args) ?? "") ?? UInt64.random(in: 0...UInt64.max)
+    // Stop climbing for a target once it has this many puzzles (endless pools want more).
+    let enough = Int(option("--enough", in: args) ?? "") ?? 60
     let chapters: [CampaignChapter] = option("--chapter", in: args).map { list in
         list.split(separator: ",").map { id in
             guard let c = CampaignChapter.named(String(id)) else { fail("Unknown chapter \(id)") }
@@ -286,38 +292,48 @@ case "campaign":
     } ?? CampaignChapter.all
     let kinds: [CampaignKind] = option("--kind", in: args).map { list in
         list.split(separator: ",").map { k in
-            guard let kind = CampaignKind(rawValue: String(k)), kind != .endless else { fail("Unknown kind \(k)") }
+            guard let kind = CampaignKind(rawValue: String(k)) else { fail("Unknown kind \(k)") }
             return kind
         }
-    } ?? [.spotlight, .context, .mixed, .boss]
+    } ?? CampaignKind.allCases
     let targets = chapters.flatMap { CampaignTarget.all(for: $0, kinds: kinds) }
+    let target: @Sendable (CampaignTarget) -> Int = { t in t.kind == .endless ? enough * 3 : enough }
     // Bank puzzles that use a chapter's family are good seeds for it.
-    var bankSeeds: [String: [Grid]] = [:]
-    if let path = option("--bank", in: args) {
+    let bankSeeds: [String: [Grid]] = option("--bank", in: args).map { path in
         guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { fail("Can't read \(path)") }
         let bank = BankedPuzzle.parse(text)
-        for ch in chapters {
-            bankSeeds[ch.id] = bank.filter { !ch.familySet.isDisjoint(with: $0.rating.counts.keys) }.map(\.puzzle)
-        }
-    }
+        return Dictionary(uniqueKeysWithValues: chapters.map { ch in
+            (ch.id, bank.filter { !ch.familySet.isDisjoint(with: $0.rating.counts.keys) }.map(\.puzzle))
+        })
+    } ?? [:]
     if args.contains("--coverage") {
         // How many bank puzzles already qualify for each chapter's endless pool.
-        guard let path = option("--bank", in: args), let text = try? String(contentsOfFile: path, encoding: .utf8) else {
-            fail("--coverage needs --bank FILE")
-        }
-        let bank = BankedPuzzle.parse(text)
         for ch in chapters {
             let t = CampaignTarget(chapter: ch, kind: .endless, member: nil)
-            let pool = bank.filter { !ch.familySet.isDisjoint(with: $0.rating.counts.keys) }
+            let pool = bankSeeds[ch.id] ?? []
             let ok = Locked(0)
             DispatchQueue.concurrentPerform(iterations: pool.count) { i in
-                if CampaignMiner.evaluate(pool[i].puzzle, t).mined != nil { ok.with { $0 += 1 } }
+                if CampaignMiner.evaluate(pool[i], t).mined != nil { ok.with { $0 += 1 } }
             }
             print("\(ch.id)\t\(ok.with { $0 })\tof \(pool.count) bank puzzles using the family")
         }
         exit(0)
     }
     let found = Locked<[CampaignTarget: [String: Mined]]>([:])
+    // One puzzle per solution grid (the best), so a pool isn't near-duplicates of one puzzle.
+    @Sendable func record(_ m: Mined, _ t: CampaignTarget) {
+        guard let solution = BruteForce.solution(m.puzzle) else { return }
+        found.with { f in
+            if f[t]?[solution.string].map({ m.score > $0.score }) ?? true { f[t, default: [:]][solution.string] = m }
+        }
+    }
+    // Bank puzzles that already qualify go straight into the endless pools.
+    for t in targets where t.kind == .endless {
+        let pool = bankSeeds[t.chapter.id] ?? []
+        DispatchQueue.concurrentPerform(iterations: pool.count) { i in
+            if let m = CampaignMiner.evaluate(pool[i], t).mined { record(m, t) }
+        }
+    }
     let climbs = Locked(0)
     let climbsPer = Locked<[CampaignTarget: Int]>([:])
     let start = Date()
@@ -325,8 +341,8 @@ case "campaign":
     DispatchQueue.concurrentPerform(iterations: threads) { worker in
         var rng = SplitMix64(seed: seed ^ (UInt64(worker) &* 0x9E37_79B9_7F4A_7C15))
         while Date() < deadline {
-            // Share the time evenly among the targets that are still short.
-            let full = found.with { f in Set(targets.filter { (f[$0]?.count ?? 0) >= per * 3 }) }
+            // Share the time evenly among the targets that are still short, then among all.
+            let full = found.with { f in Set(targets.filter { (f[$0]?.count ?? 0) >= target($0) }) }
             let t = climbsPer.with { c -> CampaignTarget in
                 let t = targets.min { (full.contains($0) ? 1 : 0, c[$0] ?? 0) < (full.contains($1) ? 1 : 0, c[$1] ?? 0) }!
                 c[t, default: 0] += 1
@@ -341,30 +357,75 @@ case "campaign":
             else if roll == 1, let b = seeds.randomElement(using: &rng) { start = b }
             else { start = CampaignMiner.sparse(t, using: &rng) }
             climbs.with { $0 += 1 }
-            guard let m = CampaignMiner.climb(from: start, t, iterations: iterations, deadline: deadline, using: &rng),
-                  let solution = BruteForce.solution(m.puzzle) else { continue }
-            // One puzzle per solution grid (the best), so the pool isn't near-duplicates of one puzzle.
-            found.with { f in
-                if f[t]?[solution.string].map({ m.score > $0.score }) ?? true { f[t, default: [:]][solution.string] = m }
+            if let m = CampaignMiner.climb(from: start, t, iterations: iterations, deadline: deadline, using: &rng) {
+                record(m, t)
             }
         }
     }
+    // Everything found, best first per target: `campaign-merge` picks the bundled pools from it,
+    // and the rest is kept as an archive.
     let all = found.with { $0 }
     var out: [CampaignPuzzle] = []
     for t in targets {
-        let best = (all[t] ?? [:]).values.sorted { $0.score > $1.score }.prefix(per)
-        // The boss pool leads with the hardest; the others play easiest first.
-        let ordered = t.kind == .boss ? Array(best) : best.sorted { $0.analysis.totalScore < $1.analysis.totalScore }
-        out += ordered.map { CampaignMiner.bundle($0, t) }
-        let uses = best.map(\.analysis.uses).sorted()
+        let list = (all[t] ?? [:]).values.sorted { $0.score > $1.score }
+        out += list.map { CampaignMiner.bundle($0, t) }
+        let uses = list.map(\.analysis.uses).sorted()
         let summary = uses.isEmpty ? "none" : "max \(uses.last!) median \(uses[uses.count / 2]) min \(uses.first!)"
-        FileHandle.standardError.write("\(t): \(all[t]?.count ?? 0) found; uses \(summary)\n".data(using: .utf8)!)
+        FileHandle.standardError.write("\(t): \(list.count) found; uses \(summary)\n".data(using: .utf8)!)
+    }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    for p in out { print(String(decoding: try encoder.encode(p), as: UTF8.self)) }
+    FileHandle.standardError.write("\(out.count) puzzles from \(climbs.with { $0 }) climbs in \(Int(Date().timeIntervalSince(start)))s\n".data(using: .utf8)!)
+
+case "campaign-merge":
+    // Picks the bundled campaign from mined files (JSON lines from `campaign`): the best puzzles
+    // per chapter, kind and spotlight member, never the same solution grid twice in a chapter.
+    let per = Int(option("--per", in: args) ?? "") ?? 8
+    let endlessCount = Int(option("--endless", in: args) ?? "") ?? 150
+    let files = args.dropFirst().filter { !$0.hasPrefix("--") && Int($0) == nil }
+    var pool: [CampaignPuzzle] = []
+    let decoder = JSONDecoder()
+    for path in files {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { fail("Can't read \(path)") }
+        for line in text.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: CharacterSet(charactersIn: "[],"))
+            guard !trimmed.isEmpty, let p = try? decoder.decode(CampaignPuzzle.self, from: Data(trimmed.utf8)) else { continue }
+            if p.kind.capsClues && p.clueCount > CampaignKind.maxClues { continue }
+            pool.append(p)
+        }
+    }
+    var out: [CampaignPuzzle] = []
+    // The rarest kinds pick first, so the boss gets its best puzzle and endless takes what's left.
+    let order: [CampaignKind] = [.boss, .mixed, .context, .spotlight, .endless]
+    for ch in CampaignChapter.all {
+        var used = Set<String>()
+        var picked: [CampaignKind: [CampaignPuzzle]] = [:]
+        for kind in order where ch.kinds.contains(kind) {
+            let members: [Technique?] = kind == .spotlight ? ch.family : [nil]
+            for m in members {
+                var candidates = pool.filter { $0.chapter == ch.id && $0.kind == kind && $0.member == m }
+                candidates.sort { $0.score > $1.score }
+                var chosen: [CampaignPuzzle] = []
+                for p in candidates where chosen.count < (kind == .endless ? endlessCount : per) {
+                    guard let sol = BruteForce.solution(p.puzzle), used.insert(sol.string).inserted else { continue }
+                    chosen.append(p)
+                }
+                // The boss leads with its hardest; the others play easiest first.
+                if kind != .boss { chosen.sort { $0.totalScore < $1.totalScore } }
+                picked[kind, default: []] += chosen
+            }
+        }
+        for kind in CampaignKind.allCases { out += picked[kind] ?? [] }
+        let summary = CampaignKind.allCases.compactMap { k in
+            picked[k].map { list in "\(k.rawValue) \(list.count) (uses \(list.map(\.uses).max() ?? 0) max)" }
+        }
+        FileHandle.standardError.write("\(ch.id): \(summary.joined(separator: ", "))\n".data(using: .utf8)!)
     }
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
     let lines = try out.map { String(decoding: try encoder.encode($0), as: UTF8.self) }
     print("[\n" + lines.joined(separator: ",\n") + "\n]")
-    FileHandle.standardError.write("\(out.count) puzzles from \(climbs.with { $0 }) climbs in \(Int(Date().timeIntervalSince(start)))s\n".data(using: .utf8)!)
 
 case "drills":
     let per = Int(option("--per", in: args) ?? "") ?? 20

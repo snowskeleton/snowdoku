@@ -123,6 +123,24 @@ public enum CampaignKind: String, Codable, CaseIterable, Sendable {
     case boss
     /// Random practice after the boss.
     case endless
+
+    /// Puzzles starting from their givens have at most this many, like real puzzles (the bank's
+    /// most is 29, median 24). Spotlights may be contrived and are exempt.
+    public static let maxClues = 28
+
+    public var capsClues: Bool { self != .spotlight }
+
+    /// How good a puzzle is for this kind: more uses first, then variety for mixed and boss
+    /// puzzles, and the least else going on for context ones.
+    public func score(uses: Int, outside: Int, totalScore: Int) -> Double {
+        let u = Double(uses), o = Double(outside)
+        switch self {
+        case .spotlight, .endless: return u
+        case .context: return u * 10 - o * 3
+        case .mixed: return u * 10 + min(o, 4) * 5
+        case .boss: return u * 10 + o * 5 + Double(totalScore) / 100
+        }
+    }
 }
 
 /// How a puzzle plays out for a chapter: whether it's solvable with the allowed techniques, and
@@ -203,6 +221,8 @@ public struct CampaignPuzzle: Hashable, Sendable {
     }
 
     public var startsMidSolve: Bool { values != nil }
+    public var clueCount: Int { (0..<81).filter { puzzle[$0] != 0 }.count }
+    public var score: Double { kind.score(uses: uses, outside: outside.count, totalScore: totalScore) }
     public var givens: CellSet { CellSet((0..<81).filter { puzzle[$0] != 0 }) }
 
     /// The starting position: mid-solve with candidates, or the givens with all candidates.

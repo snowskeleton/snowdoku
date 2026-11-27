@@ -17,14 +17,16 @@ final class GameStore {
     static let playable: [Difficulty] = Difficulty.allCases.filter { $0 < .extreme || PuzzleBank.hasPuzzles($0) }
 
     private let stats: StatsStore
+    let campaign: CampaignProgress
 
     /// Unfinished games by `GameSlot.key`, as last saved by any window.
     private(set) var saved: [String: SavedGame]
 
     /// Restores the most recently played unfinished game. (Two windows opened on the same saved
     /// game play separate copies; whichever saves last is what Continue offers next time.)
-    init(stats: StatsStore) {
+    init(stats: StatsStore, campaign: CampaignProgress) {
         self.stats = stats
+        self.campaign = campaign
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-resetGames") { SavedGames.store([:]) }
         #endif
@@ -66,6 +68,15 @@ final class GameStore {
         game = Game(record: s.record)
         isPlaying = true
         save()
+        noteActivity(slot)
+    }
+
+    private func noteActivity(_ slot: GameSlot) {
+        switch slot {
+        case .campaign: LastActivity.current = .campaign
+        case .random(let d): LastActivity.current = .freePlay(d)
+        default: break
+        }
     }
 
     func resume() {
@@ -82,8 +93,10 @@ final class GameStore {
     }
 
     func recordCompletion(_ g: Game) {
-        // A drill starts mid-solve, so its time and result say nothing about solving skill.
-        if g.drill == nil { stats.recordCompletion(g) }
+        // Drills and campaign levels start mid-solve or are hand-picked, so their times and
+        // results say nothing about solving skill at a tier.
+        if g.drill == nil && g.campaign == nil { stats.recordCompletion(g) }
+        if g.campaign != nil && g.drill == nil { recordCampaignSolve(g) }
         save()
     }
 
@@ -92,6 +105,7 @@ final class GameStore {
         stats.recordStart(p.rating.difficulty)
         isPlaying = true
         save()
+        if dailyKey == nil && practice == nil { LastActivity.current = .freePlay(p.rating.difficulty) }
     }
 
     /// Starts a specific puzzle (used by debug/test launch arguments; later by puzzle import).
@@ -143,6 +157,111 @@ final class GameStore {
         save()
     }
 
+    // MARK: Campaign
+
+    /// Plays a campaign step: resumes it if it's the unfinished campaign game, else serves its
+    /// next puzzle (randomly transformed) or, for the drill round, a drill.
+    func playCampaign(_ ch: CampaignChapter, _ step: CampaignStep) async {
+        LastActivity.current = .campaign
+        if let s = savedGame(.campaign)?.record.campaign, s.chapter == ch.id, s.step == step {
+            continueGame(.campaign); return
+        }
+        if step == .drills { await campaignDrill(ch); return }
+        guard let p = campaign.puzzle(ch, step) else {
+            errorMessage = "This level isn't available yet."
+            return
+        }
+        var rng = SystemRandomNumberGenerator()
+        let shown = p.transformed(by: .random(using: &rng))
+        let solution = await Task.detached(priority: .userInitiated) { BruteForce.solution(shown.puzzle) }.value
+        guard let solution else { errorMessage = "That level is broken. Try again."; return }
+        let context = CampaignContext(chapter: ch.id, step: step, puzzleID: p.puzzle.string)
+        game = Game(campaign: context, puzzle: shown, solution: solution)
+        isPlaying = true
+        save()
+    }
+
+    /// A drill for the chapter's drill round: a random family member that has drills.
+    private func campaignDrill(_ ch: CampaignChapter) async {
+        let members = ch.family.filter(DrillBank.hasDrills)
+        guard let t = members.randomElement(), let d = DrillBank.random(for: t) else {
+            // Nothing to drill: the round is a formality.
+            for _ in 0..<CampaignProgress.drillsNeeded { campaign.recordDrill(ch, clean: true) }
+            await playCampaign(ch, .boss)
+            return
+        }
+        let solution = await Task.detached(priority: .userInitiated) { BruteForce.solution(d.puzzle) }.value
+        guard let solution else { errorMessage = "That drill is broken. Try another."; return }
+        game = Game(drill: d, solution: solution, campaign: CampaignContext(chapter: ch.id, step: .drills))
+        isPlaying = true
+        save()
+    }
+
+    /// A campaign level is done when solved without hints; either way its puzzle has been served.
+    private func recordCampaignSolve(_ g: Game) {
+        guard let c = g.campaign, let ch = c.chapterInfo else { return }
+        if let id = c.puzzleID { campaign.markUsed(ch, c.step, id: id) }
+        if g.hintsUsed == 0 && c.step != .endless { campaign.complete(ch, c.step) }
+    }
+
+    /// Scores a drill of a drill round once its move is found: clean means no hint, no wrong
+    /// entry and within the chapter's time limit.
+    func recordCampaignDrill(_ g: Game) {
+        guard let c = g.campaign, c.step == .drills, let ch = c.chapterInfo, g.campaignDrillClean == nil else { return }
+        let clean = g.hintsUsed == 0 && g.mistakes == 0 && g.elapsed() <= CampaignProgress.drillTimeLimit(ch.lead.difficulty)
+        g.campaignDrillClean = clean
+        campaign.recordDrill(ch, clean: clean)
+        save()
+    }
+
+    /// Where to go after a campaign game: the same step again after a hinted solve or a drill
+    /// round still short, else the next open step (the next chapter's first once this one is done).
+    func nextCampaignStep(after g: Game) -> (chapter: CampaignChapter, step: CampaignStep)? {
+        guard let c = g.campaign, let ch = c.chapterInfo else { return nil }
+        if c.step == .endless { return (ch, .endless) }
+        if !campaign.isDone(ch, c.step) { return (ch, c.step) }
+        if let s = ch.steps.first(where: { $0 != .endless && campaign.isUnlocked(ch, $0) && !campaign.isDone(ch, $0) }) {
+            return (ch, s)
+        }
+        let i = ch.index
+        if campaign.isComplete(ch), i + 1 < CampaignChapter.all.count {
+            let next = CampaignChapter.all[i + 1]
+            return (next, next.steps.first { !campaign.isDone(next, $0) } ?? .boss)
+        }
+        return (ch, .endless)
+    }
+
+    /// The Play tab's Continue: what it will do, and doing it.
+    enum ContinueAction {
+        case resume(SavedGame)
+        case campaign(CampaignChapter, CampaignStep)
+        case newGame(Difficulty)
+    }
+
+    var continueAction: ContinueAction? {
+        switch LastActivity.current {
+        case .campaign:
+            if let s = savedGame(.campaign) { return .resume(s) }
+            if let n = campaign.nextStep { return .campaign(n.chapter, n.step) }
+        case .freePlay(let d):
+            if let s = savedGame(.random(d)) { return .resume(s) }
+            return .newGame(GameStore.playable.contains(d) ? d : .master)
+        case nil:
+            break
+        }
+        // Saves from before Continue knew the last activity.
+        return mostRecent.map(ContinueAction.resume)
+    }
+
+    func performContinue() async {
+        switch continueAction {
+        case .resume(let s): continueGame(s.record.slot)
+        case .campaign(let ch, let step): await playCampaign(ch, step)
+        case .newGame(let d): await newGame(d)
+        case nil: break
+        }
+    }
+
     func daily() async {
         let key = DailySchedule.key()
         if savedGame(.daily)?.record.dailyKey == key { continueGame(.daily); return }
@@ -183,6 +302,12 @@ final class GameStore {
             if let n = value(after: "-prefill").flatMap(Int.init) {
                 game?.debugPrefill(leaving: n, wrong: args.contains("-wrong"))
             }
+            return
+        }
+        if let id = value(after: "-campaign"), let ch = CampaignChapter.named(id) {
+            let step = args.firstIndex(of: "-campaign").flatMap { $0 + 2 < args.count ? CampaignStep(key: args[$0 + 2]) : nil } ?? .spotlight(0)
+            await playCampaign(ch, step)
+            if let n = value(after: "-prefill").flatMap(Int.init) { game?.debugPrefill(leaving: n, wrong: false) }
             return
         }
         if let raw = value(after: "-drill"), let t = Technique(rawValue: raw) {

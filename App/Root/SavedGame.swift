@@ -7,6 +7,7 @@ struct SavedGame: Codable {
 
     /// As `Game.title`.
     var title: String {
+        if let ch = record.campaign?.chapterInfo, let step = record.campaign?.step { return "\(ch.title) · \(ch.title(for: step))" }
         if let drill = record.drill { return "Drill: \(drill.technique.name)" }
         if let practice = record.practice { return "Practice: \(practice.name)" }
         return record.dailyKey != nil ? "Daily" : record.difficulty.name

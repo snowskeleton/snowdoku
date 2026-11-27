@@ -15,7 +15,11 @@ final class Game {
     let practice: Technique?
     /// Set for a technique drill: a mid-solve position whose next move is the drill's technique.
     let drill: Drill?
+    /// Set for a campaign game (a level, or a drill of a chapter's drill round).
+    let campaign: CampaignContext?
     var drillState: DrillState = .searching
+    /// In a campaign drill round: whether this drill counted (set once its move is found).
+    var campaignDrillClean: Bool?
     /// Every instance of the drill's technique in the starting position, computed in the background.
     private(set) var drillTargets: [Step] = []
 
@@ -103,13 +107,40 @@ final class Game {
         accumulated = 0
         resumedAt = Date.now
         drill = nil
+        campaign = nil
+        moves = []
+        refreshAutoComplete()
+        startTracking()
+    }
+
+    /// Starts a campaign puzzle (already transformed), mid-solve with notes when it has them.
+    init(campaign c: CampaignContext, puzzle p: CampaignPuzzle, solution: Grid) {
+        id = UUID()
+        puzzle = p.puzzle
+        self.solution = solution
+        givens = p.givens
+        let ch = c.chapterInfo
+        difficulty = ch?.lead.difficulty ?? .easy
+        hardest = ch?.lead ?? .nakedSingle
+        techniques = ch?.family ?? []
+        dailyKey = nil
+        practice = nil
+        drill = nil
+        campaign = c
+        values = (p.values ?? p.puzzle).cells
+        notes = p.candidates ?? Array(repeating: 0, count: 81)
+        mistakes = 0
+        hintsUsed = 0
+        isComplete = false
+        accumulated = 0
+        resumedAt = Date.now
         moves = []
         refreshAutoComplete()
         startTracking()
     }
 
     /// Starts a drill. `tracking` is false for the static examples on technique pages.
-    init(drill d: Drill, solution: Grid, tracking: Bool = true) {
+    init(drill d: Drill, solution: Grid, tracking: Bool = true, campaign c: CampaignContext? = nil) {
         id = UUID()
         puzzle = d.puzzle
         self.solution = solution
@@ -120,6 +151,7 @@ final class Game {
         dailyKey = nil
         practice = d.technique
         drill = d
+        campaign = c
         values = d.values.cells
         notes = d.showsNotes ? d.candidates : Array(repeating: 0, count: 81)
         mistakes = 0
@@ -143,6 +175,7 @@ final class Game {
         dailyKey = r.dailyKey
         practice = r.practice
         drill = r.drill
+        campaign = r.campaign
         drillState = r.drillState ?? .searching
         values = r.values
         notes = r.notes
@@ -163,10 +196,11 @@ final class Game {
         GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, centeredNotes: centeredNotes, autoNotes: autoNotes, elapsed: elapsed(),
                    mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
                    techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
-                   drill: drill, drillState: drill == nil ? nil : drillState, moves: moves)
+                   drill: drill, drillState: drill == nil ? nil : drillState, moves: moves, campaign: campaign)
     }
 
     var title: String {
+        if let ch = campaign?.chapterInfo { return ch.title }
         if let drill { return "Drill: \(drill.technique.name)" }
         if let practice { return "Practice: \(practice.name)" }
         return dailyKey != nil ? "Daily" : difficulty.name
@@ -612,7 +646,7 @@ final class Game {
             if let next = HintLevel(rawValue: h.level.rawValue + 1) { h.level = next; hint = h; noteHint(h) }
             return
         }
-        let result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution)
+        let result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution, solver: solver)
         hintsUsed += 1
         let start: HintLevel
         switch result {
@@ -657,6 +691,16 @@ final class Game {
 extension Game {
     nonisolated static let bottleneckSolver = HumanSolver()
 
+    /// The solver behind move tracking and hints: in a campaign game, only the techniques the
+    /// level may need, so hints never point past what the chapter has taught.
+    var solver: HumanSolver { campaign.map { HumanSolver(allowing: $0.allowed) } ?? Game.bottleneckSolver }
+
+    /// Moves so far whose bottleneck was one of the campaign level's techniques.
+    var focusUses: Int {
+        guard let focus = campaign?.focus else { return 0 }
+        return moves.filter { focus.contains($0.technique) }.count
+    }
+
     /// Starts timing the first move (or, after a restore, the next one).
     fileprivate func startTracking() {
         progress = correctCount
@@ -686,7 +730,8 @@ extension Game {
             task = Task { t }
         } else {
             let board = Board(Grid(cells: (0..<81).map { isWrong($0) ? 0 : values[$0] }))
-            task = Task.detached(priority: .utility) { Game.bottleneckSolver.nextPlacementBottleneck(board) }
+            let solver = solver
+            task = Task.detached(priority: .utility) { solver.nextPlacementBottleneck(board) }
         }
         segment = Segment(start: elapsed(), technique: task)
     }

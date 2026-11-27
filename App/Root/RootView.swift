@@ -8,8 +8,8 @@ struct RootView: View {
     @State private var tab: AppTab = .play
     @State private var techniquePath: [Technique] = []
 
-    init(stats: StatsStore) {
-        _store = State(initialValue: GameStore(stats: stats))
+    init(stats: StatsStore, campaign: CampaignProgress) {
+        _store = State(initialValue: GameStore(stats: stats, campaign: campaign))
     }
 
     var body: some View {

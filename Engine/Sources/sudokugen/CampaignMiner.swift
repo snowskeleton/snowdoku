@@ -2,7 +2,7 @@ import Foundation
 import SudokuCore
 
 /// One thing to mine: puzzles of a kind for a chapter (and, for spotlights, one family member).
-struct CampaignTarget: Hashable, CustomStringConvertible {
+struct CampaignTarget: Hashable, Sendable, CustomStringConvertible {
     var chapter: CampaignChapter
     var kind: CampaignKind
     var member: Technique?
@@ -35,7 +35,7 @@ struct CampaignTarget: Hashable, CustomStringConvertible {
 }
 
 /// A scored candidate puzzle.
-struct Mined {
+struct Mined: Sendable {
     var puzzle: Grid
     var analysis: CampaignAnalysis
     var score: Double
@@ -45,6 +45,9 @@ enum CampaignMiner {
     /// Checks a puzzle against a target and scores it. Puzzles that don't qualify still get a
     /// (lower) fitness, so a climb can find its way from an unsuitable seed to a suitable one.
     static func evaluate(_ g: Grid, _ t: CampaignTarget) -> (fitness: Double, mined: Mined?) {
+        // Too many clues is unrealistic; steer back toward real-looking puzzles.
+        let clues = (0..<81).filter { g[$0] != 0 }.count
+        let excess = t.kind.capsClues ? max(0, clues - CampaignKind.maxClues) : 0
         let a = CampaignAnalysis.analyze(Board(g), allowed: t.allowed, focus: t.focus, routine: t.chapter.routine)
         guard a.solved else { return (-1_000 - Double(a.stuckEmpty), nil) }
         // Sound techniques that solve a puzzle prove it unique; only uniqueness techniques
@@ -55,19 +58,9 @@ enum CampaignMiner {
             return (-200 + Double(a.outside.count) * 50 + Double(a.uses), nil)
         }
         if HumanSolver(allowing: t.withoutFocus).solve(Board(g)).solved { return (-100 + Double(a.uses), nil) }
-        let s = score(a, t.kind)
+        let s = t.kind.score(uses: a.uses, outside: a.outside.count, totalScore: a.totalScore)
+        if excess > 0 { return (s - 50 * Double(excess), nil) }
         return (s, Mined(puzzle: g, analysis: a, score: s))
-    }
-
-    static func score(_ a: CampaignAnalysis, _ kind: CampaignKind) -> Double {
-        let u = Double(a.uses), o = Double(a.outside.count)
-        switch kind {
-        case .spotlight: return u
-        case .context: return u * 10 - o * 3
-        case .mixed: return u * 10 + min(o, 4) * 5
-        case .boss: return u * 10 + o * 5 + Double(a.totalScore) / 100
-        case .endless: return u
-        }
     }
 
     /// A random puzzle that's as sparse as the target's allowed techniques permit: a random solved

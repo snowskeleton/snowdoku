@@ -56,7 +56,12 @@ struct GameView: View {
             if done && game.drill == nil { Task { await stats.recordMoves(game) } }
         }
         // A drill's move is the drill; whatever the player solves after it isn't tracked.
-        .onChange(of: game.drillState) { _, s in if s == .found { Task { await stats.recordMoves(game) } } }
+        .onChange(of: game.drillState) { _, s in
+            if s == .found {
+                store.recordCampaignDrill(game)
+                Task { await stats.recordMoves(game) }
+            }
+        }
         .onChange(of: game.values) { store.save() }
         .onChange(of: autoCompletePref) { game.refreshAutoComplete() }
         .onChange(of: autoCompleteThreshold) { game.refreshAutoComplete() }
