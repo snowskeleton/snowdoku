@@ -62,7 +62,8 @@ start() {  # start <host> <session> <chapters> [extra args]
 start tc-01 today xWing,swordfish,xChain
 ```
 
-- A chunk of 60–120 minutes is a good trade: you lose at most one chunk on a stop. Climbing restarts each chunk, though, so very long climbs benefit from longer chunks.
+- A chunk of 60–120 minutes is a good trade: you lose at most one chunk on a stop. Climbing restarts each chunk, but `--seeds a.jsonl,b.jsonl` preloads each target's best earlier puzzles as elites, so it continues from the best so far.
+- For focus mining (raising use counts), `~/snowdoku/focus.sh <job> <chapters> <kinds> <threads>` (a copy of `focus.sh` next to this skill; rsync it there first) is that loop: it seeds each chunk from `~/snowdoku/archive.jsonl` (the decompressed archive) plus the job's earlier chunks, and its first chunk is a 3-minute smoke test. Start it with `tmux new-session -d -s <job> 'sh ~/snowdoku/focus.sh …'`.
 - One process per machine: it already uses every core (`--threads` defaults to all of them). Split chapters across machines by expected difficulty; the rare patterns (X-Chain, Finned Swordfish, Forcing Chains, WXYZ-Wing) are slowest.
 - Useful `campaign` options:
   - `--kind spotlight,context,mixed,boss,endless`: limit the kinds mined.
