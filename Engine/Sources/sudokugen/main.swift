@@ -34,7 +34,11 @@ sudokugen — Snowdoku puzzle tooling
       --bank FILE       seed from these puzzles (first column), e.g. App/Resources/Puzzles.tsv;
                         bank puzzles that qualify go straight into the endless pools
       --iterations N    hill-climb steps per seed (default 150)
-      --coverage        instead, count the --bank puzzles that already qualify for each endless pool
+      --seeds FILES     start from the best puzzles already mined for each target (comma-separated
+                        JSON-lines files from earlier runs; missing ones are skipped), so climbs
+                        continue from the best so far
+      --elites N        how many of a target's best puzzles to climb from (default 10)
+      --coverage       instead, count the --bank puzzles that already qualify for each endless pool
       --seed N, --threads N
   sudokugen campaign-chapters              The campaign's chapters as JSON (for Design/achievements)
   sudokugen campaign-merge [--per N] [--endless N] FILE...
@@ -351,6 +355,46 @@ case "campaign":
             if let m = CampaignMiner.evaluate(pool[i], t).mined { record(m, t) }
         }
     }
+    // Earlier runs' best puzzles per target (one per solution grid, re-scored by this engine):
+    // climbs start from them as well as from this run's best.
+    let eliteCount = Int(option("--elites", in: args) ?? "") ?? 10
+    let seedElites: [CampaignTarget: [Mined]] = option("--seeds", in: args).map { list in
+        var byTarget: [CampaignTarget: [CampaignPuzzle]] = [:]
+        let decoder = JSONDecoder()
+        for path in list.split(separator: ",").map(String.init) {
+            guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
+                FileHandle.standardError.write("Skipping seeds \(path): can't read it\n".data(using: .utf8)!)
+                continue
+            }
+            for line in text.split(separator: "\n") {
+                guard let p = try? decoder.decode(CampaignPuzzle.self, from: Data(line.utf8)) else { continue }
+                // Endless takes any non-spotlight puzzle of its chapter, as `campaign-merge` does.
+                for t in targets where t.chapter.id == p.chapter
+                    && (t.kind == p.kind || (t.kind == .endless && p.kind != .spotlight)) && t.member == p.member {
+                    byTarget[t, default: []].append(p)
+                }
+            }
+        }
+        // Re-score only the most promising few per target, by their stored score.
+        let jobs = byTarget.flatMap { t, ps in
+            ps.sorted { $0.score > $1.score }.prefix(eliteCount * 4).map { (t, $0.puzzle) }
+        }
+        let scored = Locked<[CampaignTarget: [String: Mined]]>([:])
+        DispatchQueue.concurrentPerform(iterations: jobs.count) { i in
+            let (t, g) = jobs[i]
+            guard let m = CampaignMiner.evaluate(g, t).mined, let solution = BruteForce.solution(g) else { return }
+            scored.with { s in
+                if s[t]?[solution.string].map({ m.score > $0.score }) ?? true { s[t, default: [:]][solution.string] = m }
+            }
+        }
+        let result = scored.with { $0 }.mapValues { Array($0.values.sorted { $0.score > $1.score }.prefix(eliteCount)) }
+        for t in targets {
+            let best = result[t]?.map(\.analysis.uses) ?? []
+            FileHandle.standardError.write("seeds \(t): \(best.count), uses \(best.map(String.init).joined(separator: " "))\n".data(using: .utf8)!)
+        }
+        fflush(nil)
+        return result
+    } ?? [:]
     let climbs = Locked(0)
     let climbsPer = Locked<[CampaignTarget: Int]>([:])
     let start = Date()
@@ -367,10 +411,14 @@ case "campaign":
             }
             // Seeds: a bank puzzle, a fresh sparse puzzle, or one of the best found so far (to climb further).
             let seeds = bankSeeds[t.chapter.id] ?? []
-            let elites = found.with { f in (f[t] ?? [:]).values.sorted { $0.score > $1.score }.prefix(10).map(\.puzzle) }
-            let roll = Int.random(in: 0..<3, using: &rng)
+            let carried = seedElites[t] ?? []
+            let elites = found.with { f in
+                ((f[t] ?? [:]).values + carried).sorted { $0.score > $1.score }.prefix(eliteCount).map(\.puzzle)
+            }
+            // With carried-over elites, climb from them half the time; fresh seeds keep the variety.
+            let roll = Int.random(in: 0..<(carried.isEmpty ? 3 : 4), using: &rng)
             let start: Grid
-            if roll == 0, let e = elites.randomElement(using: &rng) { start = e }
+            if roll == 0 || roll == 3, let e = elites.randomElement(using: &rng) { start = e }
             else if roll == 1, let b = seeds.randomElement(using: &rng) { start = b }
             else { start = CampaignMiner.sparse(t, using: &rng) }
             climbs.with { $0 += 1 }
