@@ -15,3 +15,7 @@ extension Technique {
         $0.prefix(4).map(\.name).formatted()
     }
 }
+
+extension Technique: @retroactive Identifiable {
+    public var id: Self { self }
+}

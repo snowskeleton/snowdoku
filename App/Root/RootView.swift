@@ -69,6 +69,9 @@ struct RootView: View {
         }
         #endif
         .onChange(of: scenePhase) { _, phase in
+            // Only a game on screen has anything new to save; saving one left at Home would
+            // mark it most recent and could overwrite another window's copy of it.
+            guard store.isPlaying else { if phase == .active { store.reloadSaved() }; return }
             if phase == .active { store.game?.resumeClock() } else { store.game?.pauseClock(); store.save() }
         }
     }

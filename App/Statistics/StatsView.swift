@@ -66,7 +66,7 @@ struct StatsView: View {
         }
         .navigationTitle("Statistics")
         .navigationDestination(for: Difficulty.self) { DifficultyStatsView(difficulty: $0) }
-        .navigationDestination(for: Technique.self, destination: TechniqueDetailView.init)
+        .navigationDestination(for: Technique.self, destination: { TechniqueDetailView(technique: $0) })
         #if DEBUG
         .navigationDestination(item: $debugDetail) { DifficultyStatsView(difficulty: $0) }
         .task {

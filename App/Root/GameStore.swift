@@ -17,24 +17,55 @@ final class GameStore {
     static let playable: [Difficulty] = Difficulty.allCases.filter { $0 < .extreme || PuzzleBank.hasPuzzles($0) }
 
     private let stats: StatsStore
-    private let defaults = UserDefaults.standard
 
-    /// Restores the last unfinished game. (Two windows opened on the same saved game play
-    /// separate copies; whichever saves last is what Continue offers next time.)
+    /// Unfinished games by `GameSlot.key`, as last saved by any window.
+    private(set) var saved: [String: SavedGame]
+
+    /// Restores the most recently played unfinished game. (Two windows opened on the same saved
+    /// game play separate copies; whichever saves last is what Continue offers next time.)
     init(stats: StatsStore) {
         self.stats = stats
-        if let data = defaults.data(forKey: "currentGame"), let r = try? JSONDecoder().decode(GameRecord.self, from: data), !r.completed {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-resetGames") { SavedGames.store([:]) }
+        #endif
+        saved = SavedGames.load()
+        if let r = mostRecent?.record {
             game = Game(record: r)
             game?.pauseClock()
         }
     }
 
-    var hasGameInProgress: Bool { game.map { !$0.isComplete } ?? false }
+    /// The most recently played unfinished game, which Home offers to continue.
+    var mostRecent: SavedGame? { saved.values.max { $0.savedAt < $1.savedAt } }
 
+    /// The unfinished game in a slot, if there is one.
+    func savedGame(_ slot: GameSlot) -> SavedGame? { saved[slot.key] }
+
+    /// Saves the current game into its slot, or clears the slot once the game is finished.
     func save() {
-        if let g = game, let data = try? JSONEncoder().encode(g.record) {
-            defaults.set(data, forKey: "currentGame")
+        guard let g = game else { return }
+        var all = SavedGames.load()
+        if g.isComplete {
+            if all[g.slot.key]?.record.id == g.id { all[g.slot.key] = nil }
+        } else {
+            all[g.slot.key] = SavedGame(record: g.record, savedAt: .now)
         }
+        SavedGames.store(all)
+        saved = all
+    }
+
+    /// Reloads the saved games, which another window may have changed.
+    func reloadSaved() { saved = SavedGames.load() }
+
+    /// Resumes the unfinished game in a slot: the one on screen if it's that game, else the saved one.
+    func continueGame(_ slot: GameSlot) {
+        if let g = game, g.slot == slot, !g.isComplete, saved[slot.key].map({ $0.record.id == g.id }) ?? true {
+            resume(); return
+        }
+        guard let s = saved[slot.key] else { return }
+        game = Game(record: s.record)
+        isPlaying = true
+        save()
     }
 
     func resume() {
@@ -114,7 +145,7 @@ final class GameStore {
 
     func daily() async {
         let key = DailySchedule.key()
-        if let g = game, g.dailyKey == key, !g.isComplete { resume(); return }
+        if savedGame(.daily)?.record.dailyKey == key { continueGame(.daily); return }
         let difficulty = DailySchedule.difficulty()
         let seed = DailySchedule.seed()
         // From the bank, so the day's puzzle doesn't change when the generator does.

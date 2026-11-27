@@ -3,6 +3,8 @@ import SudokuCore
 
 struct HintPanel: View {
     @Bindable var game: Game
+    /// The technique page opened from the hint, in a sheet over the game.
+    @State private var learning: Technique?
 
     var body: some View {
         if let h = game.hint {
@@ -24,6 +26,14 @@ struct HintPanel: View {
                         Button("Show more", action: showMore)
                             .buttonStyle(.bordered)
                     }
+                    // Once the hint names the technique, link to its page.
+                    if case .step(let s) = h.hint, h.level >= .technique, s.technique != .bruteForce {
+                        Button { learning = s.technique } label: {
+                            Label("Learn", systemImage: "book")
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Learn \(s.technique.name)")
+                    }
                     Spacer()
                     if applicable(h) {
                         Button(applyLabel(h), action: apply)
@@ -38,6 +48,20 @@ struct HintPanel: View {
                     .strokeBorder(Color.primary.opacity(0.08))
             }
             .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
+            .sheet(item: $learning, onDismiss: game.resumeClock) { t in
+                NavigationStack {
+                    TechniqueDetailView(technique: t, showsPractice: false)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { learning = nil }
+                            }
+                        }
+                }
+                .onAppear(perform: game.pauseClock)
+                #if os(macOS)
+                .frame(minWidth: 480, idealWidth: 560, minHeight: 560, idealHeight: 720)
+                #endif
+            }
         }
     }
 
