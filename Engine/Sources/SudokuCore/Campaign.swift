@@ -100,10 +100,16 @@ public struct CampaignChapter: Hashable, Sendable, Identifiable {
     /// How many different earlier techniques a mixed puzzle must need.
     public var mixedVariety: Int { min(2, earlier.count) }
 
-    /// The kinds this chapter has. Mixed needs earlier techniques to mix in.
+    /// The kinds this chapter has. Mixed needs earlier techniques to mix in; a chapter with
+    /// nothing earlier at all (Full House) has no practice either, which would be its spotlight again.
     public var kinds: [CampaignKind] {
-        mixedVariety > 0 ? [.spotlight, .context, .mixed, .boss, .endless] : [.spotlight, .context, .boss, .endless]
+        if cumulative.count == 1 { return [.spotlight, .boss, .endless] }
+        return mixedVariety > 0 ? [.spotlight, .context, .mixed, .boss, .endless] : [.spotlight, .context, .boss, .endless]
     }
+
+    /// Whether this chapter's puzzles of a kind keep to `CampaignKind.maxClues`. Puzzles solved
+    /// by Full House alone need far more clues, so the first chapter is exempt.
+    public func capsClues(_ kind: CampaignKind) -> Bool { kind.capsClues && cumulative.count > 1 }
 
     /// The family members a puzzle of this kind is about: one member for a spotlight, else all.
     public func focusTechniques(_ kind: CampaignKind, member: Technique? = nil) -> Set<Technique> {
@@ -152,6 +158,8 @@ public struct CampaignAnalysis: Sendable {
     public var uses: Int
     /// Non-routine, non-focus techniques that were a bottleneck at least once.
     public var outside: Set<Technique>
+    /// The outside techniques needed after the first use (all a mid-solve start shows).
+    public var outsideAfterFirstUse: Set<Technique>
     /// Empty cells left when the allowed techniques got stuck (0 when solved).
     public var stuckEmpty: Int
     /// Sum of step scores.
@@ -169,6 +177,7 @@ public struct CampaignAnalysis: Sendable {
         var hardest: Technique?
         var uses = 0
         var outside = Set<Technique>()
+        var outsideLater = Set<Technique>()
         var total = 0
         var first: Board?
         var steps = 0
@@ -183,12 +192,13 @@ public struct CampaignAnalysis: Sendable {
                     if first == nil { first = segmentStart }
                 } else if !routine.contains(h) {
                     outside.insert(h)
+                    if first != nil { outsideLater.insert(h) }
                 }
                 hardest = nil
                 segmentStart = b
             }
         }
-        return CampaignAnalysis(solved: b.isSolved, uses: uses, outside: outside, stuckEmpty: b.emptyCells.count, totalScore: total, beforeFirstUse: first)
+        return CampaignAnalysis(solved: b.isSolved, uses: uses, outside: outside, outsideAfterFirstUse: outsideLater, stuckEmpty: b.emptyCells.count, totalScore: total, beforeFirstUse: first)
     }
 }
 

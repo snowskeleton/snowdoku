@@ -11,6 +11,10 @@ final class GameStore {
     var isPlaying = false
     var generating: String?
     var errorMessage: String?
+    /// What Continue picks up (observable here; saved in `UserDefaults` for every window).
+    var lastActivity: LastActivity? = LastActivity.current {
+        didSet { LastActivity.current = lastActivity }
+    }
 
     /// Levels offered for random games. Extreme puzzles are too rare to generate on device,
     /// so Extreme is offered only when the bundled bank has some.
@@ -28,7 +32,7 @@ final class GameStore {
         self.stats = stats
         self.campaign = campaign
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-resetGames") { SavedGames.store([:]) }
+        if ProcessInfo.processInfo.arguments.contains("-resetGames") { SavedGames.store([:]); LastActivity.current = nil; lastActivity = nil }
         #endif
         saved = SavedGames.load()
         if let r = mostRecent?.record {
@@ -73,8 +77,8 @@ final class GameStore {
 
     private func noteActivity(_ slot: GameSlot) {
         switch slot {
-        case .campaign: LastActivity.current = .campaign
-        case .random(let d): LastActivity.current = .freePlay(d)
+        case .campaign: lastActivity = .campaign
+        case .random(let d): lastActivity = .freePlay(d)
         default: break
         }
     }
@@ -105,7 +109,7 @@ final class GameStore {
         stats.recordStart(p.rating.difficulty)
         isPlaying = true
         save()
-        if dailyKey == nil && practice == nil { LastActivity.current = .freePlay(p.rating.difficulty) }
+        if dailyKey == nil && practice == nil { lastActivity = .freePlay(p.rating.difficulty) }
     }
 
     /// Starts a specific puzzle (used by debug/test launch arguments; later by puzzle import).
@@ -162,7 +166,7 @@ final class GameStore {
     /// Plays a campaign step: resumes it if it's the unfinished campaign game, else serves its
     /// next puzzle (randomly transformed) or, for the drill round, a drill.
     func playCampaign(_ ch: CampaignChapter, _ step: CampaignStep) async {
-        LastActivity.current = .campaign
+        lastActivity = .campaign
         if let s = savedGame(.campaign)?.record.campaign, s.chapter == ch.id, s.step == step {
             continueGame(.campaign); return
         }
@@ -239,7 +243,7 @@ final class GameStore {
     }
 
     var continueAction: ContinueAction? {
-        switch LastActivity.current {
+        switch lastActivity {
         case .campaign:
             if let s = savedGame(.campaign) { return .resume(s) }
             if let n = campaign.nextStep { return .campaign(n.chapter, n.step) }

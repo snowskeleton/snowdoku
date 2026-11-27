@@ -47,18 +47,20 @@ enum CampaignMiner {
     static func evaluate(_ g: Grid, _ t: CampaignTarget) -> (fitness: Double, mined: Mined?) {
         // Too many clues is unrealistic; steer back toward real-looking puzzles.
         let clues = (0..<81).filter { g[$0] != 0 }.count
-        let excess = t.kind.capsClues ? max(0, clues - CampaignKind.maxClues) : 0
+        let excess = t.chapter.capsClues(t.kind) ? max(0, clues - CampaignKind.maxClues) : 0
         let a = CampaignAnalysis.analyze(Board(g), allowed: t.allowed, focus: t.focus, routine: t.chapter.routine)
         guard a.solved else { return (-1_000 - Double(a.stuckEmpty), nil) }
         // Sound techniques that solve a puzzle prove it unique; only uniqueness techniques
         // (which assume it) need the brute-force check, which is slow on sparse grids.
         if t.allowed.contains(where: \.assumesUniqueness) && !BruteForce.hasUniqueSolution(g) { return (-10_000, nil) }
         guard a.uses >= 1 else { return (-500, nil) }
-        if t.kind == .mixed && a.outside.count < t.chapter.mixedVariety {
-            return (-200 + Double(a.outside.count) * 50 + Double(a.uses), nil)
+        // A mid-solve start shows only what comes after the cut.
+        let outside = t.startsMidSolve ? a.outsideAfterFirstUse : a.outside
+        if t.kind == .mixed && outside.count < t.chapter.mixedVariety {
+            return (-200 + Double(outside.count) * 50 + Double(a.uses), nil)
         }
         if HumanSolver(allowing: t.withoutFocus).solve(Board(g)).solved { return (-100 + Double(a.uses), nil) }
-        let s = t.kind.score(uses: a.uses, outside: a.outside.count, totalScore: a.totalScore)
+        let s = t.kind.score(uses: a.uses, outside: outside.count, totalScore: a.totalScore)
         if excess > 0 { return (s - 50 * Double(excess), nil) }
         return (s, Mined(puzzle: g, analysis: a, score: s))
     }
@@ -114,8 +116,11 @@ enum CampaignMiner {
         if t.startsMidSolve, let b = m.analysis.beforeFirstUse {
             p.values = b.grid
             p.candidates = b.candidates
-            // The score of the part before the cut no longer counts.
-            if let a = p.analysis() { p.totalScore = a.totalScore }
+            // What happens before the cut no longer counts.
+            if let a = p.analysis() {
+                p.outside = a.outside.sorted { $0.score < $1.score }
+                p.totalScore = a.totalScore
+            }
         }
         return p
     }

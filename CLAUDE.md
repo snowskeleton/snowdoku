@@ -10,6 +10,9 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 | `Engine/Sources/SudokuCore/Techniques/` | One `Strategy` per technique |
 | `App/` | SwiftUI app in feature folders: `Root/` (window root, per-window `GameStore`), `Game/` (model, board, pads, hint), `Home/`, `Techniques/`, `Statistics/` (shared `StatsStore`), `Settings/`, `Shared/`. One type per file. A **synced folder**, so new files show up in Xcode automatically. |
 | `App/Resources/Drills.json` | The drill bank: for each technique, up to 20 mid-solve positions whose next move is that technique. Mined offline (see below); the app applies a random `GridTransform` to each drill it serves. |
+| `App/Campaign/` | The campaign: `CampaignStep` (a chapter's steps), `CampaignBank` (loads `Campaign.json`), `CampaignProgress` (saved progress, unlocking, picking puzzles), and the path and chapter views. Chapters themselves are defined in the engine (`Engine/Sources/SudokuCore/Campaign.swift`). |
+| `App/Resources/Campaign.json` | The campaign's puzzles: for each chapter, ~8 per spotlight member, practice, mixed and boss pools, and up to 150 endless. Mined on the cluster by `sudokugen campaign`, picked by `sudokugen campaign-merge` (see below). |
+| `Engine/Data/campaign-mined.jsonl.xz` | Every puzzle the campaign miner found (JSON lines, `CampaignPuzzle`), for re-merging or other uses. |
 | `App/Resources/Puzzles.tsv` | The puzzle bank: 500 rated puzzles per tier from Beginner to Master plus 150 Extreme, one per line (`BankedPuzzle`: givens, hardest technique, total score, step count, technique counts). New games and dailies come from it with a random `GridTransform`; on-device generation is only the fallback. ~690 KB (~140 KB compressed). |
 | `Engine/Data/extreme-puzzles.txt` | 404 puzzles that need forcing chains, found by `sudokugen mutate` (random generation essentially never reaches Extreme). Seeds the forcing drills; good seeds for more Extreme bank puzzles. |
 | `App/AppIcon.icon` | The app icon, an Icon Composer package. Its look (`icon.json`) is tuned by hand in Icon Composer; its layer images are drawn by `Design/logo/make_icons.py`, which never overwrites `icon.json`. |
@@ -71,6 +74,17 @@ $G bank --per 500 $T/{beginner,easy,medium,hard,expert,master}.tsv $T/extreme.tx
 
 When only ratings drifted, **re-rate in place** instead: `$G bank App/Resources/Puzzles.tsv > $T/p.tsv && mv $T/p.tsv App/Resources/Puzzles.tsv`. `bank` keeps input order within a tier, and a daily is `pool[seed % count]` of its tier (`Daily.pick`), so keeping lines in order (and only appending) keeps past and future dailies the same. A puzzle that changes tier, or a re-mined bank, changes dailies.
 
+Building the campaign (`CampaignTests.bundledCampaignStillWorks` fails when an engine change moves a stored use count or makes a puzzle stop needing its technique). Mining is slow (hours per chapter for the rare patterns), so run it on many cores, one process per machine, each with a share of the chapters:
+
+```bash
+G=Engine/.build/release/sudokugen; T=$(mktemp -d)
+$G campaign --chapter xWing,swordfish --minutes 100 --iterations 300 --bank App/Resources/Puzzles.tsv > $T/a.jsonl   # all kinds; --kind boss,endless for some
+xz -dc Engine/Data/campaign-mined.jsonl.xz > $T/old.jsonl
+$G campaign-merge $T/*.jsonl > App/Resources/Campaign.json             # prints each chapter's pool sizes and best use counts
+```
+
+`campaign-merge` drops puzzles over 28 clues (except the Full House chapter, which can't be solved with fewer), prefers a fresh solution grid for each puzzle in a chapter, and lets endless reuse a chapter's practice and boss puzzles. A kind with no puzzles is simply skipped in the app.
+
 Some techniques never come up as the *next* move, because an easier technique always finds the same thing first (see the drill counts `merge-drills` prints). They have no drills, and their pages hide the drill button.
 
 Build both iOS and macOS after app changes, since the code must stay platform-neutral. Use `#if os(iOS)` only for the rare platform-specific bit.
@@ -93,6 +107,8 @@ sleep 5; xcrun simctl io "$SIM" screenshot <scratchpad>/shot.png
 - `-prefill <n> [-wrong]`: with `-puzzle`, fill all but the last n empty cells from the solution, optionally with one wrong value
 - `-technique <technique>`: open that technique's page
 - `-drill <technique> [-hint level]`: start a drill from the bundled bank (raw technique name, e.g. `xWing`), optionally advancing the hint
+- `-campaign <chapterId> <stepKey>`: start a campaign step (`spotlight0`, `context1`, `mixed0`, `drills`, `boss`, `endless`); works with `-prefill`
+- `-campaignDone <n>`: the first n chapters finished; `-resetCampaign` clears progress; `-resetGames` clears saved games and what Continue resumes
 
 UI tests find cells by accessibility label `Row r, column c, …` and big pad digits by a label that starts with `"<d>,"`.
 
@@ -131,6 +147,9 @@ HoDoKu (GPL, Java) is a design reference only: read it for ideas, but never tran
 - Hints are progressive, and the panel floats over the controls. Auto-complete ("Finish puzzle" pill) is offered only above Beginner, with no wrong entries, ≤ N empty cells (default 15), and singles finishing the rest.
 - Random games run from Beginner to Extreme and come from the bundled bank (`App/Root/PuzzleBank.swift`), so they start instantly. A tier with no bank puzzles falls back to on-device generation; Extreme is offered only when the bank has some. Dailies come from the bank too. Daily days are UTC (`DailySchedule`), so everyone gets the same puzzle at the same moment.
 - Accessibility: basic labels and Dynamic Type only. A full VoiceOver mode was explicitly deferred.
+
+- **Play tab:** Continue (resumes the unfinished campaign level or free-play game, or starts the next campaign step / another game of the last tier), Daily, Campaign, Free Play (the tier list). `LastActivity` remembers which. Navigation is a `NavigationStack` path of `PlayRoute`s.
+- **Campaign:** 30 chapters (`CampaignChapter.all`), singles to forcing nets; coloring and exotics stay library-only. Each chapter: a lesson (the technique page), a spotlight per family member (at least 2, solvable with only singles plus that technique), practice ×2, mixed ×2 (needs two earlier techniques), a drill round (5 clean drills: no hint, no mistake, within a time limit by tier), a boss, and endless. Steps open in order; a puzzle counts only if solved without hints, otherwise the player gets another from the same pool. The boss is open from the start and beating it finishes the chapter (the skip). Hints and the use counter in campaign games use the step's allowed techniques only. Campaign games don't count toward statistics.
 
 ## Roadmap / known gaps
 

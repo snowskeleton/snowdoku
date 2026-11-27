@@ -14,6 +14,7 @@ enum LastActivity: Codable, Equatable {
             UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(LastActivity.self, from: $0) }
         }
         set {
+            guard let newValue else { UserDefaults.standard.removeObject(forKey: key); return }
             if let data = try? JSONEncoder().encode(newValue) { UserDefaults.standard.set(data, forKey: key) }
         }
     }

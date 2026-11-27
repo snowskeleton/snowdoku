@@ -51,12 +51,18 @@ extension CampaignChapter {
     static let practiceCount = 2
 
     /// Every step, in play order: a spotlight per family member (two when the family has one),
-    /// practice, mixed (when there's anything earlier to mix in), drills, boss, endless.
+    /// practice (not in the first chapter), mixed (when there's anything earlier to mix in), drills,
+    /// boss, endless.
     var steps: [CampaignStep] {
         var s = (0..<max(2, family.count)).map(CampaignStep.spotlight)
-        s += (0..<Self.practiceCount).map(CampaignStep.context)
-        if kinds.contains(.mixed) { s += (0..<Self.practiceCount).map(CampaignStep.mixed) }
+        if hasPool(.context) { s += (0..<Self.practiceCount).map(CampaignStep.context) }
+        if hasPool(.mixed) { s += (0..<Self.practiceCount).map(CampaignStep.mixed) }
         return s + [.drills, .boss, .endless]
+    }
+
+    /// Whether the chapter has puzzles of a kind (a kind the miner found nothing for is skipped).
+    private func hasPool(_ kind: CampaignKind) -> Bool {
+        kinds.contains(kind) && (CampaignBank.isEmpty || CampaignBank.pools[.init(chapter: id, kind: kind, member: nil)] != nil)
     }
 
     /// The family member a spotlight step is about, and which puzzle of its pool is the step's own.

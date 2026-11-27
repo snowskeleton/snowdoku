@@ -13,9 +13,7 @@ struct ChapterView: View {
                 Text(chapter.lead.summary)
                     .font(.subheadline)
                 ForEach(chapter.family, id: \.self) { t in
-                    NavigationLink {
-                        TechniqueDetailView(technique: t)
-                    } label: {
+                    NavigationLink(value: PlayRoute.lesson(t)) {
                         Label("Lesson: \(t.name)", systemImage: "book")
                     }
                 }

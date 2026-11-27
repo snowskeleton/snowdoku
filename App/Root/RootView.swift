@@ -7,6 +7,7 @@ struct RootView: View {
     @State private var store: GameStore
     @State private var tab: AppTab = .play
     @State private var techniquePath: [Technique] = []
+    @State private var playPath: [PlayRoute] = []
 
     init(stats: StatsStore, campaign: CampaignProgress) {
         _store = State(initialValue: GameStore(stats: stats, campaign: campaign))
@@ -15,16 +16,9 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $tab) {
             Tab("Play", systemImage: "square.grid.3x3", value: .play) {
-                NavigationStack {
+                NavigationStack(path: $playPath) {
                     HomeView()
-                        .navigationDestination(isPresented: $store.isPlaying) {
-                            if let game = store.game {
-                                GameView(game: game)
-                                    #if os(iOS)
-                                    .toolbarVisibility(.hidden, for: .tabBar)
-                                    #endif
-                            }
-                        }
+                        .navigationDestination(for: PlayRoute.self, destination: playDestination)
                 }
             }
             Tab("Techniques", systemImage: "book", value: .techniques) {
@@ -44,7 +38,17 @@ struct RootView: View {
         .tabViewStyle(.sidebarAdaptable)
         // Leaving the board (back button or swipe) pauses and saves.
         .onChange(of: store.isPlaying) { _, playing in
-            if playing { tab = .play } else { store.leaveGame() }
+            if playing {
+                tab = .play
+                if playPath.last != .game { playPath.append(.game) }
+            } else {
+                if playPath.last == .game { playPath.removeLast() }
+                store.leaveGame()
+            }
+        }
+        // The back button or a swipe popped the board.
+        .onChange(of: playPath) { _, path in
+            if path.last != .game && store.isPlaying { store.isPlaying = false }
         }
         // Generation can start from Play or Techniques, so block the whole app while it runs.
         .disabled(store.generating != nil)
@@ -73,6 +77,22 @@ struct RootView: View {
             // mark it most recent and could overwrite another window's copy of it.
             guard store.isPlaying else { if phase == .active { store.reloadSaved() }; return }
             if phase == .active { store.game?.resumeClock() } else { store.game?.pauseClock(); store.save() }
+        }
+    }
+
+    @ViewBuilder func playDestination(_ route: PlayRoute) -> some View {
+        switch route {
+        case .campaign: CampaignView()
+        case .chapter(let id): if let ch = CampaignChapter.named(id) { ChapterView(chapter: ch) }
+        case .lesson(let t): TechniqueDetailView(technique: t)
+        case .freePlay: FreePlayView()
+        case .game:
+            if let game = store.game {
+                GameView(game: game)
+                    #if os(iOS)
+                    .toolbarVisibility(.hidden, for: .tabBar)
+                    #endif
+            }
         }
     }
 }

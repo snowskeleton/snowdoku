@@ -11,9 +11,7 @@ struct CampaignView: View {
             ForEach(Array(CampaignChapter.parts.enumerated()), id: \.offset) { i, part in
                 Section(part) {
                     ForEach(CampaignChapter.all.filter { $0.part == i + 1 }) { ch in
-                        NavigationLink {
-                            ChapterView(chapter: ch)
-                        } label: {
+                        NavigationLink(value: PlayRoute.chapter(ch.id)) {
                             CampaignChapterRow(chapter: ch)
                         }
                         .disabled(!progress.isUnlocked(ch))

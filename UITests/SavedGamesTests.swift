@@ -18,13 +18,26 @@ final class SavedGamesTests: XCTestCase {
         row.tap()
     }
 
-    /// Starts a tier from Home and waits for the board.
+    /// Opens Free Play from Home.
+    func openFreePlay(_ app: XCUIApplication) {
+        app.staticTexts["Free Play"].tap()
+        XCTAssertTrue(app.navigationBars["Free Play"].waitForExistence(timeout: 5))
+    }
+
+    /// Starts a tier from Free Play and waits for the board.
     func start(_ app: XCUIApplication, _ tier: String) {
         tapTier(app, tier)
         XCTAssertTrue(app.navigationBars[tier].waitForExistence(timeout: 30))
     }
 
+    /// Back from the board to Free Play.
     func back(_ app: XCUIApplication) {
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Free Play"].waitForExistence(timeout: 5))
+    }
+
+    /// Back from Free Play to Home.
+    func home(_ app: XCUIApplication) {
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(app.staticTexts["Today's puzzle"].waitForExistence(timeout: 5))
     }
@@ -46,6 +59,7 @@ final class SavedGamesTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Today's puzzle"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Continue"].exists)
 
+        openFreePlay(app)
         start(app, "Easy")
         let column = markFirstEmptyCell(app, digit: 7)
         let marked = cell(app, 1, column).label
@@ -54,8 +68,10 @@ final class SavedGamesTests: XCTestCase {
 
         start(app, "Hard")
         back(app)
+        home(app)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Hard ·'")).firstMatch.exists,
                       "Continue offers the most recent game")
+        openFreePlay(app)
 
         // Easy asks, and Continue restores the Easy game with its note.
         tapTier(app, "Easy")
@@ -78,6 +94,7 @@ final class SavedGamesTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["Continue"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Today's puzzle"].waitForExistence(timeout: 10))
+        openFreePlay(app)
         tapTier(app, "Hard")
         XCTAssertTrue(app.staticTexts["Continue or new game?"].waitForExistence(timeout: 5))
     }

@@ -407,26 +407,71 @@ case "campaign-merge":
         for line in text.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: CharacterSet(charactersIn: "[],"))
             guard !trimmed.isEmpty, let p = try? decoder.decode(CampaignPuzzle.self, from: Data(trimmed.utf8)) else { continue }
-            if p.kind.capsClues && p.clueCount > CampaignKind.maxClues { continue }
+            if let ch = CampaignChapter.named(p.chapter), ch.capsClues(p.kind), p.clueCount > CampaignKind.maxClues { continue }
             pool.append(p)
         }
     }
+    // Mid-solve starts count only what happens after the cut (older miners counted the whole
+    // solve); a mixed puzzle that no longer mixes enough after it is dropped.
+    let loaded = pool
+    let recounted = Locked<[CampaignPuzzle]>([])
+    DispatchQueue.concurrentPerform(iterations: loaded.count) { i in
+        var p = loaded[i]
+        if p.startsMidSolve {
+            guard let ch = CampaignChapter.named(p.chapter), let a = p.analysis(), a.solved, a.uses >= 1 else { return }
+            if p.kind == .mixed && a.outside.count < ch.mixedVariety { return }
+            p.uses = a.uses
+            p.outside = a.outside.sorted { $0.score < $1.score }
+            p.totalScore = a.totalScore
+        }
+        recounted.with { $0.append(p) }
+    }
+    pool = recounted.with { $0 }
+    // Any practice, mixed or boss puzzle also qualifies for endless (same techniques, from its
+    // givens), which fills the endless pools of rare chapters.
+    let extra = pool.filter { $0.kind != .spotlight && $0.kind != .endless }
+    let asEndless = Locked<[CampaignPuzzle]>([])
+    DispatchQueue.concurrentPerform(iterations: extra.count) { i in
+        var p = extra[i]
+        p.kind = .endless
+        if p.startsMidSolve {
+            p.values = nil
+            p.candidates = nil
+            guard let a = p.analysis(), a.solved, a.uses >= 1 else { return }
+            p.uses = a.uses
+            p.outside = a.outside.sorted { $0.score < $1.score }
+            p.totalScore = a.totalScore
+        }
+        asEndless.with { $0.append(p) }
+    }
+    pool += asEndless.with { $0 }
     var out: [CampaignPuzzle] = []
     // The rarest kinds pick first, so the boss gets its best puzzle and endless takes what's left.
+    // Each pool prefers solution grids not used elsewhere in the chapter; when that leaves it
+    // short (climbs from one seed often qualify for several kinds), it takes other givens of a
+    // used grid. The same givens never appear twice in a chapter outside endless.
     let order: [CampaignKind] = [.boss, .mixed, .context, .spotlight, .endless]
     for ch in CampaignChapter.all {
-        var used = Set<String>()
+        var usedGrids = Set<String>()
+        var usedGivens = Set<String>()
         var picked: [CampaignKind: [CampaignPuzzle]] = [:]
         for kind in order where ch.kinds.contains(kind) {
             let members: [Technique?] = kind == .spotlight ? ch.family : [nil]
+            let want = kind == .endless ? endlessCount : per
             for m in members {
                 var candidates = pool.filter { $0.chapter == ch.id && $0.kind == kind && $0.member == m }
                 candidates.sort { $0.score > $1.score }
                 var chosen: [CampaignPuzzle] = []
-                for p in candidates where chosen.count < (kind == .endless ? endlessCount : per) {
-                    guard let sol = BruteForce.solution(p.puzzle), used.insert(sol.string).inserted else { continue }
+                var seen = Set<String>()
+                var rest: [CampaignPuzzle] = []
+                for p in candidates where chosen.count < want && seen.insert(p.puzzle.string).inserted {
+                    guard let sol = BruteForce.solution(p.puzzle) else { continue }
+                    if !usedGivens.contains(p.puzzle.string) && usedGrids.insert(sol.string).inserted { chosen.append(p) } else { rest.append(p) }
+                }
+                for p in rest where chosen.count < want && (kind == .endless || !usedGivens.contains(p.puzzle.string)) {
                     chosen.append(p)
                 }
+                if kind != .endless { usedGivens.formUnion(chosen.map(\.puzzle.string)) }
                 // The boss leads with its hardest; the others play easiest first.
                 if kind != .boss { chosen.sort { $0.totalScore < $1.totalScore } }
                 picked[kind, default: []] += chosen

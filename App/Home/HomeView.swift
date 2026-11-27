@@ -43,9 +43,7 @@ struct HomeView: View {
                             .foregroundStyle(stats.dailyDone ? .green : .accentColor)
                     }
                 }
-                NavigationLink {
-                    CampaignView()
-                } label: {
+                NavigationLink(value: PlayRoute.campaign) {
                     Label {
                         VStack(alignment: .leading) {
                             Text("Campaign").font(.headline)
@@ -55,9 +53,7 @@ struct HomeView: View {
                         Image(systemName: "map")
                     }
                 }
-                NavigationLink {
-                    FreePlayView()
-                } label: {
+                NavigationLink(value: PlayRoute.freePlay) {
                     Label {
                         VStack(alignment: .leading) {
                             Text("Free Play").font(.headline)

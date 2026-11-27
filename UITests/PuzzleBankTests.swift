@@ -6,7 +6,8 @@ final class PuzzleBankTests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launch()
-        XCTAssertTrue(app.staticTexts["Today's puzzle"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Free Play"].waitForExistence(timeout: 10))
+        app.staticTexts["Free Play"].tap()
 
         let extreme = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Extreme")).firstMatch
         app.scroll(to: extreme).tap()
