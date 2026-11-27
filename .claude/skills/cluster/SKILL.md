@@ -110,4 +110,4 @@ Then:
 4. Refresh the archive: `cat $D/archive.jsonl $D/tc-0*/chunk*.jsonl | LC_ALL=C sort -u | xz -9e -T0 > Engine/Data/campaign-mined.jsonl.xz`. Leave out the local Full House dump, which is large and quick to re-mine.
 5. Commit `Campaign.json` and the archive, then push.
 
-The merge picks each kind's pool by the miner's score: focus, plus variety for mixed and boss. Bosses pick first and endless last, and it prefers a fresh solution grid per puzzle within a chapter. So adding puzzles with higher focus raises the bundled pools' focus.
+The merge picks each kind's pool by the miner's score: focus, plus variety for mixed and boss. Bosses pick first and endless last, and it prefers a fresh solution grid per puzzle within a chapter, unless a reused grid gives a higher use count. So adding puzzles with higher focus raises the bundled pools' focus.

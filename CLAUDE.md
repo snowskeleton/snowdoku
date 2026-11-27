@@ -84,7 +84,7 @@ xz -dc Engine/Data/campaign-mined.jsonl.xz > $T/old.jsonl
 $G campaign-merge $T/*.jsonl > App/Resources/Campaign.json             # prints each chapter's pool sizes and best use counts
 ```
 
-`campaign-merge` drops puzzles over 28 clues (except the Full House chapter, which can't be solved with fewer), prefers a fresh solution grid for each puzzle in a chapter, and lets endless reuse a chapter's practice and boss puzzles. A kind with no puzzles is simply skipped in the app.
+`campaign-merge` drops puzzles over 28 clues (except the Full House chapter, which can't be solved with fewer), prefers a fresh solution grid for each puzzle in a chapter (unless a reused grid gives a higher use count), and lets endless reuse a chapter's practice and boss puzzles. A kind with no puzzles is simply skipped in the app.
 
 Some techniques never come up as the *next* move, because an easier technique always finds the same thing first (see the drill counts `merge-drills` prints). They have no drills, and their pages hide the drill button.
 

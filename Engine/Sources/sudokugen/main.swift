@@ -505,9 +505,10 @@ case "campaign-merge":
     pool += asEndless.with { $0 }
     var out: [CampaignPuzzle] = []
     // The rarest kinds pick first, so the boss gets its best puzzle and endless takes what's left.
-    // Each pool prefers solution grids not used elsewhere in the chapter; when that leaves it
-    // short (climbs from one seed often qualify for several kinds), it takes other givens of a
-    // used grid. The same givens never appear twice in a chapter outside endless.
+    // Each pool prefers solution grids not used elsewhere in the chapter (climbs from one seed
+    // often qualify for several kinds), but only between puzzles with the same use count: another
+    // givens of a used grid that uses the technique more still wins. The same givens never appear
+    // twice in a chapter outside endless.
     let order: [CampaignKind] = [.boss, .mixed, .context, .spotlight, .endless]
     for ch in CampaignChapter.all {
         var usedGrids = Set<String>()
@@ -517,17 +518,29 @@ case "campaign-merge":
             let members: [Technique?] = kind == .spotlight ? ch.family : [nil]
             let want = kind == .endless ? endlessCount : per
             for m in members {
-                var candidates = pool.filter { $0.chapter == ch.id && $0.kind == kind && $0.member == m }
-                candidates.sort { $0.score > $1.score }
-                var chosen: [CampaignPuzzle] = []
                 var seen = Set<String>()
-                var rest: [CampaignPuzzle] = []
-                for p in candidates where chosen.count < want && seen.insert(p.puzzle.string).inserted {
-                    guard let sol = BruteForce.solution(p.puzzle) else { continue }
-                    if !usedGivens.contains(p.puzzle.string) && usedGrids.insert(sol.string).inserted { chosen.append(p) } else { rest.append(p) }
-                }
-                for p in rest where chosen.count < want && (kind == .endless || !usedGivens.contains(p.puzzle.string)) {
-                    chosen.append(p)
+                // Distinct givens, best first, with their solution grids.
+                var candidates: [(p: CampaignPuzzle, grid: String)] = pool
+                    .filter { $0.chapter == ch.id && $0.kind == kind && $0.member == m }
+                    .sorted { $0.score > $1.score }
+                    .filter { seen.insert($0.puzzle.string).inserted
+                              && (kind == .endless || !usedGivens.contains($0.puzzle.string)) }
+                    .compactMap { p in BruteForce.solution(p.puzzle).map { (p, $0.string) } }
+                // A grid already used in the chapter counts a little less than one use, so a
+                // fresh grid wins a tie but never beats a puzzle that uses the technique more.
+                let reusePenalty = 0.9 * (kind.score(uses: 1, outside: 0, totalScore: 0) - kind.score(uses: 0, outside: 0, totalScore: 0))
+                var chosen: [CampaignPuzzle] = []
+                while chosen.count < want, !candidates.isEmpty {
+                    var best = 0, bestScore = -Double.infinity
+                    for (i, c) in candidates.enumerated() {
+                        let s = c.p.score - (usedGrids.contains(c.grid) ? reusePenalty : 0)
+                        if s > bestScore { best = i; bestScore = s }
+                        // Sorted by score, so nothing later can beat a fresh grid.
+                        if !usedGrids.contains(c.grid) { break }
+                    }
+                    let c = candidates.remove(at: best)
+                    usedGrids.insert(c.grid)
+                    chosen.append(c.p)
                 }
                 if kind != .endless { usedGivens.formUnion(chosen.map(\.puzzle.string)) }
                 // The boss leads with its hardest; the others play easiest first.
