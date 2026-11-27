@@ -28,4 +28,6 @@ struct GameRecord: Codable {
     var moves: [TechniqueMove]?
     /// The campaign level or drill round this game belongs to.
     var campaign: CampaignContext?
+    /// A singles drill's or lesson's question.
+    var spotlight: Spotlight?
 }

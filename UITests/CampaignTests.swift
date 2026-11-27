@@ -45,8 +45,10 @@ final class CampaignTests: XCTestCase {
         XCTAssertFalse(second.isEnabled, "chapter 2 opens only after chapter 1's boss")
         first.tap()
         XCTAssertTrue(app.navigationBars["Full House"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Spotlight 1'")).firstMatch.isEnabled)
-        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Spotlight 2'")).firstMatch.isEnabled)
+        // The singles chapters open with the guided lessons.
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'First Steps'")).firstMatch.isEnabled)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Less Help'")).firstMatch.isEnabled)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Spotlight 1'")).firstMatch.isEnabled)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Boss'")).firstMatch.isEnabled,
                       "the boss is open at once, so a chapter can be skipped")
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Endless'")).firstMatch.isEnabled)

@@ -19,6 +19,8 @@ struct CellTint {
     var hint: Double { level(light: 0.35, dark: 0.45) }
     var hintHouse: Double { level(light: 0.16, dark: 0.24) }
     var conflict: Double { level(light: 0.18, dark: 0.28) }
+    /// Cells outside a spotlight question.
+    var outside: Double { level(light: 0.14, dark: 0.22) }
 
     private func level(light: Double, dark: Double) -> Double {
         let base = colorScheme == .dark ? dark : light

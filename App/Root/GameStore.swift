@@ -157,7 +157,9 @@ final class GameStore {
         defer { generating = nil }
         let solution = await Task.detached(priority: .userInitiated) { BruteForce.solution(d.puzzle) }.value
         guard let solution else { errorMessage = "That drill is broken. Try another."; return }
-        game = Game(drill: d, solution: solution)
+        // Singles drills narrow to one area so they have a definite answer (see `Spotlight`).
+        let spotlight = Spotlight.supports(technique) ? Self.spotlight(d, level: .area) : nil
+        game = Game(drill: d, solution: solution, spotlight: spotlight)
         isPlaying = true
         save()
     }
@@ -172,6 +174,7 @@ final class GameStore {
             continueGame(.campaign); return
         }
         if step == .drills { await campaignDrill(ch); return }
+        if case .lesson(let i) = step { await campaignLesson(ch, i); return }
         guard let p = campaign.puzzle(ch, step) else {
             errorMessage = "This level isn't available yet."
             return
@@ -197,9 +200,37 @@ final class GameStore {
         }
         let solution = await Task.detached(priority: .userInitiated) { BruteForce.solution(d.puzzle) }.value
         guard let solution else { errorMessage = "That drill is broken. Try another."; return }
-        game = Game(drill: d, solution: solution, campaign: CampaignContext(chapter: ch.id, step: .drills))
+        let spotlight = ch.drillSpotlight.flatMap { Self.spotlight(d, level: $0) }
+        game = Game(drill: d, solution: solution, campaign: CampaignContext(chapter: ch.id, step: .drills), spotlight: spotlight)
         isPlaying = true
         save()
+    }
+
+    /// The next question of a lesson round: a drill of the chapter's technique, spotlit at the
+    /// round's level for this question.
+    private func campaignLesson(_ ch: CampaignChapter, _ i: Int) async {
+        let level = campaign.nextLessonLevel(ch, i)
+        // The first lesson's opening questions go row, column, box when the position allows.
+        let answered = campaign.lessonAnswers(ch, i)
+        let kind: Geometry.HouseKind? = i == 0 && answered < 3 ? [.row, .column, .box][answered] : nil
+        guard let d = DrillBank.random(for: ch.lead), let spotlight = Self.spotlight(d, level: level, prefer: kind) else {
+            errorMessage = "This lesson isn't available yet."
+            return
+        }
+        let solution = await Task.detached(priority: .userInitiated) { BruteForce.solution(d.puzzle) }.value
+        guard let solution else { errorMessage = "That lesson is broken. Try again."; return }
+        game = Game(drill: d, solution: solution, campaign: CampaignContext(chapter: ch.id, step: .lesson(i)), spotlight: spotlight)
+        isPlaying = true
+        save()
+    }
+
+    /// A spotlight on a random target of the drill, preferring one in a house of `prefer`.
+    static func spotlight(_ d: Drill, level: SpotlightLevel, prefer kind: Geometry.HouseKind? = nil) -> Spotlight? {
+        let targets = d.targets()
+        let preferred = targets.indices.filter { i in kind.map { k in targets[i].houses.first.map { Geometry.kind($0) == k } ?? false } ?? true }
+        let pool = preferred.isEmpty ? Array(targets.indices) : preferred
+        guard let choice = pool.randomElement() else { return nil }
+        return Spotlight.make(d.technique, level: level, targets: targets, pick: { _ in choice })
     }
 
     /// A campaign level is done when solved without hints; either way its puzzle has been served.
@@ -212,6 +243,12 @@ final class GameStore {
     /// Scores a drill of a drill round once its move is found: clean means no hint, no wrong
     /// entry and within the chapter's time limit.
     func recordCampaignDrill(_ g: Game) {
+        if let c = g.campaign, case .lesson(let i) = c.step, let ch = c.chapterInfo, g.campaignDrillClean == nil {
+            g.campaignDrillClean = true
+            campaign.recordLesson(ch, i)
+            save()
+            return
+        }
         guard let c = g.campaign, c.step == .drills, let ch = c.chapterInfo, g.campaignDrillClean == nil else { return }
         let clean = g.hintsUsed == 0 && g.mistakes == 0 && g.elapsed() <= CampaignProgress.drillTimeLimit(ch.lead.difficulty)
         g.campaignDrillClean = clean
