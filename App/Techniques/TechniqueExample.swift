@@ -34,7 +34,7 @@ struct TechniqueExample: View {
         guard let (solution, step) = found else { return }
         let game = Game(drill: d, solution: solution, tracking: false)
         game.pauseClock()
-        game.hint = HintSession(hint: .step(step), level: .answer)
+        game.hint = HintSession(hint: .step(step, instances: 1), level: .answer)
         example = (game, step)
     }
 }

@@ -36,6 +36,17 @@ final class HintPanelTests: XCTestCase {
         assertPadsUncovered(app, notes: true)
     }
 
+    /// When the next technique applies in several places, the nudge and technique levels say how many.
+    func testHintCountsInstances() {
+        let app = launch()
+        app.buttons["Hint"].firstMatch.tap()
+        let nudge = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'There are' AND label CONTAINS 'digits you can place'")).firstMatch
+        XCTAssertTrue(nudge.waitForExistence(timeout: 5), "the nudge counts the digits to place")
+        app.buttons["Show more"].tap()
+        let technique = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Try a' AND label CONTAINS 'on the board'")).firstMatch
+        XCTAssertTrue(technique.waitForExistence(timeout: 5), "the technique level counts its instances")
+    }
+
     func testHintPanelLeavesOnePadTappable() {
         let app = launch(["-padLayout", "onePad"])
         app.buttons["Hint"].firstMatch.tap()
