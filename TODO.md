@@ -30,7 +30,3 @@ The app code is done (`App/Shared/GameCenter.swift`) and reports everything, but
 
   The archive doesn't include the Full House puzzles (mined on the Mac). Add a quick `$G campaign --chapter fullHouse --minutes 10 --bank App/Resources/Puzzles.tsv > fh.jsonl` to the merge, or that chapter loses its pools. Run `swift test` afterwards to check.
 - [ ] Forcing Chains endless is at 101 puzzles; the other chapters have 150.
-
-## Known bugs
-
-- [ ] **Hint panel covers the number pad on iPhone:** digits 4–9 can't be tapped while it's open, which also breaks `TechniqueSkillTests.testSolvedMovesShowInStatistics`. A separate session is working on this.
