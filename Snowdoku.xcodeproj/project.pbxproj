@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		10A70DE8D9B8D9E07B7BFA78 /* SudokuCore in Frameworks */ = {isa = PBXBuildFile; productRef = D6BCAF33BD2D12AF4F957F35 /* SudokuCore */; };
+		C56668B17F0830477A0AD900 /* GameKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3071E21EDBFF887CA4624A /* GameKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,17 +24,26 @@
 /* Begin PBXFileReference section */
 		165E4DFA071995C00EB4AAF1 /* SnowdokuUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SnowdokuUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A5490CDF41D996F1EA029E7 /* Snowdoku.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Snowdoku.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D3F1FCFE5ED359508E5BBCAC /* Engine */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Engine; sourceTree = SOURCE_ROOT; };
+		D3F1FCFE5ED359508E5BBCAC /* Engine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Engine; path = Engine; sourceTree = SOURCE_ROOT; };
+		ED3071E21EDBFF887CA4624A /* GameKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameKit.framework; path = System/Library/Frameworks/GameKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6B54AE75B56E5DF090FAEBAF /* UITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = UITests;
 			sourceTree = "<group>";
 		};
 		829DCDD18435DD9F8D26A0AA /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = App;
 			sourceTree = "<group>";
 		};
@@ -45,6 +55,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				10A70DE8D9B8D9E07B7BFA78 /* SudokuCore in Frameworks */,
+				C56668B17F0830477A0AD900 /* GameKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -60,12 +71,21 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		9E7A85E6B118A149CA60EAC8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				ED3071E21EDBFF887CA4624A /* GameKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		C4CBA609E58BA1FD9419EA32 = {
 			isa = PBXGroup;
 			children = (
 				829DCDD18435DD9F8D26A0AA /* App */,
 				D2268C9E44C66276BBD7F4A3 /* Packages */,
 				6B54AE75B56E5DF090FAEBAF /* UITests */,
+				9E7A85E6B118A149CA60EAC8 /* Frameworks */,
 				8D592CB21077BB66D2DF68B7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -232,15 +252,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Snowdoku.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PK7HCG46US;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Snowdoku;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -267,15 +290,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Snowdoku.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PK7HCG46US;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Snowdoku;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

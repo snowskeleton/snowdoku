@@ -66,7 +66,12 @@ struct HomeView: View {
             }
         }
         .navigationTitle("Snowdoku")
-        .onAppear(perform: store.reloadSaved)
+        .onAppear {
+            store.reloadSaved()
+            GameCenter.shared.showAccessPoint(true)
+        }
+        .onDisappear { GameCenter.shared.showAccessPoint(false) }
+        .onChange(of: GameCenter.shared.isAuthenticated) { _, _ in GameCenter.shared.showAccessPoint(true) }
     }
 
     func subtitle(_ a: GameStore.ContinueAction) -> String {

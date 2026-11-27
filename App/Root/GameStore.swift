@@ -100,6 +100,7 @@ final class GameStore {
         // Drills and campaign levels start mid-solve or are hand-picked, so their times and
         // results say nothing about solving skill at a tier.
         if g.drill == nil && g.campaign == nil { stats.recordCompletion(g) }
+        if g.dailyKey != nil && g.hintsUsed == 0 { GameCenter.shared.reportDaily(seconds: g.elapsed()) }
         if g.campaign != nil && g.drill == nil { recordCampaignSolve(g) }
         save()
     }

@@ -27,6 +27,11 @@ targets:
     dependencies:
       - package: SudokuCore
         product: SudokuCore
+      - sdk: GameKit.framework
+    entitlements:
+      path: Snowdoku.entitlements
+      properties:
+        com.apple.developer.game-center: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.snowskeleton.snowdoku
@@ -41,12 +46,15 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.puzzle-games
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: PK7HCG46US
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_APP_SANDBOX: YES
+        # Game Center talks to Apple's servers.
+        ENABLE_OUTGOING_NETWORK_CONNECTIONS: YES
   SnowdokuUITests:
     type: bundle.ui-testing
     platform: iOS

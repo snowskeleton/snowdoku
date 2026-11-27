@@ -10,6 +10,7 @@ struct SnowdokuApp: App {
             RootView(stats: stats, campaign: campaign)
                 .environment(stats)
                 .environment(campaign)
+                .task { GameCenter.shared.start(campaign: campaign) }
         }
         #if os(macOS)
         .defaultSize(width: 900, height: 900)

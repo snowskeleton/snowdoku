@@ -16,6 +16,9 @@ final class CampaignProgress {
         var used: [String: Set<String>] = [:]
         /// Clean drills so far in each chapter's drill round.
         var cleanDrills: [String: Int] = [:]
+        /// Chapters finished by beating the boss before any other step (optional, so saves
+        /// from before it was added still decode).
+        var skipped: Set<String>? = nil
     }
 
     /// Clean drills needed to finish a drill round.
@@ -108,6 +111,9 @@ final class CampaignProgress {
 
     func cleanDrills(_ ch: CampaignChapter) -> Int { state.cleanDrills[ch.id] ?? 0 }
 
+    /// Finished by beating the boss without playing any of the chapter's other steps.
+    func skippedChapter(_ ch: CampaignChapter) -> Bool { state.skipped?.contains(ch.id) ?? false }
+
     // MARK: Picking puzzles
 
     /// The step's own puzzle the first time; afterwards one not served yet (random), and once
@@ -130,8 +136,12 @@ final class CampaignProgress {
     }
 
     func complete(_ ch: CampaignChapter, _ s: CampaignStep) {
+        if s == .boss, !isComplete(ch), !ch.steps.contains(where: { $0 != .boss && isDone(ch, $0) }), cleanDrills(ch) == 0 {
+            state.skipped = (state.skipped ?? []).union([ch.id])
+        }
         state.completed.insert(Self.key(ch, s))
         save()
+        GameCenter.shared.reportCampaign(self)
     }
 
     /// Counts a drill of the chapter's round; returns the clean count so far.
@@ -142,6 +152,7 @@ final class CampaignProgress {
         state.cleanDrills[ch.id] = n
         if n >= Self.drillsNeeded { state.completed.insert(Self.key(ch, .drills)) }
         save()
+        if n >= Self.drillsNeeded { GameCenter.shared.reportCampaign(self) }
         return n
     }
 }

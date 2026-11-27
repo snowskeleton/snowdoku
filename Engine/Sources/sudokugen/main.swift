@@ -36,6 +36,7 @@ sudokugen — Snowdoku puzzle tooling
       --iterations N    hill-climb steps per seed (default 150)
       --coverage        instead, count the --bank puzzles that already qualify for each endless pool
       --seed N, --threads N
+  sudokugen campaign-chapters              The campaign's chapters as JSON (for Design/achievements)
   sudokugen campaign-merge [--per N] [--endless N] FILE...
                                            Pick the bundled campaign from mined files: the best N per
                                            chapter, kind and spotlight member (default 8; endless 150)
@@ -393,6 +394,15 @@ case "campaign":
     encoder.outputFormatting = [.sortedKeys]
     for p in out { print(String(decoding: try encoder.encode(p), as: UTF8.self)) }
     FileHandle.standardError.write("\(out.count) puzzles from \(climbs.with { $0 }) climbs in \(Int(Date().timeIntervalSince(start)))s\n".data(using: .utf8)!)
+
+case "campaign-chapters":
+    struct Info: Encodable { var id: String; var title: String; var part: Int; var partName: String; var family: [String] }
+    let list = CampaignChapter.all.map {
+        Info(id: $0.id, title: $0.title, part: $0.part, partName: CampaignChapter.parts[$0.part - 1], family: $0.family.map(\.name))
+    }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    print(String(decoding: try encoder.encode(list), as: UTF8.self))
 
 case "campaign-merge":
     // Picks the bundled campaign from mined files (JSON lines from `campaign`): the best puzzles

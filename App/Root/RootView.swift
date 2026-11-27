@@ -46,6 +46,16 @@ struct RootView: View {
                 store.leaveGame()
             }
         }
+        // A Game Center activity: open its chapter, or start today's daily.
+        .onChange(of: GameCenter.shared.requestedActivity) { _, activity in
+            guard let activity else { return }
+            GameCenter.shared.requestedActivity = nil
+            tab = .play
+            switch activity {
+            case .chapter(let id): playPath = [.campaign, .chapter(id)]
+            case .daily: Task { await store.daily() }
+            }
+        }
         // The back button or a swipe popped the board.
         .onChange(of: playPath) { _, path in
             if path.last != .game && store.isPlaying { store.isPlaying = false }
