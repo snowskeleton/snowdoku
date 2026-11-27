@@ -155,6 +155,8 @@ HoDoKu (GPL, Java) is a design reference only: read it for ideas, but never tran
 
 ## Roadmap / known gaps
 
+Open setup work and data gaps (Game Center configuration, thin campaign pools) are tracked in `TODO.md`.
+
 - Technique training: a "how you could have spotted this" replay. (Drills and the long-form guides with a worked example exist: `Technique+Guide.swift`, `DrillBank`, `TechniqueExample`.)
 - Draw chain links on the board (`Step.links` exists but isn't rendered).
 - iPad and Mac layout polish, an accent color (no asset catalog yet), dark mode check.
