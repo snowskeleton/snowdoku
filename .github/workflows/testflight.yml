@@ -1,0 +1,92 @@
+# Uploads an iOS build to TestFlight when a build-<N> tag is pushed.
+#
+# Locked down:
+# - Runs only from build-* tags, and only in the app-store environment, which
+#   allows deployments from build-* tags alone and waits for the owner's
+#   approval before the job starts. The App Store Connect key lives only in that
+#   environment's secrets, so nothing else can read it.
+# - Read-only GITHUB_TOKEN, third-party actions pinned by commit SHA.
+# - The tag must point at a commit on main, and N must match
+#   CURRENT_PROJECT_VERSION in project.yml.
+name: TestFlight
+
+on:
+  push:
+    tags: ['build-*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: xcode-27
+    environment: app-store
+    timeout-minutes: 90
+    env:
+      XCODE: /Applications/Xcode_27.2.app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check tag
+        id: tag
+        run: |
+          build="${GITHUB_REF_NAME#build-}"
+          [[ "$build" =~ ^[0-9]+$ ]] || { echo "::error::tag $GITHUB_REF_NAME is not build-<number>"; exit 1; }
+          version=$(sed -nE 's/^ *CURRENT_PROJECT_VERSION: *"?([0-9]+)"?.*/\1/p' project.yml | head -1)
+          [[ "$build" == "$version" ]] || { echo "::error::tag says build $build, project.yml says $version"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
+      - name: Install API key
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey.p8"
+          (umask 077; printf '%s\n' "$ASC_PRIVATE_KEY" > "$key")
+          echo "ASC_KEY_FILE=$key" >> "$GITHUB_ENV"
+
+      - name: Archive
+        env:
+          DEVELOPER_DIR: ${{ env.XCODE }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild archive -project Snowdoku.xcodeproj -scheme Snowdoku \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Snowdoku.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_FILE" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Export and upload
+        env:
+          DEVELOPER_DIR: ${{ env.XCODE }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Snowdoku.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_FILE" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Give it to testers
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: bash .github/scripts/testflight.sh "${{ steps.tag.outputs.build }}"
+
+      - name: Remove API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
