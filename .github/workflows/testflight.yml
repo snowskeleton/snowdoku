@@ -43,9 +43,9 @@ jobs:
           [[ "$build" == "$version" ]] || { echo "::error::tag says build $build, project.yml says $version"; exit 1; }
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
           echo "build=$build" >> "$GITHUB_OUTPUT"
-          # The annotated tag's body (after its subject line) is the What to Test notes.
-          git fetch --quiet --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
-          git tag -l --format='%(contents:body)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.txt"
+          # What to Test: this tag's body, then earlier builds of the same major version.
+          git fetch --quiet --force --tags origin
+          python3 -I .github/scripts/compose_notes.py "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.txt"
           echo "What to Test:"; cat "$RUNNER_TEMP/notes.txt"
 
       - name: Install API key

@@ -13,6 +13,7 @@ struct SettingsView: View {
     @AppStorage("noteNotation") private var noteNotation: NoteNotation = .manual
     @AppStorage("shiftClickNotes") private var shiftClickNotes = true
     @AppStorage("rightClickRemovesNote") private var rightClickRemovesNote = true
+    @State private var showWhatsNew = false
 
     var body: some View {
         Form {
@@ -64,9 +65,19 @@ struct SettingsView: View {
             Section("Display") {
                 Toggle("Show timer", isOn: $showTimer)
             }
+            Section("About") {
+                LabeledContent("Version", value: Changelog.currentVersion)
+                Button("What's New") { showWhatsNew = true }
+            }
         }
         .formStyle(.grouped)
         .navigationTitle("Settings")
+        .sheet(isPresented: $showWhatsNew) { WhatsNewView() }
+        #if DEBUG
+        .task {
+            if ProcessInfo.processInfo.arguments.contains("-whatsNew") { showWhatsNew = true }
+        }
+        #endif
     }
 
     /// Mac and iPad have a pointer; iPhone doesn't.
