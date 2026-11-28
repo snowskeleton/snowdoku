@@ -19,7 +19,15 @@ The app code is done (`App/Shared/GameCenter.swift`) and reports everything, but
 
 ## Ratings and detectors: what HoDoKu disagrees with
 
-Found with `Engine/Tools/hodoku-compare.sh` (Nov 2026). Each change moves ratings, so it means re-rating the bank (changes dailies), re-checking drills and re-mining parts of the campaign. Decide which to adopt first.
+Found with `Engine/Tools/hodoku-compare.sh` (Nov 2026). Each change moves ratings, so it means re-rating the bank (changes dailies), re-checking drills and re-mining parts of the campaign: make the engine changes first, then re-rate and re-mine once.
+
+Decided so far (Nov 27, 2026):
+- **Avoid techniques of last resort in our puzzles** (Sudopedia's list: Forcing Net, Tabling, GEM, Bowman Bingo, Trial & Error, Nishio, Templating, Guessing). Today every Extreme puzzle needs a forcing chain or net (tabling) by definition, and 32 Master puzzles need Kraken Fish (a fish plus tabling).
+- **Separate solving order from difficulty**, as HoDoKu does: a move can be worth looking for early, but a puzzle that can be solved without a technique is easier than one that needs it.
+- **Keep the score bump as is:** a long solve with easy techniques stays easier (don't adopt HoDoKu's lower caps).
+- **Close HoDoKu's detector gaps** (doubly-linked ALS-XZ, extended Sue de Coq, larger ALSs) and **lengthen chains**.
+- **Missing-candidate URs:** try them as a separate, harder technique and test how they play.
+- **Find out why** HoDoKu never reports our finned/sashimi Jellyfish.
 
 - [ ] **Solve order is separate from score in HoDoKu.** It solves in a hand-curated order and uses base scores only for rating; our `Technique.score` does both, and copied HoDoKu's *score* order. E.g. HoDoKu tries Finned X-Wing after every wing and uniqueness technique (score 130 but late in the order); we try it before plain X-Wing, so it's chosen 3× as often. HoDoKu also tries quads and basic fish (to Jellyfish) before Skyscraper, Kite and the wings.
 - [ ] **HoDoKu leaves out Kraken Fish, Mutant fish, Franken Jellyfish and Death Blossom** by default (its solver goes from Franken Swordfish to forcing chains). Our solver picks Kraken Fish ~1,350 times in the Medium+ bank census, yet HoDoKu solves every bank puzzle whose hardest step for us is Kraken without any Extreme-level step: our gaps below (no doubly-linked ALS-XZ, size and length caps) push those puzzles into Kraken.
