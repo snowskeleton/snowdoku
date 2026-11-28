@@ -147,7 +147,7 @@ Each TestFlight build:
    xcodebuild -exportArchive -archivePath .build/release/Snowdoku-iOS.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath .build/release/export -allowProvisioningUpdates
    ```
 3. Tag `build-<N>` and push the tag.
-4. Wait for processing (`processingState` `VALID`), then put the build in a TestFlight version: it joins the one matching `MARKETING_VERSION` on its own, or a new one if that version is new (only after the user agreed to the new version). The internal group "All Users" gets every build automatically. Add the build to the external group "All Users - External" (`POST /v1/builds/<id>/relationships/betaGroups`). That submits it for beta app review when the version needs one.
+4. Wait for processing (`processingState` `VALID`). It usually takes only a minute or two, so check back every so often (a background loop polling every 30 s or so) and carry on as soon as it's done. The build joins the TestFlight version matching `MARKETING_VERSION` on its own, or a new one if that version is new (only after the user agreed to the new version). The internal group "All Users" gets every build automatically. For external testers, add the build to "All Users - External" (`POST /v1/builds/<id>/relationships/betaGroups`), then submit it for beta app review (`POST /v1/betaAppReviewSubmissions` with the build). Adding it to the group alone doesn't submit it. A version that has already passed review is approved at once (`externalBuildState` goes to `IN_BETA_TESTING`). The user approved both steps as part of this process.
 
 An App Store release follows the same steps for its build, adds the `v<version>` tag, and asks the user before submitting for review or releasing (see the app-store-connect skill).
 
