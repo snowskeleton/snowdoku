@@ -58,7 +58,7 @@ struct BoardContext {
             hintWrong = Set(cells)
         case .missingCandidates(let cs):
             hintMissing = Set(cs)
-        case .step(let s):
+        case .step(let s, _):
             if h.level >= .region {
                 let hs = s.houses.isEmpty ? Geometry.sharedHouses(s.patternCells.array) : s.houses
                 for house in hs { hintHouses |= Geometry.houseSets[house] }

@@ -179,7 +179,7 @@ func assertSound(_ puzzle: Grid, solution: Grid, solver: HumanSolver = HumanSolv
             Issue.record("expected wrong value"); return
         }
         #expect(w == [empty])
-        guard case .step(let s) = HintEngine.hint(values: g.cells, notes: nil, givens: Board(g).givens, solution: sol) else {
+        guard case .step(let s, _) = HintEngine.hint(values: g.cells, notes: nil, givens: Board(g).givens, solution: sol) else {
             Issue.record("expected step"); return
         }
         #expect(s.technique.difficulty == .beginner)

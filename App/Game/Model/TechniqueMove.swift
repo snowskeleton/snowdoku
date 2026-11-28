@@ -2,8 +2,9 @@ import Foundation
 import SudokuCore
 
 /// One step of progress in a game: the player placed a correct digit (or, in a drill, made the
-/// drill's move), and `technique` is the hardest one the solver needed to get there from the
-/// board as it stood (`HumanSolver.nextPlacementBottleneck`). These feed the per-technique skill
+/// drill's move), and `technique` is what that cell needed from the board as it stood: the
+/// easiest technique that places it directly, or else the hardest one the solver needs on its way
+/// to placing it (`HumanSolver.placementTechnique`). These feed the per-technique skill
 /// statistics and the solve reports queued for crowd-sourced difficulty grading.
 struct TechniqueMove: Codable, Equatable, Sendable {
     var technique: Technique

@@ -27,7 +27,7 @@ struct HintPanel: View {
                             .buttonStyle(.bordered)
                     }
                     // Once the hint names the technique, link to its page.
-                    if case .step(let s) = h.hint, h.level >= .technique, s.technique != .bruteForce {
+                    if case .step(let s, _) = h.hint, h.level >= .technique, s.technique != .bruteForce {
                         Button { learning = s.technique } label: {
                             Label("Learn", systemImage: "book")
                         }
@@ -76,8 +76,8 @@ struct HintPanel: View {
             return cells.count == 1 ? "\(Geometry.cellName(cells[0])) has the wrong value." : "\(cells.count) cells have wrong values."
         case .missingCandidates(let cs):
             return "Some of your notes removed the real answer: \(cs.prefix(4).map(\.description).formatted())\(cs.count > 4 ? "…" : "")."
-        case .step(let s):
-            return s.hintText(h.level)
+        case .step(let s, let instances):
+            return s.hintText(h.level, instances: instances)
         }
     }
 

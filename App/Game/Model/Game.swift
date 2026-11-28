@@ -71,12 +71,16 @@ final class Game {
 
     /// Every move so far and the technique it needed (see `TechniqueMove`).
     private(set) var moves: [TechniqueMove]
-    /// The move being worked on: since the last correct digit, with its bottleneck being computed.
+    /// The move being worked on: since the last correct digit. Its technique is worked out when
+    /// it ends, from the cell the player filled.
     private struct Segment {
         var start: Double
         var mistakes = 0
         var hintLevel: HintLevel?
-        var technique: Task<Technique?, Never>
+        /// The correct digits when the move began (wrong ones blanked).
+        var values: [UInt8]
+        /// In a drill, the drill's technique.
+        var drill: Technique?
     }
     private var segment: Segment?
     /// Correct digits on the board, givens included.
@@ -716,9 +720,10 @@ final class Game {
         coach = nil
         let result: Hint
         if spotlightActive, let target = spotlightTargets.first {
-            result = .step(target)
+            result = .step(target, instances: 1)
         } else {
-            result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution, solver: solver)
+            result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution,
+                                     solver: solver, near: selected)
         }
         hintsUsed += 1
         let start: HintLevel
@@ -742,7 +747,7 @@ final class Game {
             for c in cells { values[c] = 0 }
         case .missingCandidates(let cs):
             for c in cs { notes[c.cell] |= Mask.bit(c.digit) }
-        case .step(let s):
+        case .step(let s, _):
             for e in s.eliminations { notes[e.cell] &= ~Mask.bit(e.digit) }
             for p in s.placements {
                 values[p.cell] = UInt8(p.digit)
@@ -790,33 +795,38 @@ extension Game {
         guard now != progress else { return }
         let advanced = now > progress
         progress = now
-        if advanced && !untracked { closeSegment() } else { segment?.technique.cancel(); segment = nil }
+        if advanced && !untracked { closeSegment() } else { segment = nil }
         startSegment()
     }
 
     private func startSegment() {
         guard !isComplete else { segment = nil; return }
-        let task: Task<Technique?, Never>
-        if let drill {
-            guard drillState == .searching else { segment = nil; return }
-            let t = drill.technique
-            task = Task { t }
-        } else {
-            let board = Board(Grid(cells: (0..<81).map { isWrong($0) ? 0 : values[$0] }))
-            let solver = solver
-            task = Task.detached(priority: .utility) { solver.nextPlacementBottleneck(board) }
-        }
-        segment = Segment(start: elapsed(), technique: task)
+        if drill != nil, drillState != .searching { segment = nil; return }
+        segment = Segment(start: elapsed(), values: (0..<81).map { isWrong($0) ? 0 : values[$0] },
+                          drill: drill?.technique)
     }
 
-    /// Records the move being worked on, once its technique is known.
+    /// Records the move being worked on, crediting the cell the player filled: the easiest
+    /// technique that places it directly, or else the hardest one needed on the way to it
+    /// (`HumanSolver.placementTechnique`). Worked out in the background.
     fileprivate func closeSegment() {
         guard let s = segment else { return }
         segment = nil
         let at = elapsed()
         let applied = applyingHint
+        let technique: Task<Technique?, Never>
+        if let t = s.drill {
+            technique = Task { t }
+        } else {
+            let filled = (0..<81).first { s.values[$0] == 0 && values[$0] != 0 && !isWrong($0) }
+            let board = Board(Grid(cells: s.values))
+            let solver = solver
+            technique = Task.detached(priority: .utility) {
+                filled.flatMap { solver.placementTechnique(board, cell: $0) } ?? solver.nextPlacementBottleneck(board)
+            }
+        }
         pendingMoves.append(Task { [weak self] in
-            guard let t = await s.technique.value, let self else { return }
+            guard let t = await technique.value, let self else { return }
             self.moves.append(TechniqueMove(technique: t, seconds: max(0, at - s.start), at: at, mistakes: s.mistakes,
                                             hintLevel: s.hintLevel?.rawValue, applied: applied))
         })
