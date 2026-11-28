@@ -47,7 +47,7 @@ public enum Rater {
         var total = 0
         var hardest = Technique.fullHouse
         let log = HumanSolver.upTo(tier).solve(Board(puzzle)) { step in
-            total += step.technique.score
+            total += step.score
             if step.technique.score > hardest.score { hardest = step.technique }
             // The hardest technique only gets harder and the total only grows.
             return hardest.difficulty == tier && tier.maxScore.map { total > $0 } == true
@@ -63,7 +63,7 @@ public enum Rater {
         var hardest = Technique.fullHouse
         for s in steps {
             counts[s.technique, default: 0] += 1
-            total += s.technique.score
+            total += s.score
             if s.technique.score > hardest.score { hardest = s.technique }
         }
         return Rating(hardest: hardest, totalScore: total, counts: counts, stepCount: steps.count)

@@ -62,6 +62,19 @@ public struct Step: Sendable {
         self.explanation = explanation
     }
 
+    /// What this step adds to a puzzle's total score (`Rating.totalScore`): the technique's score,
+    /// plus a surcharge for a long chain. Chains have no length limit, since the solver always picks
+    /// the shortest one available, but a long chain is harder to find and follow than a short one, so
+    /// each link beyond `Step.freeChainLinks` adds `Step.pointsPerExtraLink`. Only the total moves;
+    /// the tier still comes from the hardest technique.
+    public var score: Int {
+        guard technique.isChain, links.count > Self.freeChainLinks else { return technique.score }
+        return technique.score + (links.count - Self.freeChainLinks) * Self.pointsPerExtraLink
+    }
+    /// Links a chain can have before it costs extra (most chains the solver picks have 5–9).
+    public static let freeChainLinks = 9
+    public static let pointsPerExtraLink = 10
+
     /// Cells involved in the pattern itself (not the targets).
     public var patternCells: CellSet { CellSet(highlights.map(\.cell)) }
     /// Cells affected by the step.

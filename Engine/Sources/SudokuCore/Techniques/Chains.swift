@@ -19,7 +19,6 @@ struct ChainStrategy: Strategy {
         case .grouped: .groupedAIC
         }
     }
-    static let maxLinks = 15
 
     func find(_ b: Board, _ out: inout StepCollector) {
         switch mode {
@@ -33,7 +32,11 @@ struct ChainStrategy: Strategy {
     func search(_ g: ChainGraph, _ b: Board, _ out: inout StepCollector) {
         let n = g.nodes.count
         guard n > 0 else { return }
-        var best = Self.maxLinks
+        // No length limit (HoDoKu's AICs have none either). The breadth-first search visits each
+        // (node, on/off) state at most once per start, so it's bounded by the graph anyway: an
+        // unlimited search costs about what a 15-link cap did. Long chains are only ever picked
+        // when nothing shorter exists, and they cost extra in a rating (`Step.score`).
+        var best = Int.max
         // Exhaustive (drills): every start explores to full length and keeps going after a hit,
         // one step per distinct conclusion. Otherwise the shortest chain so far caps the search.
         let exhaustive = out.exhaustive

@@ -217,6 +217,15 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         }
     }
 
+    /// The alternating inference chains (`ChainStrategy`), whose steps cost more the longer they are
+    /// (`Step.score`).
+    public var isChain: Bool {
+        switch self {
+        case .xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC: true
+        default: false
+        }
+    }
+
     /// Whether the technique relies on the puzzle having a unique solution.
     public var assumesUniqueness: Bool {
         switch self {
