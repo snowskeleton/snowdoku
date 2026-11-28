@@ -49,13 +49,13 @@ snowdoku.solve.extreme.50	count	Maximum Overdrive	5	no	Solve 50 Extreme puzzles.
 snowdoku.solve.extreme.100	count	Ludicrous Speed	10	no	Solve 100 Extreme puzzles.	Solved 100 Extreme puzzles.
 snowdoku.solve.extreme.250	count	These Go to Eleven	20	no	Solve 250 Extreme puzzles.	Solved 250 Extreme puzzles.
 snowdoku.solve.extreme.500	count	They've Gone to Plaid!	30	no	Solve 500 Extreme puzzles.	Solved 500 Extreme puzzles.
-snowdoku.secret.first.1	secret	One Is the Loneliest Number	5	yes	A hidden achievement.	Placed every 1 before any other number, then solved the puzzle.
-snowdoku.secret.first.2	secret	Two's Company	5	yes	A hidden achievement.	Placed every 2 before any other number, then solved the puzzle.
-snowdoku.secret.first.3	secret	Three's a Crowd	5	yes	A hidden achievement.	Placed every 3 before any other number, then solved the puzzle.
-snowdoku.secret.first.4	secret	May the Fours Be with You	5	yes	A hidden achievement.	Placed every 4 before any other number, then solved the puzzle.
-snowdoku.secret.first.5	secret	Five for Your Life!	5	yes	A hidden achievement.	Placed every 5 before any other number, then solved the puzzle.
-snowdoku.secret.first.6	secret	Battle of the Sixes	5	yes	A hidden achievement.	Placed every 6 before any other number, then solved the puzzle.
-snowdoku.secret.first.7	secret	The Most Magically Powerful Number	5	yes	A hidden achievement.	Placed every 7 before any other number, then solved the puzzle.
-snowdoku.secret.first.8	secret	You're Doing Gr-eight!	5	yes	A hidden achievement.	Placed every 8 before any other number, then solved the puzzle.
-snowdoku.secret.first.9	secret	A Nine of the Times	5	yes	A hidden achievement.	Placed every 9 before any other number, then solved the puzzle.
+snowdoku.secret.first.1	secret	One Is the Loneliest Number	5	yes	A hidden achievement.	Placed every 1 before any other number or note.
+snowdoku.secret.first.2	secret	Two's Company	5	yes	A hidden achievement.	Placed every 2 before any other number or note.
+snowdoku.secret.first.3	secret	Three's a Crowd	5	yes	A hidden achievement.	Placed every 3 before any other number or note.
+snowdoku.secret.first.4	secret	May the Fours Be with You	5	yes	A hidden achievement.	Placed every 4 before any other number or note.
+snowdoku.secret.first.5	secret	Five for Your Life!	5	yes	A hidden achievement.	Placed every 5 before any other number or note.
+snowdoku.secret.first.6	secret	Battle of the Sixes	5	yes	A hidden achievement.	Placed every 6 before any other number or note.
+snowdoku.secret.first.7	secret	The Most Magically Powerful Number	5	yes	A hidden achievement.	Placed every 7 before any other number or note.
+snowdoku.secret.first.8	secret	You're Doing Gr-eight!	5	yes	A hidden achievement.	Placed every 8 before any other number or note.
+snowdoku.secret.first.9	secret	A Nine of the Times	5	yes	A hidden achievement.	Placed every 9 before any other number or note.
 snowdoku.drills.all	drills	Drill Sergeant	15	no	Complete a drill for every technique that has drills.	Completed a drill for every technique.

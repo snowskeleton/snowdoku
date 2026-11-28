@@ -41,7 +41,15 @@ final class StatsStore {
             stats.streak = stats.lastDaily == yesterday ? stats.streak + 1 : 1
             stats.lastDaily = key
         }
-        if g.hintsUsed == 0, let d = g.digitFirst { stats.digitsFirst.insert(d) }
+        save()
+        GameCenter.shared.reportStats(self)
+    }
+
+    /// The player placed every copy of a digit before any other digit, note or hint (Free Play and
+    /// dailies; drills and campaign levels start mid-solve).
+    func recordDigitFirst(_ digit: Int) {
+        guard !stats.digitsFirst.contains(digit) else { return }
+        stats.digitsFirst.insert(digit)
         save()
         GameCenter.shared.reportStats(self)
     }

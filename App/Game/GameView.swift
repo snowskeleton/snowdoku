@@ -66,6 +66,9 @@ struct GameView: View {
                 }
             }
         }
+        .onChange(of: game.digitFirst) { _, d in
+            if let d, game.drill == nil, game.campaign == nil { stats.recordDigitFirst(d) }
+        }
         .onChange(of: game.values) { store.save() }
         .onChange(of: autoCompletePref) { game.refreshAutoComplete() }
         .onChange(of: autoCompleteThreshold) { game.refreshAutoComplete() }

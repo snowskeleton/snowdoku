@@ -95,7 +95,8 @@ final class Game {
     var movesRecorded = false
     /// The player's opening run of one digit, for Game Center's hidden "first" achievements.
     private var firstRun: FirstDigitRun?
-    /// The digit whose every missing copy the player placed before any other digit.
+    /// The digit whose every missing copy the player placed before any other digit, note or hint.
+    /// Set the moment the run is done; the puzzle needn't be finished.
     var digitFirst: Int? { firstRun?.done == true ? firstRun?.digit : nil }
 
     private struct Snapshot { var values: [UInt8]; var notes: [DigitMask]; var centered: CellSet; var auto: CellSet }
@@ -376,7 +377,7 @@ final class Game {
     }
 
     /// The first digit the player places starts a run; it's done once every copy of that digit is on
-    /// the board, and broken by any other digit before then or a wrong copy.
+    /// the board, and broken by any other digit, a wrong copy, a note or a hint before then.
     private func trackFirstRun(_ d: Int, at c: Int) {
         guard !untracked else { return }
         var run = firstRun ?? FirstDigitRun(digit: d)
@@ -387,6 +388,12 @@ final class Game {
             run.done = true
         }
         firstRun = run
+    }
+
+    /// A note or a hint before the opening run is done ends it.
+    private func breakFirstRun() {
+        guard !untracked, firstRun?.done != true else { return }
+        firstRun = FirstDigitRun(digit: firstRun?.digit ?? 0, broken: true)
     }
 
     /// Right-click: remove the armed digit's note from a cell (never adds one).
@@ -481,6 +488,7 @@ final class Game {
         if spotlightActive && !e.asNote && e.adding && !answersSpotlight(e.digit, at: c) { bounce(e.digit, at: c); return }
         if !e.pushedUndo { pushUndo(); e.pushedUndo = true }
         if e.asNote {
+            breakFirstRun()
             notes[c] ^= bit
             if e.adding { setNoteKind(e.kind, at: c) }
         } else if e.adding {
@@ -528,6 +536,7 @@ final class Game {
     func toggleNote(_ d: Int, at c: Int, kind: NoteKind = .grid) {
         guard !isComplete, values[c] == 0, inSpotlight(c) else { return }
         pushUndo()
+        breakFirstRun()
         notes[c] ^= Mask.bit(d)
         if notes[c] & Mask.bit(d) != 0 { setNoteKind(kind, at: c) }
     }
@@ -547,6 +556,7 @@ final class Game {
     func fillNotes() {
         guard !isComplete else { return }
         pushUndo()
+        breakFirstRun()
         // Cells that had no notes get the Manual / Auto notation; cells with notes keep theirs.
         let kind = Prefs.noteNotation.kind
         for c in 0..<81 where values[c] == 0 && notes[c] == 0 { setNoteKind(kind, at: c) }
@@ -746,6 +756,7 @@ final class Game {
                                      solver: solver, near: selected)
         }
         hintsUsed += 1
+        breakFirstRun()
         let start: HintLevel
         switch result {
         case .step: start = .nudge
