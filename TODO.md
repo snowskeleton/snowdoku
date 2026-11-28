@@ -39,8 +39,43 @@ Decided so far (Nov 27, 2026):
 - [ ] **Tier scale:** tiers match HoDoKu's exactly through our Medium. HoDoKu caps Unfair at a total of 1,800, so it calls 82% of our Master and a third of our Expert "Extreme", by score alone (never because a forcing chain was needed). Probably keep ours (Extreme = forcing chains is a v1 decision), but note the disagreement.
 - [ ] **Patterns HoDoKu rejects:** HoDoKu never reports a finned or sashimi Jellyfish where we find thousands, and finds far fewer plain Jellyfish; ours likely accept degenerate fish (a smaller fish plus a spare line). Check, and if so require every base line to matter.
 
+## Difficulty levels (decided Nov 28, 2026; not built yet)
+
+Easy to Medium added 19 techniques at once. Instead, each headline tier gets numbered levels, and each level adds **at most 3 techniques** to everything below it. Pure variants count as one: Finned = Sashimi, Locked = Naked, UR Type 5 = UR Type 2. Levels follow the order a player should learn techniques in. A puzzle's level is **the smallest technique set that solves it**, which goes with separating solve order from score (above). Build both together and re-rate everything once.
+
+| Level | New techniques |
+|---|---|
+| Beginner 1 | Full House, Hidden Single (Box) |
+| Beginner 2 | Naked Single, Hidden Single (Line) |
+| Easy 1 | Pointing, Claiming |
+| Easy 2 | Naked/Locked Pair, Hidden Pair |
+| Easy 3 | Naked/Locked Triple, Hidden Triple |
+| Medium 1 | X-Wing, Finned/Sashimi X-Wing |
+| Medium 2 | Skyscraper, 2-String Kite, Turbot Fish |
+| Medium 3 | UR Type 1, UR Type 2 (+5), BUG+1 |
+| Medium 4 | UR Type 4, Naked Quad, Hidden Quad |
+| Hard 1 | XY-Wing, XYZ-Wing, Remote Pair |
+| Hard 2 | W-Wing, Empty Rectangle |
+| Hard 3 | Swordfish, Jellyfish |
+| Hard 4 | UR Type 3, UR Type 6, UR with a missing candidate |
+| Expert 1 | Hidden Rectangle, Avoidable Rectangle 1 and 2 |
+| Expert 2 | Simple Coloring Trap, Color Wrap, Multi-Coloring |
+| Expert 3 | X-Chain, XY-Chain, WXYZ-Wing |
+| Expert 4 | Finned/Sashimi Swordfish, Finned/Sashimi Jellyfish, Continuous Nice Loop |
+| Master 1 | Discontinuous Nice Loop, AIC, Grouped AIC |
+| Master 2 | ALS-XZ, ALS-XY-Wing, Sue de Coq |
+| Master 3 | ALS Chain, Franken Fish, Death Blossom |
+| Extreme | Mutant Fish, Kraken Fish, forcing chains and nets, trial and error (no levels) |
+
+Also decided:
+- **Free Play:** pick the headline tier first, then the level within it.
+- **Achievements and dailies stay per headline tier.** A daily of a tier draws from that tier's highest level (a Medium daily is Medium 4). The 500-puzzle minimum is per headline tier; each level needs enough to play (~200), which means targeted mining for thin ones (Medium 4's quads, Expert 2's coloring, Expert 4, Master 3).
+- Long chains (PR #8 makes very long chains Master) mean a level's chain techniques come with a length limit.
+- Measure after re-rating; a level with too few puzzles that truly need its techniques may merge with a neighbor.
+
 ## Campaign puzzles
 
+- [ ] **Campaign vs. the new levels: investigate the options, not decided.** The campaign skips techniques some levels need (UR Types 3 and 6, Avoidable Rectangles, quads, coloring, Sue de Coq, Franken Fish, Death Blossom), and Remote Pair moves from Medium to Hard. Options: add chapters, accept library-only techniques, or line campaign parts up with levels ("finish these chapters and you're ready for Medium 2").
 - [ ] **Finned Swordfish endless:** only 50 base puzzles; the target is ≥ 100. Its context and mixed puzzles also use the technique only about twice each. To top it up, mine on the cluster, then merge with the archive (see CLAUDE.md):
 
   ```bash
