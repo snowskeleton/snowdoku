@@ -38,6 +38,7 @@ swift build -c release --package-path Engine
 swift test  -c release --package-path Engine          # ~2 min; soundness tests and the bundled-bank checks are the important ones
 Engine/.build/release/sudokugen techniques | solve <81 chars> | rate <puzzles> | stats --count 1000
 Engine/.build/release/sudokugen generate --count 50 --difficulty expert   # or --technique xWing
+Engine/.build/release/sudokugen bank-stats    # per tier and technique: how many bank puzzles use it, and have it as hardest
 
 # App (simulators: "iPhone 18 Pro", "iPad Pro 13-inch (M5)"; runtime iOS 27.2)
 xcodebuild -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath .build/xcode build
