@@ -13,8 +13,9 @@ A sudoku app with no ads and no gimmicks, built to *teach* solving techniques. O
 | `App/Campaign/` | The campaign: `CampaignStep` (a chapter's steps), `CampaignBank` (loads `Campaign.json`), `CampaignProgress` (saved progress, unlocking, picking puzzles), and the path and chapter views. Chapters themselves are defined in the engine (`Engine/Sources/SudokuCore/Campaign.swift`). |
 | `App/Resources/Campaign.json` | The campaign's puzzles: for each chapter, ~8 per spotlight member, practice, mixed and boss pools, and up to 150 endless. Mined on the cluster by `sudokugen campaign`, picked by `sudokugen campaign-merge` (see below). |
 | `Engine/Data/campaign-mined.jsonl.xz` | Every puzzle the campaign miner found (JSON lines, `CampaignPuzzle`), for re-merging or other uses. |
-| `App/Resources/Puzzles.tsv` | The puzzle bank: 500 rated puzzles per tier from Beginner to Master plus 150 Extreme, one per line (`BankedPuzzle`: givens, hardest technique, total score, step count, technique counts). New games and dailies come from it with a random `GridTransform`; on-device generation is only the fallback. ~690 KB (~140 KB compressed). |
-| `Engine/Data/extreme-puzzles.txt` | 404 puzzles that need forcing chains, found by `sudokugen mutate` (random generation essentially never reaches Extreme). Seeds the forcing drills; good seeds for more Extreme bank puzzles. |
+| `App/Resources/Puzzles.tsv` | The puzzle bank: 500 rated puzzles per tier from Beginner to Extreme, one per line (`BankedPuzzle`: givens, hardest technique, total score, step count, technique counts). New games and dailies come from it with a random `GridTransform`; on-device generation is only the fallback. ~840 KB (~150 KB compressed). |
+| `Engine/Scripts/select_extremes.py` | Picks new Extreme bank lines from rated `mutate` output (see Topping up Extreme below). |
+| `Engine/Data/extreme-puzzles.txt` | 718 puzzles that need forcing chains, found by `sudokugen mutate` (random generation essentially never reaches Extreme). Seeds the forcing drills; good seeds for more Extreme bank puzzles. |
 | `App/AppIcon.icon` | The app icon, an Icon Composer package. Its look (`icon.json`) is tuned by hand in Icon Composer; its layer images are drawn by `Design/logo/make_icons.py`, which never overwrites `icon.json`. |
 | `Design/logo/` | Logo concepts and the icon generator. |
 | `Design/achievements/` | Game Center: `make_badges.py` draws the badge art (`badges/`) and writes `GameCenter.json`, the achievements and leaderboards to configure in App Store Connect (identifiers must match `App/Shared/GameCenter.swift`). |
@@ -68,12 +69,13 @@ Building the puzzle bank (`PuzzleBankTests.bundledRatingsStillMatch` fails when 
 ```bash
 G=Engine/.build/release/sudokugen; T=$(mktemp -d)
 for d in beginner easy medium hard expert master; do $G generate --count 800 --difficulty $d > $T/$d.tsv; done
-$G mutate --from Engine/Data/extreme-puzzles.txt --minutes 6 --count 300 > $T/extreme.txt
+$G mutate --from Engine/Data/extreme-puzzles.txt --minutes 15 --count 2000 > $T/extreme.txt   # on the cluster
 $G bank --per 500 $T/{beginner,easy,medium,hard,expert,master}.tsv $T/extreme.txt > App/Resources/Puzzles.tsv   # ~2 min; rating Extremes is slow
-# then trim Extreme to ~150 lines: rating them dominates the engine test's time
 ```
 
-When only ratings drifted, **re-rate in place** instead: `$G bank App/Resources/Puzzles.tsv > $T/p.tsv && mv $T/p.tsv App/Resources/Puzzles.tsv`. `bank` keeps input order within a tier, and a daily is `pool[seed % count]` of its tier (`Daily.pick`), so keeping lines in order (and only appending) keeps past and future dailies the same. A puzzle that changes tier, or a re-mined bank, changes dailies.
+When only ratings drifted, **re-rate in place** instead: `$G bank App/Resources/Puzzles.tsv > $T/p.tsv && mv $T/p.tsv App/Resources/Puzzles.tsv`. `bank` keeps input order within a tier, and a daily is `pool[seed % count]` of its tier (`Daily.pick`), so keeping lines in order (and only appending) keeps past and future dailies the same. A puzzle that changes tier, or a re-mined bank, changes dailies. Dailies never use Extreme (`DailySchedule.difficulty`), so Extreme lines can be added freely.
+
+Topping up Extreme (random generation essentially never reaches it): run `$G mutate --from <extreme-puzzles.txt plus the bank's Extreme lines> --minutes 15 --count 600` on the cluster, rate the output with `$G bank`, and append the Extreme lines `python3 Engine/Scripts/select_extremes.py App/Resources/Puzzles.tsv <how many> <rated files>` picks: no duplicates, nothing that is a `GridTransform` of any bank puzzle, and fresh solution grids first (mutate keeps the seed's grid). It takes a few minutes, so run it on the cluster too. Append their givens to `Engine/Data/extreme-puzzles.txt` too. With 500 Extremes, `bundledRatingsStillMatch` takes ~18 s, still shorter than the soundness tests it runs beside.
 
 Building the campaign (`CampaignTests.bundledCampaignStillWorks` fails when an engine change moves a stored use count or makes a puzzle stop needing its technique). Mining is slow (hours per chapter for the rare patterns), so run it on many cores, one process per machine, each with a share of the chapters:
 
