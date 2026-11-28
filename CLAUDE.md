@@ -91,6 +91,18 @@ $G campaign-merge $T/*.jsonl > App/Resources/Campaign.json             # prints 
 
 `campaign-merge` drops puzzles over 28 clues (except the Full House chapter, which can't be solved with fewer), prefers a fresh solution grid for each puzzle in a chapter (unless a reused grid gives a higher use count), and lets endless reuse a chapter's practice and boss puzzles. A kind with no puzzles is simply skipped in the app.
 
+Checking how often techniques come up, and whether our detectors miss instances:
+
+```bash
+Engine/.build/release/sudokugen census --min hard App/Resources/Puzzles.tsv   # ~2 min
+Engine/Tools/hodoku-compare.sh [--min hard] [--limit N] [--examples N]       # ~15 min for Hard+
+Engine/Tools/hodoku-compare.sh --ratings                                    # bank tiers vs HoDoKu's levels, ~1 min
+```
+
+`census` walks the solver's path and, at each position whose next move isn't a single, counts per technique whether it applies (avail), removes something no easier technique does (novel), and is picked (chosen). Available but never novel means fully covered by easier techniques (Hidden Quad, the Jellyfish family): rare by structure, not by ranking. Novel but rarely chosen means the order starves it.
+
+`hodoku-compare.sh` fetches HoDoKu 2.2.0 into `.build/hodoku` (checksum-pinned; run as a separate program, so the GPL doesn't reach us), exports the same positions in HoDoKu's library format, runs its Find All Steps, and compares removals per technique. The **MISSED** column is the one that matters: HoDoKu removes a candidate that no technique of ours in the same family does (families absorb naming differences such as Skyscraper vs Turbot Fish, Locked vs Naked Pair). The soundness tests catch wrong eliminations; this catches missed ones. Known, deliberate gaps: chains are capped at 15 links and ALSs at 5 cells for the wing/blossom/chain strategies; HoDoKu has no WXYZ-Wing, and its Find All Steps never reports Kraken Fish. Treat HoDoKu as the more experienced opinion, not just an oracle: where it differs by design (its defaults, order, what it leaves out), weigh changing ours. Open findings are in `TODO.md`.
+
 Some techniques never come up as the *next* move, because an easier technique always finds the same thing first (see the drill counts `merge-drills` prints). They have no drills, and their pages hide the drill button.
 
 Build both iOS and macOS after app changes, since the code must stay platform-neutral. Use `#if os(iOS)` only for the rare platform-specific bit.

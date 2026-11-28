@@ -16,6 +16,17 @@ sudokugen — Snowdoku puzzle tooling
       --threads N       worker threads (default: all cores)
   sudokugen stats [--count N] [--seed N]   Distribution of difficulties/techniques
   sudokugen techniques                     List techniques with scores
+  sudokugen census [--min D] FILE...       For each technique, how often it applies along the solver's
+                                           path (avail), adds something no easier technique does
+                                           (novel), and is the solver's pick (chosen). Puzzles are the
+                                           first column of each line; --min keeps tier D and harder
+  sudokugen bank-tiers FILE                Each bundled-bank line's puzzle and tier, tab-separated
+  sudokugen hodoku-positions [--min D] [--limit N] FILE...
+                                           The census's stuck positions (notes included) in HoDoKu's
+                                           library format, for `java -jar hodoku.jar /bsaf`
+  sudokugen hodoku-compare [--examples N] POSITIONS HODOKU_OUTPUT
+                                           Per technique, positions where HoDoKu's Find All Steps
+                                           removes candidates our detector doesn't, and vice versa
   sudokugen mutate --from FILE [--count N] [--minutes M]
                                            Find more extreme puzzles (ones that need forcing chains)
                                            by swapping clues in known ones (puzzles to stdout)
@@ -172,6 +183,115 @@ case "generate", "stats":
         for (t, c) in byHardest.sorted(by: { $0.key.score < $1.key.score }) { print("  \(t.name.padding(toLength: 28, withPad: " ", startingAt: 0)) \(c)") }
         print("Puzzles using technique:")
         for (t, c) in used.sorted(by: { $0.key.score < $1.key.score }) { print("  \(t.name.padding(toLength: 28, withPad: " ", startingAt: 0)) \(c)") }
+    }
+
+case "census":
+    let minName = option("--min", in: args)
+    let minTier = minName.flatMap { n in Difficulty.allCases.first { $0.name.lowercased() == n.lowercased() } }
+    if minName != nil && minTier == nil { fail("Unknown difficulty") }
+    var files: [String] = []
+    var rest = args.dropFirst().makeIterator()
+    while let a = rest.next() {
+        if a == "--min" { _ = rest.next() } else { files.append(a) }
+    }
+    if files.isEmpty { fail("Usage: sudokugen census [--min D] FILE...") }
+    var lines: [Substring] = []
+    for f in files {
+        guard let text = try? String(contentsOfFile: f, encoding: .utf8) else { fail("Can't read \(f)") }
+        lines += text.split(separator: "\n")
+    }
+    let inputs = lines
+    let start = Date()
+    let total = Locked(Census())
+    DispatchQueue.concurrentPerform(iterations: inputs.count) { i in
+        guard let g = Grid(String(inputs[i].split(separator: "\t").first ?? "")) else { return }
+        if let minTier {
+            // Bank lines carry their tier; anything else gets rated.
+            let tier = BankedPuzzle(line: inputs[i])?.difficulty ?? Rater.rate(g)?.difficulty
+            guard let tier, tier >= minTier else { return }
+        }
+        let c = Census.of(g)
+        total.with { $0.add(c) }
+    }
+    let census = total.with { $0 }
+    print("\(census.puzzles) puzzles\(minTier.map { " (\($0.name)+)" } ?? ""), \(census.stuckPositions) stuck positions on the solver's path, \(Int(Date().timeIntervalSince(start)))s")
+    print("technique".padding(toLength: 26, withPad: " ", startingAt: 0) + "score  avail  novel chosen puzzles")
+    for t in Census.probed {
+        let c = census.counts[t] ?? Census.Counts()
+        print(t.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0) + String(format: "%5d %6d %6d %6d %7d", t.score, c.available, c.novel, c.chosen, c.puzzles))
+    }
+
+case "bank-tiers":
+    guard args.count > 1, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { fail("Usage: sudokugen bank-tiers FILE") }
+    for l in text.split(separator: "\n") {
+        if let p = BankedPuzzle(line: l) { print("\(p.puzzle.string)\t\(p.difficulty.name)") }
+    }
+
+case "hodoku-positions":
+    let minName = option("--min", in: args)
+    let minTier = minName.flatMap { n in Difficulty.allCases.first { $0.name.lowercased() == n.lowercased() } }
+    if minName != nil && minTier == nil { fail("Unknown difficulty") }
+    let limit = Int(option("--limit", in: args) ?? "") ?? Int.max
+    var files: [String] = []
+    var rest = args.dropFirst().makeIterator()
+    while let a = rest.next() {
+        if a == "--min" || a == "--limit" { _ = rest.next() } else { files.append(a) }
+    }
+    var grids: [Grid] = []
+    for f in files {
+        guard let text = try? String(contentsOfFile: f, encoding: .utf8) else { fail("Can't read \(f)") }
+        for l in text.split(separator: "\n") {
+            guard let g = Grid(String(l.split(separator: "\t").first ?? "")) else { continue }
+            if let minTier {
+                let tier = BankedPuzzle(line: l)?.difficulty ?? Rater.rate(g)?.difficulty
+                guard let tier, tier >= minTier else { continue }
+            }
+            grids.append(g)
+        }
+    }
+    let chosen = Array(grids.prefix(limit))
+    let lines = Locked([[String]](repeating: [], count: chosen.count))
+    DispatchQueue.concurrentPerform(iterations: chosen.count) { i in
+        let out = Census.stuckPositions(of: chosen[i]).map { Hodoku.libraryLine($0.board) }
+        lines.with { $0[i] = out }
+    }
+    for l in lines.with({ $0 }).joined() { print(l) }
+
+case "hodoku-compare":
+    let examples = Int(option("--examples", in: args) ?? "") ?? 0
+    var files: [String] = []
+    var rest = args.dropFirst().makeIterator()
+    while let a = rest.next() {
+        if a == "--examples" { _ = rest.next() } else { files.append(a) }
+    }
+    guard files.count == 2, let posText = try? String(contentsOfFile: files[0], encoding: .utf8),
+          let hdText = try? String(contentsOfFile: files[1], encoding: .utf8) else {
+        fail("Usage: sudokugen hodoku-compare [--examples N] POSITIONS HODOKU_OUTPUT")
+    }
+    let positions = posText.split(separator: "\n")
+    let (tallies, unmapped, compared) = Hodoku.compare(positions: positions, hodoku: Hodoku.parse(hdText), examples: examples)
+    print("\(compared) of \(positions.count) positions compared. Per technique, positions where it finds something:")
+    print("  both: we and HoDoKu; hodoku/ours: only one of us; +hodoku/+ours: one removes candidates the other's same-named")
+    print("  technique doesn't; MISSED: HoDoKu removes a candidate no technique of ours in the same family does")
+    print("technique".padding(toLength: 26, withPad: " ", startingAt: 0) + "  both hodoku   ours +hodoku  +ours MISSED")
+    for t in Census.probed {
+        guard let c = tallies[t] else { continue }
+        print(t.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0) + String(format: "%6d %6d %6d %7d %6d %6d", c.both, c.hodokuOnly, c.oursOnly, c.hodokuFindsMore, c.oursFindsMore, c.missed))
+    }
+    let noCounterpart = Census.probed.filter { t in !tallies.keys.contains(t) }
+    if !noCounterpart.isEmpty { print("Never found by either: \(noCounterpart.map(\.rawValue).joined(separator: ", "))") }
+    print("HoDoKu steps with no counterpart here: " + unmapped.sorted { $0.value > $1.value }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))
+    if examples > 0 {
+        for t in Census.probed {
+            guard let ex = tallies[t]?.examples, !ex.isEmpty else { continue }
+            print("\n\(t.rawValue): missed")
+            for e in ex { print("  " + e) }
+        }
+        for t in Census.probed {
+            guard let ex = tallies[t]?.oursExamples, !ex.isEmpty else { continue }
+            print("\n\(t.rawValue): ours finds more than HoDoKu's")
+            for e in ex { print("  " + e) }
+        }
     }
 
 case "bank":

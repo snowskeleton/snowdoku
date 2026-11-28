@@ -17,6 +17,19 @@ The app code is done (`App/Shared/GameCenter.swift`) and reports everything, but
 - [ ] **Sandbox test:** sign in with a sandbox Game Center account on a device or simulator, run a **Release** build, and check that sign-in, achievements and the leaderboards work. Debug builds stay quiet and skip Game Center under the DEBUG launch arguments.
 - [ ] **Signed Mac build:** after the team is set, build macOS without `CODE_SIGN_ENTITLEMENTS=` (ad-hoc signing can't carry the Game Center entitlement).
 
+## Ratings and detectors: what HoDoKu disagrees with
+
+Found with `Engine/Tools/hodoku-compare.sh` (Nov 2026). Each change moves ratings, so it means re-rating the bank (changes dailies), re-checking drills and re-mining parts of the campaign. Decide which to adopt first.
+
+- [ ] **Solve order is separate from score in HoDoKu.** It solves in a hand-curated order and uses base scores only for rating; our `Technique.score` does both, and copied HoDoKu's *score* order. E.g. HoDoKu tries Finned X-Wing after every wing and uniqueness technique (score 130 but late in the order); we try it before plain X-Wing, so it's chosen 3× as often. HoDoKu also tries quads and basic fish (to Jellyfish) before Skyscraper, Kite and the wings.
+- [ ] **HoDoKu leaves out Kraken Fish, Mutant fish, Franken Jellyfish and Death Blossom** by default (its solver goes from Franken Swordfish to forcing chains). Our solver picks Kraken Fish ~1,350 times in the Medium+ bank census, yet HoDoKu solves every bank puzzle whose hardest step for us is Kraken without any Extreme-level step: our gaps below (no doubly-linked ALS-XZ, size and length caps) push those puzzles into Kraken.
+- [ ] **Uniqueness with missing candidates** (HoDoKu default: on). A rectangle still counts when a corner's digit was already eliminated, since the swapped grid would still be a second solution. Our detectors miss ~470 Hard+ positions' worth of UR1/UR3/UR4 for this. Harder for a player to see.
+- [ ] **Doubly-linked ALS-XZ** (two restricted commons: both ALSs become locked sets). Not implemented; ~4,500 Hard+ positions where HoDoKu's ALS-XZ removes something none of our ALS techniques do.
+- [ ] **Caps:** chains stop at 15 links (HoDoKu 20) and ALS-XY-Wing, Death Blossom and ALS Chain use ALSs of at most 5 cells. Long chains are poor teaching, so maybe keep, but the caps make the solver fall through to Kraken and forcing chains.
+- [ ] **Sue de Coq:** HoDoKu finds extended forms (more cells in the line or box part) we don't; small (~150 positions).
+- [ ] **Tier scale:** tiers match HoDoKu's exactly through our Medium. HoDoKu caps Unfair at a total of 1,800, so it calls 82% of our Master and a third of our Expert "Extreme", by score alone (never because a forcing chain was needed). Probably keep ours (Extreme = forcing chains is a v1 decision), but note the disagreement.
+- [ ] **Patterns HoDoKu rejects:** HoDoKu never reports a finned or sashimi Jellyfish where we find thousands, and finds far fewer plain Jellyfish; ours likely accept degenerate fish (a smaller fish plus a spare line). Check, and if so require every base line to matter.
+
 ## Campaign puzzles
 
 - [ ] **Finned Swordfish endless:** only 50 base puzzles; the target is ≥ 100. Its context and mixed puzzles also use the technique only about twice each. To top it up, mine on the cluster, then merge with the archive (see CLAUDE.md):
