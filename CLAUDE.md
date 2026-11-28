@@ -84,7 +84,7 @@ xz -dc Engine/Data/campaign-mined.jsonl.xz > $T/old.jsonl
 $G campaign-merge $T/*.jsonl > App/Resources/Campaign.json             # prints each chapter's pool sizes and best use counts
 ```
 
-`campaign-merge` drops puzzles over 28 clues (except the Full House chapter, which can't be solved with fewer), prefers a fresh solution grid for each puzzle in a chapter, and lets endless reuse a chapter's practice and boss puzzles. A kind with no puzzles is simply skipped in the app.
+`campaign-merge` drops puzzles over 28 clues (except the Full House chapter, which can't be solved with fewer), prefers a fresh solution grid for each puzzle in a chapter (unless a reused grid gives a higher use count), and lets endless reuse a chapter's practice and boss puzzles. A kind with no puzzles is simply skipped in the app.
 
 Some techniques never come up as the *next* move, because an easier technique always finds the same thing first (see the drill counts `merge-drills` prints). They have no drills, and their pages hide the drill button.
 
@@ -108,10 +108,10 @@ sleep 5; xcrun simctl io "$SIM" screenshot <scratchpad>/shot.png
 - `-prefill <n> [-wrong]`: with `-puzzle`, fill all but the last n empty cells from the solution, optionally with one wrong value
 - `-technique <technique>`: open that technique's page
 - `-drill <technique> [-hint level]`: start a drill from the bundled bank (raw technique name, e.g. `xWing`), optionally advancing the hint
-- `-campaign <chapterId> <stepKey>`: start a campaign step (`spotlight0`, `context1`, `mixed0`, `drills`, `boss`, `endless`); works with `-prefill`
+- `-campaign <chapterId> <stepKey>`: start a campaign step (`lesson0`, `spotlight0`, `context1`, `mixed0`, `drills`, `boss`, `endless`); works with `-prefill`
 - `-campaignDone <n>`: the first n chapters finished; `-resetCampaign` clears progress; `-resetGames` clears saved games and what Continue resumes
 
-UI tests find cells by accessibility label `Row r, column c, …` and big pad digits by a label that starts with `"<d>,"`.
+UI tests find cells by accessibility label `Row r, column c, …` (spotlit cells end with `, in focus`) and big pad digits by a label that starts with `"<d>,"`.
 
 ## Engine architecture
 
@@ -143,7 +143,7 @@ HoDoKu (GPL, Java) is a design reference only: read it for ideas, but never tran
 - Highlighting: the selected cell plus its peers, matching digits, and cells whose **notes** contain the highlighted digit (whole-cell tint, bold note).
 - Technique library: a segmented control switches between grouping by difficulty and by category (`TechniqueCategory`, HoDoKu's families; each row shows its tier). The choice is remembered.
 - Technique pages: summary, a hand-written "How it works" guide, a worked example (the bank's first drill, drawn like an answer-level hint), and two practice buttons: a drill ("the next move is X") and a full puzzle that needs it.
-- Drills start mid-solve with the solver's own candidates as notes (singles drills have no notes). The header says what to find, with no timer. Making any instance of the move shows a floating result card (Keep solving / Next drill). Drills don't count toward statistics.
+- Drills start mid-solve with the solver's own candidates as notes (singles drills have no notes). **Singles drills are spotlit** (`Spotlight` in the engine, `Game.spotlight`): an opening position has many valid singles, so a singles drill names one area (a house, or a naked single's box) and only moves there count. Cells outside are grayed and take no input; a move inside that isn't the answer bounces back (the board is unchanged) with a coach card (`CoachPanel`) naming the clash ("There's already a 5 in row 3"), or saying it's right but a different single or not forced yet. Only wrong digits count as mistakes. The header says what to find, with no timer. Making any instance of the move shows a floating result card (Keep solving / Next drill). Drills don't count toward statistics.
 - Controls (Undo, Erase, Fill, Hint) sit above the pads, in wide layouts too; never in the toolbar. The one-pad layout has no controls row: Undo, Fill and Hint are its last column of keys (`ActionKey`), and it has no Erase (tapping a cell's digit again clears it; Delete still works).
 - Hints are progressive, and the panel floats over the controls. Auto-complete ("Finish puzzle" pill) is offered only above Beginner, with no wrong entries, ≤ N empty cells (default 15), and singles finishing the rest.
 - Random games run from Beginner to Extreme and come from the bundled bank (`App/Root/PuzzleBank.swift`), so they start instantly. A tier with no bank puzzles falls back to on-device generation; Extreme is offered only when the bank has some. Dailies come from the bank too. Daily days are UTC (`DailySchedule`), so everyone gets the same puzzle at the same moment.
@@ -151,7 +151,7 @@ HoDoKu (GPL, Java) is a design reference only: read it for ideas, but never tran
 - Accessibility: basic labels and Dynamic Type only. A full VoiceOver mode was explicitly deferred.
 
 - **Play tab:** Continue (resumes the unfinished campaign level or free-play game, or starts the next campaign step / another game of the last tier), Daily, Campaign, Free Play (the tier list). `LastActivity` remembers which. Navigation is a `NavigationStack` path of `PlayRoute`s.
-- **Campaign:** 30 chapters (`CampaignChapter.all`), singles to forcing nets; coloring and exotics stay library-only. Each chapter: a lesson (the technique page), a spotlight per family member (at least 2, solvable with only singles plus that technique), practice ×2, mixed ×2 (needs two earlier techniques), a drill round (5 clean drills: no hint, no mistake, within a time limit by tier), a boss, and endless. Steps open in order; a puzzle counts only if solved without hints, otherwise the player gets another from the same pool. The boss is open from the start and beating it finishes the chapter (the skip). Hints and the use counter in campaign games use the step's allowed techniques only. Campaign games don't count toward statistics.
+- **Campaign:** 30 chapters (`CampaignChapter.all`), singles to forcing nets; coloring and exotics stay library-only. The four singles chapters open with two **lesson rounds** for players who have never played (`CampaignStep.lesson`, `CampaignChapter.lessonLevels`): short untimed questions, each a drill position with a spotlight that fades from exact ("Where does the 5 go in this box?" with the 5 armed, or "Which digit fits in this cell?" with the cell selected, plus a one-line intro card) through one area and one digit to the whole board. Their drill round uses area spotlights. Each chapter: a lesson (the technique page), a spotlight per family member (at least 2, solvable with only singles plus that technique), practice ×2, mixed ×2 (needs two earlier techniques), a drill round (5 clean drills: no hint, no mistake, within a time limit by tier), a boss, and endless. Steps open in order; a puzzle counts only if solved without hints, otherwise the player gets another from the same pool. The boss is open from the start and beating it finishes the chapter (the skip). Hints and the use counter in campaign games use the step's allowed techniques only. Campaign games don't count toward statistics.
 
 ## Roadmap / known gaps
 

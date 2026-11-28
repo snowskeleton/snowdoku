@@ -22,6 +22,11 @@ final class Game {
     var campaignDrillClean: Bool?
     /// Every instance of the drill's technique in the starting position, computed in the background.
     private(set) var drillTargets: [Step] = []
+    /// In a singles drill or lesson: the part of the board the question is about. Moves outside it
+    /// are ignored, and a move inside it that isn't the answer bounces back with `coach` feedback.
+    let spotlight: Spotlight?
+    /// The coaching card over the controls: a spotlight's intro, or why a move wasn't the answer.
+    var coach: Coach?
 
     private(set) var values: [UInt8] { didSet { checkDrill(); trackProgress() } }
     private(set) var notes: [DigitMask] { didSet { checkDrill() } }
@@ -58,6 +63,8 @@ final class Game {
     private(set) var flashes = Array(repeating: 0, count: 81)
     /// Bumped each time a digit is completed (for the haptic).
     private(set) var digitsCompleted = 0
+    /// Bumped each time a spotlight bounces a move (for the haptic and the shake).
+    private(set) var attempts = 0
 
     private var accumulated: Double
     private var resumedAt: Date?
@@ -112,6 +119,7 @@ final class Game {
         resumedAt = Date.now
         drill = nil
         campaign = nil
+        spotlight = nil
         moves = []
         refreshAutoComplete()
         startTracking()
@@ -131,6 +139,7 @@ final class Game {
         practice = nil
         drill = nil
         campaign = c
+        spotlight = nil
         values = (p.values ?? p.puzzle).cells
         notes = p.candidates ?? Array(repeating: 0, count: 81)
         mistakes = 0
@@ -144,7 +153,7 @@ final class Game {
     }
 
     /// Starts a drill. `tracking` is false for the static examples on technique pages.
-    init(drill d: Drill, solution: Grid, tracking: Bool = true, campaign c: CampaignContext? = nil) {
+    init(drill d: Drill, solution: Grid, tracking: Bool = true, campaign c: CampaignContext? = nil, spotlight sp: Spotlight? = nil) {
         id = UUID()
         puzzle = d.puzzle
         self.solution = solution
@@ -156,6 +165,7 @@ final class Game {
         practice = d.technique
         drill = d
         campaign = c
+        spotlight = sp
         values = d.values.cells
         notes = d.showsNotes ? d.candidates : Array(repeating: 0, count: 81)
         mistakes = 0
@@ -165,7 +175,12 @@ final class Game {
         resumedAt = Date.now
         moves = []
         refreshAutoComplete()
-        if tracking { loadDrillTargets(); startTracking() }
+        if sp != nil {
+            // Singles are cheap to find, and a spotlight needs its answers before the first tap.
+            drillTargets = d.targets()
+            prepareSpotlight()
+        }
+        if tracking { if sp == nil { loadDrillTargets() }; startTracking() }
     }
 
     init(record r: GameRecord) {
@@ -180,6 +195,7 @@ final class Game {
         practice = r.practice
         drill = r.drill
         campaign = r.campaign
+        spotlight = r.spotlight
         drillState = r.drillState ?? .searching
         values = r.values
         notes = r.notes
@@ -192,7 +208,9 @@ final class Game {
         resumedAt = r.completed ? nil : Date.now
         moves = r.moves ?? []
         refreshAutoComplete()
-        if drill != nil && drillState == .searching { loadDrillTargets() }
+        if let d = drill, drillState == .searching {
+            if spotlight != nil { drillTargets = d.targets(); prepareSpotlight() } else { loadDrillTargets() }
+        }
         startTracking()
     }
 
@@ -200,7 +218,8 @@ final class Game {
         GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, centeredNotes: centeredNotes, autoNotes: autoNotes, elapsed: elapsed(),
                    mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
                    techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
-                   drill: drill, drillState: drill == nil ? nil : drillState, moves: moves, campaign: campaign)
+                   drill: drill, drillState: drill == nil ? nil : drillState, moves: moves, campaign: campaign,
+                   spotlight: spotlight)
     }
 
     var title: String {
@@ -281,7 +300,7 @@ final class Game {
     /// Tapping a cell applies the armed digit, or toggles selection.
     /// `asNote`: shift-click, which enters the armed digit as a note whichever pad it was armed from.
     func tapCell(_ c: Int, asNote: Bool = false) {
-        guard !autoCompleting else { return }
+        guard !autoCompleting, inSpotlight(c) else { return }
         if let a = armed {
             if a.small { toggleNote(a.digit, at: c, kind: a.kind) }
             else if asNote { toggleNote(a.digit, at: c, kind: Prefs.noteNotation.kind) }
@@ -310,7 +329,8 @@ final class Game {
             } else {
                 // A value finishes with that cell: clear the selection so the next digit tap arms a digit.
                 place(d, at: c)
-                selected = nil
+                // A move the spotlight bounced leaves the cell selected for another try.
+                if values[c] != 0 || !spotlightActive { selected = nil }
                 lastDigit = values[c] != 0 ? d : nil
             }
             return
@@ -327,7 +347,8 @@ final class Game {
     }
 
     func place(_ d: Int, at c: Int) {
-        guard !isComplete, !isGiven(c) else { return }
+        guard !isComplete, !isGiven(c), inSpotlight(c) else { return }
+        if spotlightActive && values[c] != UInt8(d) && !answersSpotlight(d, at: c) { bounce(d, at: c); return }
         pushUndo()
         if values[c] == UInt8(d) {
             values[c] = 0
@@ -378,6 +399,7 @@ final class Game {
     /// the cells it crosses. `asNote`: Shift held, as for a Shift-click.
     func beginStroke(at c: Int, asNote: Bool = false) {
         guard !autoCompleting, !isComplete else { return }
+        guard inSpotlight(c) else { return }
         guard let a = armed else {
             stroke = Stroke()
             selected = c
@@ -401,6 +423,8 @@ final class Game {
         defer { stroke = s }
         if s.edit != nil {
             apply(&s.edit!, to: c)
+        } else if !inSpotlight(c) {
+            return
         } else if s.visited.count > 1 {
             // Leaving the first cell turns the selection into a multi-selection.
             multiSelection = s.visited
@@ -433,7 +457,8 @@ final class Game {
             // Adding fills only empty cells; removing clears only this digit.
             changes = e.adding ? values[c] == 0 : values[c] == UInt8(e.digit)
         }
-        guard changes, !isComplete else { return }
+        guard changes, !isComplete, inSpotlight(c) else { return }
+        if spotlightActive && !e.asNote && e.adding && !answersSpotlight(e.digit, at: c) { bounce(e.digit, at: c); return }
         if !e.pushedUndo { pushUndo(); e.pushedUndo = true }
         if e.asNote {
             notes[c] ^= bit
@@ -481,7 +506,7 @@ final class Game {
 
     /// Adding a note also sets how the cell draws its notes.
     func toggleNote(_ d: Int, at c: Int, kind: NoteKind = .grid) {
-        guard !isComplete, values[c] == 0 else { return }
+        guard !isComplete, values[c] == 0, inSpotlight(c) else { return }
         pushUndo()
         notes[c] ^= Mask.bit(d)
         if notes[c] & Mask.bit(d) != 0 { setNoteKind(kind, at: c) }
@@ -628,7 +653,8 @@ final class Game {
     /// the notes (or the cell filled with a different digit).
     var drillFoundStep: Step? {
         drillTargets.first { s in
-            s.placements.allSatisfy { values[$0.cell] == UInt8($0.digit) }
+            (spotlight?.accepts(s) ?? true)
+                && s.placements.allSatisfy { values[$0.cell] == UInt8($0.digit) }
                 && s.eliminations.allSatisfy { e in
                     values[e.cell] == 0 ? notes[e.cell] & Mask.bit(e.digit) == 0 : values[e.cell] != UInt8(e.digit)
                 }
@@ -638,7 +664,48 @@ final class Game {
     private func checkDrill() {
         guard drill != nil, drillState == .searching, drillFoundStep != nil else { return }
         drillState = .found
+        coach = nil
         closeSegment()
+    }
+
+    // MARK: Spotlight
+
+    /// A question of a campaign lesson round.
+    var isLesson: Bool {
+        if case .lesson = campaign?.step { return true }
+        return false
+    }
+
+    /// The spotlight still limits moves: until its question is answered.
+    var spotlightActive: Bool { spotlight != nil && drill != nil && drillState == .searching }
+
+    /// Whether the player may act on a cell (always, unless a spotlight leaves it out).
+    func inSpotlight(_ c: Int) -> Bool { !spotlightActive || spotlight!.cells.contains(c) }
+
+    /// The answers to the spotlight's question.
+    var spotlightTargets: [Step] { spotlight.map { sp in drillTargets.filter(sp.accepts) } ?? [] }
+
+    /// Arms the named digit or selects the named cell, and shows the intro for an exact question.
+    private func prepareSpotlight() {
+        guard let sp = spotlight, drillState == .searching else { return }
+        if let c = sp.cell { selected = c }
+        if let d = sp.digit, sp.cell == nil { armed = ArmedDigit(digit: d, small: false, kind: .grid) }
+        if let intro = sp.intro { coach = .intro(intro) }
+    }
+
+    private func answersSpotlight(_ d: Int, at c: Int) -> Bool {
+        spotlightTargets.contains { $0.placements.contains(Candidate(c, d)) }
+    }
+
+    /// A move inside the spotlight that isn't the answer: say why and leave the board as it was. A
+    /// wrong digit is a mistake; a right digit that wasn't asked for isn't.
+    private func bounce(_ d: Int, at c: Int) {
+        guard let sp = spotlight else { return }
+        let board = Board(Grid(cells: values))
+        let feedback = SpotlightFeedback.judge(digit: d, at: c, board: board, solution: solution, asked: sp.technique)
+        if d != solution[c] { mistakes += 1; segment?.mistakes += 1 }
+        coach = .feedback(feedback, cell: c)
+        attempts += 1
     }
 
     // MARK: Hints
@@ -650,8 +717,14 @@ final class Game {
             if let next = HintLevel(rawValue: h.level.rawValue + 1) { h.level = next; hint = h; noteHint(h) }
             return
         }
-        let result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution,
+        coach = nil
+        let result: Hint
+        if spotlightActive, let target = spotlightTargets.first {
+            result = .step(target, instances: 1)
+        } else {
+            result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution,
                                      solver: solver, near: selected)
+        }
         hintsUsed += 1
         let start: HintLevel
         switch result {

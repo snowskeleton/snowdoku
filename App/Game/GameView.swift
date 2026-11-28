@@ -59,7 +59,8 @@ struct GameView: View {
         .onChange(of: game.drillState) { _, s in
             if s == .found {
                 store.recordCampaignDrill(game)
-                Task { await stats.recordMoves(game) }
+                // Lesson questions point at the answer's area, so their times say little about skill.
+                if !game.isLesson { Task { await stats.recordMoves(game) } }
             }
         }
         .onChange(of: game.values) { store.save() }
@@ -67,6 +68,7 @@ struct GameView: View {
         .onChange(of: autoCompleteThreshold) { game.refreshAutoComplete() }
         .sensoryFeedback(.success, trigger: game.isComplete)
         .sensoryFeedback(.error, trigger: game.mistakes)
+        .sensoryFeedback(.warning, trigger: game.attempts)
         .sensoryFeedback(.impact(weight: .light), trigger: game.digitsCompleted)
         .overlay {
             if game.isComplete { CompletionView(game: game) }

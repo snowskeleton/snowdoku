@@ -20,6 +20,11 @@ struct BoardContext {
     var hintPlacements: Set<Candidate> = []
     var hintWrong: Set<Int> = []
     var hintMissing: Set<Candidate> = []
+    /// A spotlight question's cells (nil when no spotlight limits the board).
+    var spotlight: CellSet?
+    /// The digit a bounced move clashes with, and the house they share.
+    var clash: Int?
+    var clashHouse = CellSet()
     /// A hint is drawing on the board. Its colors then stand alone: the selection, peer and
     /// same-digit tints are suppressed so the two kinds of highlighting don't mix.
     var hintOnBoard: Bool {
@@ -40,6 +45,11 @@ struct BoardContext {
         self.mistakeMode = mistakeMode
         self.highlightSame = highlightSame
         self.highlightPeers = highlightPeers
+        if game.spotlightActive, let sp = game.spotlight, sp.cells.count < 81 { spotlight = sp.cells }
+        if let c = game.coach, game.hint == nil {
+            clash = c.clash
+            if let h = c.clashHouse { clashHouse = Geometry.houseSets[h] }
+        }
 
         guard let h = game.hint else { return }
         switch h.hint {

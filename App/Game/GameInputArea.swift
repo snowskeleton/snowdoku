@@ -45,12 +45,17 @@ struct GameInputArea: View {
         }
         .animation(.spring(duration: 0.3), value: game.canAutoComplete)
         .animation(.spring(duration: 0.3), value: game.drillState)
+        .animation(.spring(duration: 0.3), value: game.coach)
     }
 
     /// Taller than its anchor, so it overflows upward from the anchor's bottom edge.
     @ViewBuilder var hintPanel: some View {
         if game.hint != nil {
             HintPanel(game: game)
+                .fixedSize(horizontal: false, vertical: true)
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+        } else if game.coach != nil && game.spotlightActive {
+            CoachPanel(game: game)
                 .fixedSize(horizontal: false, vertical: true)
                 .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
         }

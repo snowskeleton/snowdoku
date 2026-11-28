@@ -35,6 +35,9 @@ struct CellView: View {
                 Text("\(v)")
                     .font(.system(size: size * 0.62, weight: game.isGiven(cell) ? .semibold : .regular, design: .rounded))
                     .foregroundStyle(valueColor(v))
+                    // Outside a spotlight digits stay readable (they're the clues) but step back,
+                    // except the highlighted digit, which is what the player scans for.
+                    .opacity(isContext && v != ctx.highlightDigit ? 0.55 : 1)
             } else {
                 NotesView(game: game, cell: cell, ctx: ctx, size: size)
             }
@@ -60,6 +63,7 @@ struct CellView: View {
         if ctx.hintWrong.contains(cell) { return .red.opacity(t.hint) }
         if ctx.hintPlacements.contains(where: { $0.cell == cell }) { return .green.opacity(t.hint) }
         if let roles = ctx.hintRoles[cell], roles[0] != nil { return .yellow.opacity(t.hint) }
+        if ctx.clash == cell { return .red.opacity(t.hint) }
         if ctx.isSelected(cell) && !ctx.hintOnBoard { return .accentColor.opacity(t.selected) }
         if ctx.conflicts.contains(cell) { return .red.opacity(t.conflict) }
         if ctx.highlightSame && ctx.highlightDigit != 0 {
@@ -67,9 +71,14 @@ struct CellView: View {
             if v == 0 && game.notes[cell] & Mask.bit(ctx.highlightDigit) != 0 { return .accentColor.opacity(t.noteDigit) }
         }
         if ctx.hintHouses.contains(cell) { return .yellow.opacity(t.hintHouse) }
+        if ctx.clashHouse.contains(cell) { return .red.opacity(t.conflict) }
+        if let sp = ctx.spotlight { return sp.contains(cell) ? .yellow.opacity(t.hintHouse) : .gray.opacity(t.outside) }
         if ctx.highlightPeers && ctx.peers.contains(cell) { return .accentColor.opacity(t.peer) }
         return .clear
     }
+
+    /// Outside the spotlight: context the player reads but can't change.
+    var isContext: Bool { ctx.spotlight.map { !$0.contains(cell) } ?? false }
 
     /// Shown in red: a conflicting or wrong entry, or a cell a hint flagged as wrong.
     var isMarkedWrong: Bool {
@@ -89,6 +98,10 @@ struct CellView: View {
 
     func accessibilityText(_ v: Int) -> String {
         let pos = "Row \(cell / 9 + 1), column \(cell % 9 + 1)"
+        return base(pos, v) + (ctx.spotlight?.contains(cell) == true ? ", in focus" : "")
+    }
+
+    func base(_ pos: String, _ v: Int) -> String {
         if v != 0 { return "\(pos), \(v)\(game.isGiven(cell) ? ", given" : "")\(isMarkedWrong ? ", mistake" : "")" }
         let n = Mask.digits(game.notes[cell])
         let kind = game.drawsCentered(cell) ? "centered notes" : "notes"

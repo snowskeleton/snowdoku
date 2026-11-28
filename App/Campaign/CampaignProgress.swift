@@ -19,6 +19,8 @@ final class CampaignProgress {
         /// Chapters finished by beating the boss before any other step (optional, so saves
         /// from before it was added still decode).
         var skipped: Set<String>? = nil
+        /// Questions answered in each lesson round ("chapter/lessonN").
+        var lessonAnswers: [String: Int]? = nil
     }
 
     /// Clean drills needed to finish a drill round.
@@ -85,7 +87,8 @@ final class CampaignProgress {
             if isComplete(ch) { return true }
             let steps = ch.steps
             guard let i = steps.firstIndex(of: s), i > 0 else { return true }
-            return isDone(ch, steps[i - 1])
+            // A step already reached stays open, even if a newer step was added before it.
+            return isDone(ch, steps[i - 1]) || steps[i...].contains { isDone(ch, $0) }
         }
     }
 
@@ -110,6 +113,15 @@ final class CampaignProgress {
     }
 
     func cleanDrills(_ ch: CampaignChapter) -> Int { state.cleanDrills[ch.id] ?? 0 }
+
+    /// Questions answered so far in a lesson round.
+    func lessonAnswers(_ ch: CampaignChapter, _ i: Int) -> Int { state.lessonAnswers?[Self.key(ch, .lesson(i))] ?? 0 }
+
+    /// The spotlight level of the lesson round's next question (the last one again once it's done).
+    func nextLessonLevel(_ ch: CampaignChapter, _ i: Int) -> SpotlightLevel {
+        let levels = CampaignChapter.lessonLevels[i]
+        return levels[min(lessonAnswers(ch, i), levels.count - 1)]
+    }
 
     /// Finished by beating the boss without playing any of the chapter's other steps.
     func skippedChapter(_ ch: CampaignChapter) -> Bool { state.skipped?.contains(ch.id) ?? false }
@@ -142,6 +154,15 @@ final class CampaignProgress {
         state.completed.insert(Self.key(ch, s))
         save()
         GameCenter.shared.reportCampaign(self)
+    }
+
+    /// Counts an answered question of a lesson round, which is done once every question is.
+    func recordLesson(_ ch: CampaignChapter, _ i: Int) {
+        let n = lessonAnswers(ch, i) + 1
+        state.lessonAnswers = (state.lessonAnswers ?? [:]).merging([Self.key(ch, .lesson(i)): n]) { $1 }
+        if n >= CampaignChapter.lessonLevels[i].count { state.completed.insert(Self.key(ch, .lesson(i))) }
+        save()
+        if n >= CampaignChapter.lessonLevels[i].count { GameCenter.shared.reportCampaign(self) }
     }
 
     /// Counts a drill of the chapter's round; returns the clean count so far.

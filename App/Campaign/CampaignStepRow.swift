@@ -28,6 +28,9 @@ struct CampaignStepRow: View {
     var done: Bool { progress.isDone(chapter, step) }
 
     var detail: String {
+        if case .lesson(let i) = step, !done, progress.lessonAnswers(chapter, i) > 0 {
+            return "\(progress.lessonAnswers(chapter, i)) of \(CampaignChapter.lessonLevels[i].count) · \(chapter.subtitle(for: step))"
+        }
         if step == .drills && !done { return "\(progress.cleanDrills(chapter)) of \(CampaignProgress.drillsNeeded) · \(chapter.subtitle(for: step))" }
         return chapter.subtitle(for: step)
     }
@@ -41,6 +44,7 @@ struct CampaignStepRow: View {
             switch step {
             case .boss: Image(systemName: "crown.fill").foregroundStyle(.orange)
             case .drills: Image(systemName: "stopwatch").foregroundStyle(Color.accentColor)
+            case .lesson: Image(systemName: "graduationcap.fill").foregroundStyle(Color.accentColor)
             case .endless: Image(systemName: "infinity").foregroundStyle(Color.accentColor)
             default: Image(systemName: "play.circle.fill").foregroundStyle(Color.accentColor)
             }

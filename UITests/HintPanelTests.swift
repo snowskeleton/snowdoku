@@ -40,8 +40,8 @@ final class HintPanelTests: XCTestCase {
     func testHintCountsInstances() {
         let app = launch()
         app.buttons["Hint"].firstMatch.tap()
-        let nudge = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'There are' AND label CONTAINS 'digits you can place'")).firstMatch
-        XCTAssertTrue(nudge.waitForExistence(timeout: 5), "the nudge counts the digits to place")
+        let nudge = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'places a digit in' AND label CONTAINS 'places. Can you find one?'")).firstMatch
+        XCTAssertTrue(nudge.waitForExistence(timeout: 5), "the nudge counts where the move applies")
         app.buttons["Show more"].tap()
         let technique = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Try a' AND label CONTAINS 'on the board'")).firstMatch
         XCTAssertTrue(technique.waitForExistence(timeout: 5), "the technique level counts its instances")

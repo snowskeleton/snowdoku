@@ -3,6 +3,8 @@ import SudokuCore
 /// One step of a campaign chapter, in play order. Spotlights, practice and mixed puzzles are
 /// numbered within their kind.
 enum CampaignStep: Hashable, Codable, Sendable {
+    /// A guided lesson round (singles chapters only): short questions on one spotlit area each.
+    case lesson(Int)
     case spotlight(Int)
     case context(Int)
     case mixed(Int)
@@ -10,9 +12,10 @@ enum CampaignStep: Hashable, Codable, Sendable {
     case boss
     case endless
 
-    /// The kind of puzzle the step plays (nil for the drill round).
+    /// The kind of puzzle the step plays (nil for the drill round and lessons).
     var kind: CampaignKind? {
         switch self {
+        case .lesson: nil
         case .spotlight: .spotlight
         case .context: .context
         case .mixed: .mixed
@@ -25,6 +28,7 @@ enum CampaignStep: Hashable, Codable, Sendable {
     /// Stable key for saved progress.
     var key: String {
         switch self {
+        case .lesson(let i): "lesson\(i)"
         case .spotlight(let i): "spotlight\(i)"
         case .context(let i): "context\(i)"
         case .mixed(let i): "mixed\(i)"
@@ -36,7 +40,8 @@ enum CampaignStep: Hashable, Codable, Sendable {
 
     init?(key: String) {
         func index(after prefix: String) -> Int? { key.hasPrefix(prefix) ? Int(key.dropFirst(prefix.count)) : nil }
-        if let i = index(after: "spotlight") { self = .spotlight(i) }
+        if let i = index(after: "lesson") { self = .lesson(i) }
+        else if let i = index(after: "spotlight") { self = .spotlight(i) }
         else if let i = index(after: "context") { self = .context(i) }
         else if let i = index(after: "mixed") { self = .mixed(i) }
         else if key == "drills" { self = .drills }
@@ -50,15 +55,29 @@ extension CampaignChapter {
     /// Practice and mixed puzzles per chapter.
     static let practiceCount = 2
 
-    /// Every step, in play order: a spotlight per family member (two when the family has one),
-    /// practice (not in the first chapter), mixed (when there's anything earlier to mix in), drills,
-    /// boss, endless.
+    /// Every step, in play order: lessons (singles chapters), a spotlight per family member (two
+    /// when the family has one), practice (not in the first chapter), mixed (when there's anything
+    /// earlier to mix in), drills, boss, endless.
     var steps: [CampaignStep] {
-        var s = (0..<max(2, family.count)).map(CampaignStep.spotlight)
+        var s = hasLessons ? Self.lessonLevels.indices.map(CampaignStep.lesson) : []
+        s += (0..<max(2, family.count)).map(CampaignStep.spotlight)
         if hasPool(.context) { s += (0..<Self.practiceCount).map(CampaignStep.context) }
         if hasPool(.mixed) { s += (0..<Self.practiceCount).map(CampaignStep.mixed) }
         return s + [.drills, .boss, .endless]
     }
+
+    /// The singles chapters teach from scratch, so they open with guided lessons: questions about
+    /// one spotlit area that fade from exact ("Where does the 5 go in this box?") to the whole board.
+    var hasLessons: Bool { part == 1 && Spotlight.supports(lead) && DrillBank.hasDrills(for: lead) }
+
+    /// Each lesson round's questions, by spotlight level.
+    static let lessonLevels: [[SpotlightLevel]] = [
+        [.exact, .exact, .exact, .area, .area],
+        [.digit, .digit, .open, .open],
+    ]
+
+    /// The drill round of a singles chapter narrows each drill to one area, so it has one answer.
+    var drillSpotlight: SpotlightLevel? { part == 1 && Spotlight.supports(lead) ? .area : nil }
 
     /// Whether the chapter has puzzles of a kind (a kind the miner found nothing for is skipped).
     private func hasPool(_ kind: CampaignKind) -> Bool {
@@ -82,6 +101,8 @@ extension CampaignChapter {
 
     func title(for step: CampaignStep) -> String {
         switch step {
+        case .lesson(0): "First Steps"
+        case .lesson(let i): i == 1 ? "Less Help" : "Lesson \(i + 1)"
         case .spotlight(let i):
             family.count == 1 ? "Spotlight \(i + 1)" : "Spotlight: \(member(for: step)!.name)"
         case .context(let i): "Practice \(i + 1)"
@@ -94,6 +115,8 @@ extension CampaignChapter {
 
     func subtitle(for step: CampaignStep) -> String {
         switch step {
+        case .lesson(0): "One question at a time, with a guide"
+        case .lesson: "Find it with less of the board pointed out"
         case .spotlight: "Just the technique, nothing else"
         case .context: "A real puzzle that needs it"
         case .mixed: "Mixed with what you've learned"

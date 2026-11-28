@@ -80,8 +80,8 @@ extension Step {
         switch level {
         case .nudge where instances > 1:
             return placements.isEmpty
-                ? "There are \(instances) places where you can eliminate candidates. Look for a \(tier)-level move."
-                : "There are \(instances) digits you can place. Look for a \(tier)-level move."
+                ? "One \(tier)-level move eliminates candidates in \(instances) places. Can you find one?"
+                : "One \(tier)-level move places a digit in \(instances) places. Can you find one?"
         case .technique where instances > 1:
             return "Try a \(technique.name). There are \(instances) on the board. \(technique.summary)"
         case .nudge:

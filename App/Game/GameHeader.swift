@@ -9,7 +9,7 @@ struct GameHeader: View {
 
     var body: some View {
         HStack {
-            if let c = game.campaign, c.step != .drills, let ch = c.chapterInfo {
+            if let c = game.campaign, game.drill == nil, let ch = c.chapterInfo {
                 Label(ch.title(for: c.step), systemImage: c.step == .boss ? "crown.fill" : "map")
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -66,6 +66,7 @@ struct GameHeader: View {
     }
 
     func drillPrompt(_ d: Drill) -> String {
-        game.drillState == .searching ? "Find the next move: \(d.technique.name)" : "Found: \(d.technique.name)"
+        guard game.drillState == .searching else { return "Found: \(d.technique.name)" }
+        return game.spotlight?.prompt ?? "Find the next move: \(d.technique.name)"
     }
 }

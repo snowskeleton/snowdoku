@@ -11,7 +11,7 @@ struct DrillPanel: View {
     var body: some View {
         if let drill = game.drill {
             VStack(alignment: .leading, spacing: 10) {
-                Label("That's the \(drill.technique.name)!", systemImage: "checkmark.circle.fill")
+                Label(game.isLesson ? "That's it!" : "That's the \(drill.technique.name)!", systemImage: "checkmark.circle.fill")
                     .font(.headline)
                     .foregroundStyle(.green)
                 if let round = roundNote {
@@ -26,7 +26,7 @@ struct DrillPanel: View {
                     Button("Keep solving", action: keepSolving)
                         .buttonStyle(.bordered)
                     Spacer()
-                    Button(roundDone ? "On to the boss" : "Next drill", action: nextDrill)
+                    Button(nextLabel, action: nextDrill)
                         .buttonStyle(.borderedProminent)
                 }
             }
@@ -43,7 +43,23 @@ struct DrillPanel: View {
     var chapter: CampaignChapter? { game.campaign?.step == .drills ? game.campaign?.chapterInfo : nil }
     var roundDone: Bool { chapter.map { campaign.isDone($0, .drills) } ?? false }
 
+    /// The lesson round this question belongs to.
+    var lesson: (chapter: CampaignChapter, index: Int)? {
+        guard let c = game.campaign, case .lesson(let i) = c.step, let ch = c.chapterInfo else { return nil }
+        return (ch, i)
+    }
+    var lessonDone: Bool { lesson.map { campaign.isDone($0.chapter, .lesson($0.index)) } ?? false }
+
+    var nextLabel: String {
+        if lesson != nil { return lessonDone ? "Continue" : "Next question" }
+        return roundDone ? "On to the boss" : "Next drill"
+    }
+
     var roundNote: String? {
+        if let (ch, i) = lesson {
+            let total = CampaignChapter.lessonLevels[i].count
+            return lessonDone ? "Lesson done!" : "\(min(campaign.lessonAnswers(ch, i), total)) of \(total)."
+        }
         guard let ch = chapter, let clean = game.campaignDrillClean else { return nil }
         let count = "\(min(campaign.cleanDrills(ch), CampaignProgress.drillsNeeded)) of \(CampaignProgress.drillsNeeded)"
         if roundDone { return "Drill round done (\(count))." }
@@ -58,6 +74,14 @@ struct DrillPanel: View {
     }
 
     func nextDrill() {
+        if let (ch, i) = lesson {
+            if lessonDone, let next = store.nextCampaignStep(after: game) {
+                Task { await store.playCampaign(next.chapter, next.step) }
+            } else {
+                Task { await store.playCampaign(ch, .lesson(i)) }
+            }
+            return
+        }
         if let ch = chapter {
             Task { await store.playCampaign(ch, roundDone ? .boss : .drills) }
             return
