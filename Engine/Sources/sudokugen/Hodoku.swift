@@ -181,6 +181,10 @@ enum Hodoku {
         [.frankenFish, .mutantFish, .krakenFish],
         // HoDoKu reports a one-link Simple Colors Trap, which is just locked candidates.
         [.pointing, .claiming, .simpleColoring, .multiColoring],
+        // A fish of size n on a digit with n + 1 unsolved lines has a fish of size 1 as its
+        // complement, which (with fins) is claiming. We leave those to locked candidates, and
+        // HoDoKu, having no size-1 fish, reports the bigger fish (see `Fish`).
+        [.pointing, .claiming, .xWing, .swordfish, .jellyfish, .finnedXWing, .sashimiXWing, .finnedSwordfish, .sashimiSwordfish, .finnedJellyfish, .sashimiJellyfish],
         [.sueDeCoq, .alsXZ, .alsXYWing, .alsChain, .deathBlossom],
     ]
 

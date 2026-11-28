@@ -28,7 +28,7 @@ Decided so far (Nov 27, 2026):
 - **Keep the score bump as is:** a long solve with easy techniques stays easier (don't adopt HoDoKu's lower caps).
 - **Close HoDoKu's detector gaps** (doubly-linked ALS-XZ, extended Sue de Coq, larger ALSs) and **lengthen chains**.
 - **Missing-candidate URs:** try them as a separate, harder technique and test how they play.
-- **Find out why** HoDoKu never reports our finned/sashimi Jellyfish.
+- **Find out why** HoDoKu never reports our finned/sashimi Jellyfish. (Done: complementary fish, see below.)
 
 - [ ] **Solve order is separate from score in HoDoKu.** It solves in a hand-curated order and uses base scores only for rating; our `Technique.score` does both, and copied HoDoKu's *score* order. E.g. HoDoKu tries Finned X-Wing after every wing and uniqueness technique (score 130 but late in the order); we try it before plain X-Wing, so it's chosen 3× as often. HoDoKu also tries quads and basic fish (to Jellyfish) before Skyscraper, Kite and the wings.
 - [ ] **HoDoKu leaves out Kraken Fish, Mutant fish, Franken Jellyfish and Death Blossom** by default (its solver goes from Franken Swordfish to forcing chains). Our solver picks Kraken Fish ~1,350 times in the Medium+ bank census, yet HoDoKu solves every bank puzzle whose hardest step for us is Kraken without any Extreme-level step: our gaps below (no doubly-linked ALS-XZ, size and length caps) push those puzzles into Kraken.
@@ -38,7 +38,8 @@ Decided so far (Nov 27, 2026):
 - [ ] **ALS caps:** ALS-XY-Wing, Death Blossom and ALS Chain use ALSs of at most 5 cells.
 - [ ] **Sue de Coq:** HoDoKu finds extended forms (more cells in the line or box part) we don't; small (~150 positions).
 - [ ] **Tier scale:** tiers match HoDoKu's exactly through our Medium. HoDoKu caps Unfair at a total of 1,800, so it calls 82% of our Master and a third of our Expert "Extreme", by score alone (never because a forcing chain was needed). Probably keep ours (Extreme = forcing chains is a v1 decision), but note the disagreement.
-- [ ] **Patterns HoDoKu rejects:** HoDoKu never reports a finned or sashimi Jellyfish where we find thousands, and finds far fewer plain Jellyfish; ours likely accept degenerate fish (a smaller fish plus a spare line). Check, and if so require every base line to matter.
+- [x] **Patterns HoDoKu rejects:** our size-n fish included ones whose *complement* is smaller. With U lines missing the digit, the lines outside a fish's cover hold it only in the lines outside its base (plus the same fins), so they form a fish of size U - n with the same eliminations; HoDoKu reports only the smaller one. A "Jellyfish" on a digit with 6 unsolved lines is an X-Wing seen from the other side. `Fish` now leaves those to the smaller fish (or, at size 1, to a single or claiming), unless the complement has a line without candidates, where the big fish is the real one. No bank rating moved (the smaller fish always came first in the solve), and every fish's MISSED is 0.
+- [ ] **Campaign fish spotlights were degenerate:** 44 campaign puzzles fail `bundledCampaignStillWorks` after the fix, nearly all spotlights (singles plus one fish), where the "fish" was a smaller one in disguise: all 8 Jellyfish, all 8 Sashimi Jellyfish and 7 of 8 Finned Jellyfish spotlights, 7 Swordfish and 10 Finned/Sashimi Swordfish ones. Re-mine them; genuine Jellyfish need 8+ unsolved lines and may be rare in singles-only puzzles (the Medium+ census never chooses a Sashimi Jellyfish), so the chapter may need to drop those spotlight members.
 
 ## Difficulty levels (decided Nov 28, 2026; not built yet)
 
