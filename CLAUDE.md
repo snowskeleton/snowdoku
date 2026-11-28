@@ -130,6 +130,27 @@ sleep 5; xcrun simctl io "$SIM" screenshot <scratchpad>/shot.png
 
 UI tests find cells by accessibility label `Row r, column c, …` (spotlit cells end with `, in focus`) and big pad digits by a label that starts with `"<d>,"`.
 
+## Releasing (TestFlight and App Store)
+
+The version is `MARKETING_VERSION` (e.g. `0.1`) and the build number is `CURRENT_PROJECT_VERSION`, both in `project.yml`. App Store Connect calls the version a "TestFlight version" (pre-release version) and files each build under the one matching its `MARKETING_VERSION`.
+
+- **Build numbers** go up by one for every build uploaded, are never reused and **never reset**, not even for a new version. Bump them without asking. They're bumped by hand, as part of an upload, not by a build script, so only builds worth testing get numbers.
+- **Versions**: **always ask the user before changing `MARKETING_VERSION`**, for TestFlight or for an App Store release.
+- **Tags**: every uploaded build gets an annotated tag `build-<N>` (e.g. `build-4`) on the commit it was built from. The build that ships to the App Store also gets `v<version>` (e.g. `v1.0`) on the same commit. Push tags right after creating them.
+
+Each TestFlight build:
+
+1. Start from a clean, pushed `main`. Bump `CURRENT_PROJECT_VERSION` in `project.yml` to one more than the highest build in App Store Connect (`asc GET '/v1/builds?filter[app]=<app id>&sort=-version&limit=1'`, see the app-store-connect skill), run `xcodegen generate`, and commit and push the bump.
+2. Archive **for iOS** (`-destination 'generic/platform=iOS'`; Xcode archives for whatever destination is selected, and a Mac archive lands in TestFlight's macOS section, not the iOS list), then export and upload with `ExportOptions.plist`. Signing and upload authenticate with the App Store Connect API key (flags in the app-store-connect skill; keep the key IDs out of this public repo):
+   ```bash
+   xcodebuild archive -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'generic/platform=iOS' -archivePath .build/release/Snowdoku-iOS.xcarchive -allowProvisioningUpdates <auth flags>
+   xcodebuild -exportArchive -archivePath .build/release/Snowdoku-iOS.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath .build/release/export -allowProvisioningUpdates <auth flags>
+   ```
+3. Tag `build-<N>` and push the tag.
+4. Wait for processing (`processingState` `VALID`), then put the build in a TestFlight version: it joins the one matching `MARKETING_VERSION` on its own, or a new one if that version is new (only after the user agreed to the new version). The internal group "All Users" gets every build automatically. Add the build to the external group "All Users - External" (`POST /v1/builds/<id>/relationships/betaGroups`). That submits it for beta app review when the version needs one.
+
+An App Store release follows the same steps for its build, adds the `v<version>` tag, and asks the user before submitting for review or releasing (see the app-store-connect skill).
+
 ## Engine architecture
 
 - `BruteForce`: bitmask backtracking for uniqueness checks, solutions and random filled grids.
