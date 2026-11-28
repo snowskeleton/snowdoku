@@ -65,11 +65,19 @@ public struct Step: Sendable {
     /// What this step adds to a puzzle's total score (`Rating.totalScore`): the technique's score,
     /// plus a surcharge for a long chain. Chains have no length limit, since the solver always picks
     /// the shortest one available, but a long chain is harder to find and follow than a short one, so
-    /// each link beyond `Step.freeChainLinks` adds `Step.pointsPerExtraLink`. Only the total moves;
-    /// the tier still comes from the hardest technique.
+    /// each link beyond `Step.freeChainLinks` adds `Step.pointsPerExtraLink`. A long enough chain
+    /// also raises the step's tier (`difficulty`).
     public var score: Int {
         guard technique.isChain, links.count > Self.freeChainLinks else { return technique.score }
         return technique.score + (links.count - Self.freeChainLinks) * Self.pointsPerExtraLink
+    }
+    /// The tier of this step: its technique's, except that a long chain counts as harder, by the tier
+    /// of its `score` (so an X-Chain of 14 links or more, or an XY-Chain of 12, is a Master move). A
+    /// chain is never more than Master: Extreme is for forcing chains and nets.
+    public var difficulty: Difficulty {
+        let base = technique.difficulty
+        guard technique.isChain else { return base }
+        return max(base, min(.master, Difficulty(score: score)))
     }
     /// Links a chain can have before it costs extra (most chains the solver picks have 5–9).
     public static let freeChainLinks = 9
