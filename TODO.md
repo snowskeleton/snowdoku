@@ -8,8 +8,8 @@ The app code is done (`App/Shared/GameCenter.swift`) and reports everything, but
 - [ ] **App Store Connect → Snowdoku → Game Center:** enable Game Center for the app version. Optionally create a group so iOS and macOS share achievements and leaderboards.
 - [ ] **60 achievements, 728 points:** for each, enter the id, title, the before-earned and after-earned text, points, hidden flag and a 512×512 image from `badges/`. That's 7 parts, the whole campaign, 4 dailies, 7 first solves, every tier, 30 solve counts, 9 hidden digit runs and the drills one. Alternatively, create Xcode 26's Game Center configuration file (File → New → Game Center Configuration) and enter them there, then push it to App Store Connect from Xcode.
 - [ ] **2 leaderboards:**
-  - `snowdoku.chapters`: classic, high to low, integer score 0–29, suffix " chapters".
   - `snowdoku.daily`: recurring daily, starting 00:00 UTC, low to high, elapsed time in seconds.
+  - `snowdoku.streak`: classic, high to low, integer score, suffix " days" (longest daily streak).
 - [ ] **iOS/macOS 26 challenge:** `snowdoku.challenge.daily` on the daily leaderboard.
 - [ ] **iOS/macOS 26 activities:**
   - `snowdoku.activity.chapter`, with a `chapter` property set to a chapter id (e.g. `fullHouse`).

@@ -8,7 +8,7 @@ import AppKit
 #endif
 
 /// Game Center: signs in quietly at launch and reports achievements (campaign parts, dailies, solve
-/// counts per tier, drills and the hidden digit runs), the chapters leaderboard and daily times.
+/// counts per tier, drills and the hidden digit runs), daily times and the longest daily streak.
 /// Everything works without it.
 ///
 /// The achievements and leaderboards themselves are configured in App Store Connect from
@@ -40,7 +40,7 @@ final class GameCenter: NSObject {
         static func solved(_ d: Difficulty, _ n: Int) -> String { "snowdoku.solve.\(d.name.lowercased()).\(n)" }
         static func digitFirst(_ d: Int) -> String { "snowdoku.secret.first.\(d)" }
         static let allDrills = "snowdoku.drills.all"
-        static let chaptersLeaderboard = "snowdoku.chapters"
+        static let streakLeaderboard = "snowdoku.streak"
         static let dailyLeaderboard = "snowdoku.daily"
         static let chapterActivity = "snowdoku.activity.chapter"
         static let dailyActivity = "snowdoku.activity.daily"
@@ -108,14 +108,14 @@ final class GameCenter: NSObject {
         return a
     }
 
-    private func report(_ achievements: [GKAchievement], leaderboard: (String, Int)? = nil) {
+    private func report(_ achievements: [GKAchievement], leaderboard: (id: String, score: Int)? = nil) {
         log("report \(achievements.filter { $0.percentComplete > 0 }.map { "\($0.identifier) \(Int($0.percentComplete))%" }.joined(separator: ", "))")
         guard isAuthenticated else { return }
         Task {
             do {
                 try await GKAchievement.report(achievements)
-                if let (id, score) = leaderboard {
-                    try await GKLeaderboard.submitScore(score, context: 0, player: GKLocalPlayer.local, leaderboardIDs: [id])
+                if let leaderboard, leaderboard.score > 0 {
+                    try await GKLeaderboard.submitScore(leaderboard.score, context: 0, player: GKLocalPlayer.local, leaderboardIDs: [leaderboard.id])
                 }
             } catch {
                 log("report failed: \(error.localizedDescription)")
@@ -123,7 +123,7 @@ final class GameCenter: NSObject {
         }
     }
 
-    /// Parts (share of their chapters finished), the whole campaign, and the chapters leaderboard.
+    /// Parts (share of their chapters finished) and the whole campaign.
     func reportCampaign(_ progress: CampaignProgress) {
         let chapters = CampaignChapter.all
         var achievements: [GKAchievement] = []
@@ -134,11 +134,12 @@ final class GameCenter: NSObject {
         }
         let done = progress.completedChapters
         achievements.append(achievement(ID.campaignComplete, Double(done) / Double(chapters.count)))
-        report(achievements, leaderboard: (ID.chaptersLeaderboard, done))
+        report(achievements)
     }
 
     /// Dailies and streaks, first solves and solve counts per tier (Free Play and dailies), drills,
-    /// and the hidden digit runs, all from the saved statistics.
+    /// the hidden digit runs, all from the saved statistics, and the streak leaderboard (a classic
+    /// board keeps each player's best, so the current streak is enough).
     func reportStats(_ store: StatsStore) {
         let s = store.stats
         var achievements = [achievement(ID.firstDaily, s.dailyCompleted.isEmpty ? 0 : 1)]
@@ -157,7 +158,7 @@ final class GameCenter: NSObject {
         }
         // Hidden achievements are reported only once earned.
         for d in s.digitsFirst.sorted() { achievements.append(achievement(ID.digitFirst(d), 1)) }
-        report(achievements)
+        report(achievements, leaderboard: (ID.streakLeaderboard, s.streak))
     }
 
     /// A daily solved without hints: its time in whole seconds (the recurring daily leaderboard

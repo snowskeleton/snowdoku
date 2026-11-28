@@ -149,7 +149,11 @@ def main():
                              "points": int(r["points"]), "hidden": r["hidden"] == "yes", "repeatable": False,
                              "image": f"badges/{name}.png"})
 
-    svgs["leaderboard-chapters"] = medallion(GOLD, board(GOLD, [R(r, c) for r in range(9) for c in range(9) if (r + c) % 4 == 0], []), "Chapters")
+    svgs["leaderboard-streak"] = medallion("#E8590C", (
+        '<path d="M256 110 C300 170 352 200 352 270 C352 330 308 360 256 360 C204 360 160 330 160 270 '
+        'C160 220 196 196 214 160 C224 196 240 212 256 216 C262 180 256 146 256 110 Z" fill="#E8590C"/>'
+        '<path d="M256 236 C282 270 304 286 304 316 C304 342 282 356 256 356 C230 356 208 342 208 316 '
+        'C208 292 230 280 256 236 Z" fill="#FFD43B"/>'), "Streak")
     svgs["leaderboard-daily"] = medallion("#2563D4", (
         '<circle cx="256" cy="230" r="100" fill="none" stroke="#2563D4" stroke-width="18"/>'
         '<line x1="256" y1="230" x2="256" y2="160" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>'
@@ -168,12 +172,13 @@ def main():
         "totalPoints": total,
         "achievements": achievements,
         "leaderboards": [
-            {"id": "snowdoku.chapters", "title": "Chapters Completed", "type": "classic", "sort": "high-to-low",
-             "format": "integer", "suffix": " chapters", "suffixSingular": " chapter", "scoreRange": [0, 29],
-             "image": "badges/leaderboard-chapters.png"},
             {"id": "snowdoku.daily", "title": "Daily Puzzle", "type": "recurring", "recurrence": "daily, starting at 00:00 UTC",
              "sort": "low-to-high", "format": "elapsed time (seconds)", "note": "Only no-hint solves are reported.",
              "image": "badges/leaderboard-daily.png"},
+            {"id": "snowdoku.streak", "title": "Longest Daily Streak", "type": "classic", "sort": "high-to-low",
+             "format": "integer", "suffix": " days", "suffixSingular": " day", "scoreRange": [1, 100000],
+             "note": "The current streak is reported after each daily; Game Center keeps each player's best.",
+             "image": "badges/leaderboard-streak.png"},
         ],
         "challenges": [
             {"id": "snowdoku.challenge.daily", "title": "Race Today's Puzzle", "leaderboard": "snowdoku.daily",

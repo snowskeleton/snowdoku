@@ -605,20 +605,6 @@
   ],
   "leaderboards": [
     {
-      "id": "snowdoku.chapters",
-      "title": "Chapters Completed",
-      "type": "classic",
-      "sort": "high-to-low",
-      "format": "integer",
-      "suffix": " chapters",
-      "suffixSingular": " chapter",
-      "scoreRange": [
-        0,
-        29
-      ],
-      "image": "badges/leaderboard-chapters.png"
-    },
-    {
       "id": "snowdoku.daily",
       "title": "Daily Puzzle",
       "type": "recurring",
@@ -627,6 +613,21 @@
       "format": "elapsed time (seconds)",
       "note": "Only no-hint solves are reported.",
       "image": "badges/leaderboard-daily.png"
+    },
+    {
+      "id": "snowdoku.streak",
+      "title": "Longest Daily Streak",
+      "type": "classic",
+      "sort": "high-to-low",
+      "format": "integer",
+      "suffix": " days",
+      "suffixSingular": " day",
+      "scoreRange": [
+        1,
+        100000
+      ],
+      "note": "The current streak is reported after each daily; Game Center keeps each player's best.",
+      "image": "badges/leaderboard-streak.png"
     }
   ],
   "challenges": [
