@@ -141,10 +141,10 @@ The version is `MARKETING_VERSION` (e.g. `0.1`) and the build number is `CURRENT
 Each TestFlight build:
 
 1. Start from a clean, pushed `main`. Bump `CURRENT_PROJECT_VERSION` in `project.yml` to one more than the highest build in App Store Connect (`asc GET '/v1/builds?filter[app]=<app id>&sort=-version&limit=1'`, see the app-store-connect skill), run `xcodegen generate`, and commit and push the bump.
-2. Archive **for iOS** (`-destination 'generic/platform=iOS'`; Xcode archives for whatever destination is selected, and a Mac archive lands in TestFlight's macOS section, not the iOS list), then export and upload with `ExportOptions.plist`. Signing and upload authenticate with the App Store Connect API key (flags in the app-store-connect skill; keep the key IDs out of this public repo):
+2. Archive **for iOS** (`-destination 'generic/platform=iOS'`; Xcode archives for whatever destination is selected, and a Mac archive lands in TestFlight's macOS section, not the iOS list), then export and upload with `ExportOptions.plist`. The archive can authenticate with the App Store Connect API key (flags in the app-store-connect skill; keep the key IDs out of this public repo), but the **export must not**: distribution uses a cloud-managed certificate, which the App Manager key may not use ("Cloud signing permission error"). Without the key flags, xcodebuild signs and uploads with the Apple ID signed in to Xcode, which works:
    ```bash
-   xcodebuild archive -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'generic/platform=iOS' -archivePath .build/release/Snowdoku-iOS.xcarchive -allowProvisioningUpdates <auth flags>
-   xcodebuild -exportArchive -archivePath .build/release/Snowdoku-iOS.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath .build/release/export -allowProvisioningUpdates <auth flags>
+   xcodebuild archive -project Snowdoku.xcodeproj -scheme Snowdoku -destination 'generic/platform=iOS' -archivePath .build/release/Snowdoku-iOS.xcarchive -allowProvisioningUpdates
+   xcodebuild -exportArchive -archivePath .build/release/Snowdoku-iOS.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath .build/release/export -allowProvisioningUpdates
    ```
 3. Tag `build-<N>` and push the tag.
 4. Wait for processing (`processingState` `VALID`), then put the build in a TestFlight version: it joins the one matching `MARKETING_VERSION` on its own, or a new one if that version is new (only after the user agreed to the new version). The internal group "All Users" gets every build automatically. Add the build to the external group "All Users - External" (`POST /v1/builds/<id>/relationships/betaGroups`). That submits it for beta app review when the version needs one.
