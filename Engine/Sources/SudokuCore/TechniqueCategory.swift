@@ -54,7 +54,7 @@ extension Technique {
         case .frankenFish, .mutantFish: .complexFish
         case .skyscraper, .twoStringKite, .turbotFish, .emptyRectangle: .singleDigitPatterns
         case .uniqueRectangle1, .uniqueRectangle2, .uniqueRectangle3, .uniqueRectangle4, .uniqueRectangle5, .uniqueRectangle6,
-             .hiddenRectangle, .avoidableRectangle, .avoidableRectangle2, .bugPlusOne: .uniqueness
+             .hiddenRectangle, .avoidableRectangle, .avoidableRectangle2, .bugPlusOne, .uniqueRectangleMissing: .uniqueness
         case .xyWing, .xyzWing, .wWing, .wxyzWing: .wings
         case .simpleColoring, .colorWrap, .multiColoring: .coloring
         case .remotePair, .xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC: .chains

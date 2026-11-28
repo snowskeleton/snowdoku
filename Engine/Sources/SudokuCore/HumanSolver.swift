@@ -18,7 +18,7 @@ public struct HumanSolver: Sendable {
             XYWing(), XYZWing(), WWing(), WXYZWing(),
             UniqueRectangle(type: 1), UniqueRectangle(type: 2), UniqueRectangle(type: 3), UniqueRectangle(type: 4),
             UniqueRectangle(type: 5), UniqueRectangle(type: 6), AvoidableRectangle(), AvoidableRectangle2(),
-            HiddenRectangle(), BUGPlusOne(),
+            HiddenRectangle(), BUGPlusOne(), UniqueRectangleMissing(),
             SimpleColoring(), SimpleColoring(wrap: true), MultiColoring(),
             RemotePair(), ChainStrategy(mode: .x), ChainStrategy(mode: .xy), ChainStrategy(mode: .niceLoop), ChainStrategy(mode: .discontinuous),
             ChainStrategy(mode: .aic), ChainStrategy(mode: .grouped),
