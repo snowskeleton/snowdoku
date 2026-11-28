@@ -3,6 +3,15 @@
 /// This runs at nearly every step of a hard solve, so the search works on bitmasks and allocates
 /// only when it reports a step. It visits base and cover sets in the same order as a plain
 /// "every base combination, every cover combination" search, so it finds the same first step.
+///
+/// Every fish has a complement: with U lines still missing the digit, the lines outside the cover
+/// hold the digit only in the lines outside the base, plus the same fins. When each of those
+/// lines does hold one of them, that's a fish of size U - n with the same eliminations. So a
+/// size-n fish whose complement is smaller is that smaller pattern seen from the other side, and
+/// is left to it, as HoDoKu does: a "Jellyfish" with 7 unsolved lines is usually a Swordfish, and
+/// one with 6 an X-Wing. A complement of size 1 is a hidden single, or with fins (which share a
+/// box with its one cell) a claiming locked candidate. (When a line outside the base holds the
+/// digit only in the cover, the complement isn't a fish: the size-n fish is real and is kept.)
 struct Fish: Strategy {
     enum Kind: Sendable { case basic, finned, sashimi }
     let size: Int
@@ -30,20 +39,30 @@ struct Fish: Strategy {
     func find(_ b: Board, _ out: inout StepCollector) {
         var lineIdx = [Int](repeating: 0, count: 9)
         var lineMask = [UInt16](repeating: 0, count: 9)
+        var allMask = [UInt16](repeating: 0, count: 9)
         var covers: [UInt16] = []
         covers.reserveCapacity(16)
         let maxPositions = kind == .basic ? size : size + 3
         for d in 1...9 {
             for rowsBase in [true, false] {
                 // lines: base line index + position mask (bit k = cross index k)
-                var count = 0
+                var count = 0, unsolved = 0
                 for i in 0..<9 {
                     let m = b.positionMask(d, rowsBase ? i : 9 + i)
+                    allMask[i] = m
                     let n = m.nonzeroBitCount
+                    if n > 0 { unsolved += 1 }
                     if n == 0 || n > maxPositions { continue }
                     lineIdx[count] = i; lineMask[count] = m; count += 1
                 }
                 guard count >= size else { continue }
+                /// Whether the complement of this base and cover is a smaller fish (see above).
+                func complementIsSmaller(_ baseSet: UInt16, _ cover: UInt16) -> Bool {
+                    guard unsolved < 2 * size else { return false }
+                    guard unsolved - size >= 2 else { return true }
+                    for i in 0..<9 where baseSet & (1 << UInt16(i)) == 0 && allMask[i] != 0 && allMask[i] & ~cover == 0 { return false }
+                    return true
+                }
 
                 forEachCombination(count, size) { idx in
                     var baseSet: UInt16 = 0, union: UInt16 = 0
@@ -51,7 +70,7 @@ struct Fish: Strategy {
                     let n = union.nonzeroBitCount
 
                     if kind == .basic {
-                        guard n == size else { return true }
+                        guard n == size, !complementIsSmaller(baseSet, union) else { return true }
                         guard hasTarget(b, d, rowsBase, baseSet, cover: union, finBox: -1) else { return true }
                         report(b, d, rowsBase, idx.map { (lineIdx[$0], lineMask[$0]) }, baseSet, cover: union, out: &out)
                         return !out.done
@@ -87,7 +106,7 @@ struct Fish: Strategy {
                             }
                             if (m & cover).nonzeroBitCount <= 1 { sashimi = true }
                         }
-                        guard sameBand, sashimi == (kind == .sashimi) else { continue }
+                        guard sameBand, sashimi == (kind == .sashimi), !complementIsSmaller(baseSet, cover) else { continue }
                         let finCross = (union & ~cover).trailingZeroBitCount
                         let finBox = rowsBase ? Geometry.boxOf[finLine * 9 + finCross] : Geometry.boxOf[finCross * 9 + finLine]
                         guard hasTarget(b, d, rowsBase, baseSet, cover: cover, finBox: finBox) else { continue }
