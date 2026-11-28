@@ -194,6 +194,7 @@ extension Technique {
             [
                 "A unique rectangle whose two roof cells have extra candidates. To avoid the deadly pattern, at least one roof cell must take one of its extras.",
                 "So the roof's extra digits act together like a single cell. Combine that virtual cell with other cells in a shared house to form a naked subset, and the subset's digits can be removed from the rest of the house.",
+                "This works even when both roof cells have the same single extra digit Z: one of them is Z, so the virtual cell is just {Z}, and it pairs with a {Z, W} cell like any other naked pair.",
             ]
         case .uniqueRectangle4:
             [

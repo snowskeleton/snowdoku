@@ -128,12 +128,17 @@ struct UniqueRectangle: Strategy {
                                 }
                             }
                         } else {
-                            // Type 3: roof extras act as a virtual cell in a naked subset.
+                            // Type 3: roof extras act as a virtual cell in a naked subset. A single
+                            // extra digit counts too (one roof must take it), and the subset may be
+                            // as large as the house allows: a big naked subset is a small hidden one.
                             let extra = e1 | e2
-                            guard extra.nonzeroBitCount >= 2 else { continue }
+                            guard extra != 0 else { continue }
+                            let extraName = extra.nonzeroBitCount == 1 ? "the extra digit \(Mask.first(extra))"
+                                : "an extra digit (\(Mask.digits(extra).map(String.init).joined(separator: "/")))"
                             for h in shared {
                                 let others = Geometry.houses[h].filter { b.isEmpty($0) && !roof.contains($0) }
-                                for k in 1...3 {
+                                guard others.count >= 2 else { continue }
+                                for k in 1...(others.count - 1) {
                                     forEachCombination(others.count, k) { idx in
                                         let set = idx.map { others[$0] }
                                         let u2 = b.union(set) | extra
@@ -143,8 +148,18 @@ struct UniqueRectangle: Strategy {
                                             for d in Mask.digits(b.candidates[c] & u2) { elims.append(Candidate(c, d)) }
                                         }
                                         guard !elims.isEmpty else { return true }
+                                        let rest = others.filter { !set.contains($0) }
+                                        let because: String
+                                        if k <= 3 || rest.count >= k {
+                                            because = "Together with \(Geometry.cellsName(set)) they form a locked set in \(Geometry.houseName(h))"
+                                        } else {
+                                            // Easier seen from the other side: what's left for the rest of the house.
+                                            let placed = Geometry.houses[h].reduce(DigitMask(0)) { b.isEmpty($1) ? $0 : $0 | Mask.bit(b.value($1)) }
+                                            let left = Mask.all & ~placed & ~u2
+                                            because = "That roof cell and \(Geometry.cellsName(set)) take the digits \(Mask.digits(u2).map(String.init).joined(separator: "/")), so the rest of \(Geometry.houseName(h)) (\(Geometry.cellsName(rest)) and the other roof cell) must hold \(Mask.digits(left).map(String.init).joined(separator: "/"))"
+                                        }
                                         out.add(Step(technique, eliminations: elims, houses: [h], highlights: hl + set.map { Highlight($0, 0, .secondary) },
-                                                     explanation: "\(title): in \(name), one roof cell must hold an extra digit (\(Mask.digits(extra).map(String.init).joined(separator: "/"))). Together with \(Geometry.cellsName(set)) they form a locked set in \(Geometry.houseName(h)): \(describeEliminations(elims)).\(note)"))
+                                                     explanation: "\(title): in \(name), one roof cell must hold \(extraName). \(because): \(describeEliminations(elims)).\(note)"))
                                         return !out.done
                                     }
                                     if out.done { return }
