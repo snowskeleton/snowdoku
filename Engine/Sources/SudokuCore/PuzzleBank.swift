@@ -49,6 +49,18 @@ public struct BankedPuzzle: Hashable, Sendable {
 }
 
 extension Daily {
+    /// How many of each tier's puzzles (the first ones, in bank order) dailies draw from. Pinned, so
+    /// appending puzzles to the bank never changes a daily. Raising a count changes every daily of
+    /// that tier from then on, and players on different app versions would get different puzzles.
+    public static let poolSize: [Difficulty: Int] = [
+        .beginner: 500, .easy: 499, .medium: 538, .hard: 466, .expert: 491, .master: 506, .extreme: 150,
+    ]
+
+    /// Today's pick from a whole tier of the bank, drawing only from its first `poolSize` puzzles.
+    public static func pick(from tier: [BankedPuzzle], difficulty: Difficulty, seed: UInt64) -> GeneratedPuzzle? {
+        pick(from: Array(tier.prefix(poolSize[difficulty] ?? tier.count)), seed: seed)
+    }
+
     /// Today's pick from a tier of the bank: the same puzzle and transform for everyone on `seed`'s
     /// day, and unaffected by engine changes as long as the bank's lines keep their order.
     public static func pick(from pool: [BankedPuzzle], seed: UInt64) -> GeneratedPuzzle? {

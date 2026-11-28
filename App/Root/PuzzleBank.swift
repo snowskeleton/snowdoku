@@ -21,6 +21,6 @@ enum PuzzleBank {
 
     /// The daily puzzle for a `DailySchedule` day: the same for everyone, whatever the engine does.
     static func daily(_ d: Difficulty, seed: UInt64) -> GeneratedPuzzle? {
-        Daily.pick(from: all[d] ?? [], seed: seed)
+        Daily.pick(from: all[d] ?? [], difficulty: d, seed: seed)
     }
 }
