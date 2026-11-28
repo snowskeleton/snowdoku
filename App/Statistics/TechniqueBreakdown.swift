@@ -8,7 +8,7 @@ struct TechniqueBreakdown: View {
 
     var body: some View {
         let counts = Dictionary(grouping: solves, by: \.hardest).mapValues(\.count)
-            .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key.score < $1.key.score }
+            .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
             .prefix(limit)
         let top = Double(counts.first?.value ?? 1)
         ForEach(counts, id: \.key) { technique, count in

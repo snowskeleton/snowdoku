@@ -15,10 +15,10 @@ struct TechniqueSkillSections: View {
 
     var body: some View {
         let weak = rated.filter { $0.1.recentRate < Self.weakBelow }
-            .sorted { $0.1.recentRate != $1.1.recentRate ? $0.1.recentRate < $1.1.recentRate : $0.0.score < $1.0.score }
+            .sorted { $0.1.recentRate != $1.1.recentRate ? $0.1.recentRate < $1.1.recentRate : $0.0 < $1.0 }
             .prefix(3)
         // The hardest techniques the player has down are the interesting strengths, not the singles.
-        let strong = rated.filter { $0.1.recentRate >= Self.strongFrom }.sorted { $0.0.score > $1.0.score }.prefix(3)
+        let strong = rated.filter { $0.1.recentRate >= Self.strongFrom }.sorted { $0.0 > $1.0 }.prefix(3)
         if !weak.isEmpty {
             Section {
                 ForEach(weak, id: \.0) { TechniqueSkillRow(technique: $0.0, skill: $0.1) }

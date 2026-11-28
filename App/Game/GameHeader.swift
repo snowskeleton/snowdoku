@@ -28,7 +28,7 @@ struct GameHeader: View {
                     .minimumScaleFactor(0.8)
                 Spacer()
             } else {
-                Label(game.difficulty.name, systemImage: "chart.bar.fill")
+                Label(game.levelName, systemImage: "chart.bar.fill")
                     .foregroundStyle(.secondary)
                 Spacer()
             }

@@ -17,6 +17,10 @@ struct GameRecord: Codable {
     var mistakes: Int
     var hintsUsed: Int
     var difficulty: Difficulty
+    /// A rated puzzle's level (`Rating.level`) and the level its hints work at
+    /// (`Rating.techniqueLevel`). Missing for campaign games and drills, and in older saves.
+    var level: Level?
+    var techniqueLevel: Level?
     var hardest: Technique
     var techniques: [Technique]
     var dailyKey: String?

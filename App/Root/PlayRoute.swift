@@ -7,5 +7,7 @@ enum PlayRoute: Hashable {
     case chapter(String)
     case lesson(Technique)
     case freePlay
+    /// The levels of one tier in Free Play.
+    case freePlayTier(Difficulty)
     case game
 }

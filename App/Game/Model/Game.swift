@@ -9,6 +9,11 @@ final class Game {
     let solution: Grid
     let givens: CellSet
     let difficulty: Difficulty
+    /// A rated puzzle's level (`Rating.level`); nil for campaign games and drills.
+    let level: Level?
+    /// The level hints work at: the smallest technique set that solves the puzzle, so a hint
+    /// never needs a technique the puzzle doesn't (`Rating.techniqueLevel`).
+    let techniqueLevel: Level?
     let hardest: Technique
     let techniques: [Technique]
     let dailyKey: String?
@@ -111,6 +116,8 @@ final class Game {
         solution = p.solution
         givens = CellSet((0..<81).filter { p.puzzle[$0] != 0 })
         difficulty = p.rating.difficulty
+        level = p.rating.level
+        techniqueLevel = p.rating.techniqueLevel
         hardest = p.rating.hardest
         techniques = p.rating.techniques
         self.dailyKey = dailyKey
@@ -138,6 +145,8 @@ final class Game {
         givens = p.givens
         let ch = c.chapterInfo
         difficulty = ch?.lead.difficulty ?? .easy
+        level = nil
+        techniqueLevel = nil
         hardest = ch?.lead ?? .nakedSingle
         techniques = ch?.family ?? []
         dailyKey = nil
@@ -164,6 +173,8 @@ final class Game {
         self.solution = solution
         givens = d.givens
         difficulty = d.technique.difficulty
+        level = nil
+        techniqueLevel = nil
         hardest = d.technique
         techniques = [d.technique]
         dailyKey = nil
@@ -194,6 +205,8 @@ final class Game {
         solution = r.solution
         givens = CellSet((0..<81).filter { r.puzzle[$0] != 0 })
         difficulty = r.difficulty
+        level = r.level
+        techniqueLevel = r.techniqueLevel
         hardest = r.hardest
         techniques = r.techniques
         dailyKey = r.dailyKey
@@ -222,7 +235,7 @@ final class Game {
 
     var record: GameRecord {
         GameRecord(id: id, puzzle: puzzle, solution: solution, values: values, notes: notes, centeredNotes: centeredNotes, autoNotes: autoNotes, elapsed: elapsed(),
-                   mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
+                   mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, level: level, techniqueLevel: techniqueLevel, hardest: hardest,
                    techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
                    drill: drill, drillState: drill == nil ? nil : drillState, moves: moves, campaign: campaign,
                    spotlight: spotlight, firstRun: firstRun)
@@ -232,8 +245,11 @@ final class Game {
         if let ch = campaign?.chapterInfo { return ch.title }
         if let drill { return "Drill: \(drill.technique.name)" }
         if let practice { return "Practice: \(practice.name)" }
-        return dailyKey != nil ? "Daily" : difficulty.name
+        return dailyKey != nil ? "Daily" : levelName
     }
+
+    /// "Medium 3" for a rated puzzle, else the tier's name.
+    var levelName: String { level?.name ?? difficulty.name }
 
     // MARK: Clock
 
@@ -753,7 +769,7 @@ final class Game {
             result = .step(target, instances: 1)
         } else {
             result = HintEngine.hint(values: values, notes: notes, givens: givens, solution: solution,
-                                     solver: solver, near: selected)
+                                     solver: solver, level: techniqueLevel ?? .beginner1, near: selected)
         }
         hintsUsed += 1
         breakFirstRun()

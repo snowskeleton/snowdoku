@@ -10,7 +10,7 @@ struct TechniqueSkillsView: View {
         List {
             ForEach(Difficulty.allCases.filter { tiers[$0] != nil }, id: \.self) { d in
                 Section(d.name) {
-                    ForEach(tiers[d]!.sorted { $0.score < $1.score }, id: \.self) { t in
+                    ForEach(tiers[d]!.sorted(), id: \.self) { t in
                         TechniqueSkillRow(technique: t, skill: skills[t]!)
                     }
                 }

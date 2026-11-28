@@ -16,9 +16,20 @@ final class GameStore {
         didSet { LastActivity.current = lastActivity }
     }
 
-    /// Levels offered for random games. Extreme puzzles are too rare to generate on device,
+    /// Tiers offered for random games. Extreme puzzles are too rare to generate on device,
     /// so Extreme is offered only when the bundled bank has some.
     static let playable: [Difficulty] = Difficulty.allCases.filter { $0 < .extreme || PuzzleBank.hasPuzzles($0) }
+
+    /// The levels of a tier offered for random games: like tiers, any level below Extreme can
+    /// fall back to generating on device.
+    static func playableLevels(_ d: Difficulty) -> [Level] {
+        Level.levels(in: d).filter { $0 < .extreme || PuzzleBank.hasPuzzles($0) }
+    }
+
+    /// A level to play: `level` if it's playable, else the hardest playable one.
+    static func playableLevel(_ level: Level) -> Level {
+        level < .extreme || PuzzleBank.hasPuzzles(level) ? level : .master3
+    }
 
     private let stats: StatsStore
     let campaign: CampaignProgress
@@ -78,7 +89,8 @@ final class GameStore {
     private func noteActivity(_ slot: GameSlot) {
         switch slot {
         case .campaign: lastActivity = .campaign
-        case .random(let d): lastActivity = .freePlay(d)
+        case .random:
+            if let l = saved[slot.key]?.record.level ?? game?.level { lastActivity = .freePlayLevel(l) }
         default: break
         }
     }
@@ -110,7 +122,7 @@ final class GameStore {
         stats.recordStart(p.rating.difficulty)
         isPlaying = true
         save()
-        if dailyKey == nil && practice == nil { lastActivity = .freePlay(p.rating.difficulty) }
+        if dailyKey == nil && practice == nil { lastActivity = .freePlayLevel(p.rating.level) }
     }
 
     /// Starts a specific puzzle (used by debug/test launch arguments; later by puzzle import).
@@ -119,18 +131,18 @@ final class GameStore {
         start(GeneratedPuzzle(puzzle: puzzle, solution: solution, rating: Rater.rate(puzzle, solution: solution)))
     }
 
-    /// Serves a puzzle from the bundled bank, randomly transformed; generates one on device
-    /// only if the bank has none for this level.
-    func newGame(_ difficulty: Difficulty) async {
-        if let p = PuzzleBank.random(difficulty) { start(p); return }
-        generating = "Building a \(difficulty.name.lowercased()) puzzle…"
+    /// Serves a puzzle of `level` from the bundled bank, randomly transformed; generates one on
+    /// device only if the bank has none for this level.
+    func newGame(_ level: Level) async {
+        if let p = PuzzleBank.random(level) { start(p); return }
+        generating = "Building a \(level.name) puzzle…"
         defer { generating = nil }
         // Generation is CPU-heavy; keep it off the main actor.
         let p = await Task.detached(priority: .userInitiated) { () -> GeneratedPuzzle? in
             var rng = SystemRandomNumberGenerator()
-            return Generator.generate(difficulty: difficulty, maxAttempts: 4000, using: &rng)
+            return Generator.generate(level: level, maxAttempts: 4000, using: &rng)
         }.value
-        guard let p else { errorMessage = "Couldn't build a \(difficulty.name) puzzle. Try again."; return }
+        guard let p else { errorMessage = "Couldn't build a \(level.name) puzzle. Try again."; return }
         start(p)
     }
 
@@ -277,7 +289,7 @@ final class GameStore {
     enum ContinueAction {
         case resume(SavedGame)
         case campaign(CampaignChapter, CampaignStep)
-        case newGame(Difficulty)
+        case newGame(Level)
     }
 
     var continueAction: ContinueAction? {
@@ -287,7 +299,10 @@ final class GameStore {
             if let n = campaign.nextStep { return .campaign(n.chapter, n.step) }
         case .freePlay(let d):
             if let s = savedGame(.random(d)) { return .resume(s) }
-            return .newGame(GameStore.playable.contains(d) ? d : .master)
+            return .newGame(GameStore.playableLevel(Level.highest(in: d)))
+        case .freePlayLevel(let l):
+            if let s = savedGame(.random(l.tier)) { return .resume(s) }
+            return .newGame(GameStore.playableLevel(l))
         case nil:
             break
         }
@@ -315,7 +330,7 @@ final class GameStore {
         defer { generating = nil }
         let p = await Task.detached(priority: .userInitiated) { () -> GeneratedPuzzle? in
             var rng = SplitMix64(seed: seed)
-            return Generator.generate(difficulty: difficulty, maxAttempts: 4000, using: &rng)
+            return Generator.generate(level: Daily.level(for: difficulty), maxAttempts: 4000, using: &rng)
         }.value
         guard let p else { errorMessage = "Couldn't prepare today's puzzle."; return }
         start(p, dailyKey: key)
@@ -359,9 +374,10 @@ final class GameStore {
             }
             return
         }
+        // A level (`medium3`) or a tier (`hard`, its highest level).
         guard let name = value(after: "-demo"),
-              let d = Difficulty.allCases.first(where: { $0.name.lowercased() == name }) else { return }
-        await newGame(d)
+              let level = Level(rawValue: name) ?? Difficulty.allCases.first(where: { $0.name.lowercased() == name }).map(Level.highest) else { return }
+        await newGame(level)
         guard let g = game else { return }
         g.fillNotes()
         g.selected = g.values.firstIndex(of: 0)
