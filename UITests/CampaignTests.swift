@@ -96,7 +96,7 @@ final class CampaignTests: XCTestCase {
         app.launch()
         solveLastCell(app)
         app.buttons["Home"].tap()
-        let subtitle = continueSubtitle(app)
+        let subtitle = continueSubtitle(app).replacingOccurrences(of: "Continue, ", with: "")
         // "Beginner 2 · new game": another game of the level just played.
         let level = try XCTUnwrap(subtitle.components(separatedBy: " · ").first)
         XCTAssertTrue(level.hasPrefix("Beginner ") && subtitle.hasSuffix(" · new game"), subtitle)

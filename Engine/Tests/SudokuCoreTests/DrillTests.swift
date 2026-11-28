@@ -55,7 +55,7 @@ import Testing
         #expect(drills.count > 500)
         var broken: [String] = []
         for d in drills where d.step()?.technique != d.technique {
-            broken.append("\(d.technique.rawValue): \(d.values.string) → \(HumanSolver().nextStep(d.board)?.technique.rawValue ?? "nil")")
+            broken.append("\(d.technique.rawValue): \(d.values.string) → \(HumanSolver().nextStep(d.board, level: d.technique.level)?.technique.rawValue ?? "nil")")
         }
         #expect(broken.isEmpty, "Re-mine with `sudokugen drills`: \(broken.prefix(5).joined(separator: "\n"))")
     }

@@ -10,8 +10,8 @@ public struct HumanSolver: Sendable {
     public let strategies: [any Strategy]
 
     /// Every strategy the engine knows, in solve order. Not the teaching order (`Technique.rank`):
-    /// as in HoDoKu's default order, quads and basic fish come before the single-digit patterns and
-    /// wings, and finned fish only after the wings and the uniqueness family, so a plain X-Wing is
+    /// as in HoDoKu's default order, quads, basic fish, Remote Pair and BUG+1 come before the
+    /// single-digit patterns and wings, and finned fish only after the wings and the uniqueness family, so a plain X-Wing is
     /// always found before a finned one. Levels still gate everything (see the type's comment).
     public static let allStrategies: [any Strategy] = [
         // Singles, then box/line intersections and subsets.
@@ -19,13 +19,14 @@ public struct HumanSolver: Sendable {
         Pointing(), Claiming(), LockedSubset(size: 2), NakedSubset(size: 2), LockedSubset(size: 3),
         HiddenSubset(size: 2), NakedSubset(size: 3), HiddenSubset(size: 3),
         NakedSubset(size: 4), HiddenSubset(size: 4),
-        // Basic fish.
+        // Basic fish, then Remote Pair and BUG+1 (cheap to spot, early in HoDoKu's order too).
         Fish(size: 2, kind: .basic), Fish(size: 3, kind: .basic), Fish(size: 4, kind: .basic),
+        RemotePair(), BUGPlusOne(),
         // Single-digit patterns and wings.
         TurbotFamily(kind: .skyscraper), TurbotFamily(kind: .twoStringKite), TurbotFamily(kind: .turbotFish),
-        EmptyRectangle(), XYWing(), XYZWing(), WWing(), RemotePair(),
+        EmptyRectangle(), XYWing(), XYZWing(), WWing(),
         // Uniqueness.
-        BUGPlusOne(), UniqueRectangle(type: 1), UniqueRectangle(type: 2), UniqueRectangle(type: 5),
+        UniqueRectangle(type: 1), UniqueRectangle(type: 2), UniqueRectangle(type: 5),
         UniqueRectangle(type: 4), UniqueRectangle(type: 6), UniqueRectangle(type: 3), UniqueRectangleMissing(),
         HiddenRectangle(), AvoidableRectangle(), AvoidableRectangle2(),
         // Finned fish.

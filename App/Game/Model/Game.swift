@@ -174,7 +174,8 @@ final class Game {
         givens = d.givens
         difficulty = d.technique.difficulty
         level = nil
-        techniqueLevel = nil
+        // Hints find the drill's move: it's the next one at its technique's level.
+        techniqueLevel = d.technique.level
         hardest = d.technique
         techniques = [d.technique]
         dailyKey = nil

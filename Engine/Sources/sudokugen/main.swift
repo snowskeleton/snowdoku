@@ -248,7 +248,7 @@ case "chain-bench":
     let chainTechs: [Technique] = [.xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC]
     let rows = Locked<[Int: String]>([:])
     let solver = HumanSolver()
-    func ms(_ t: DispatchTime) -> Double { Double(DispatchTime.now().uptimeNanoseconds - t.uptimeNanoseconds) / 1e6 }
+    let ms: @Sendable (DispatchTime) -> Double = { Double(DispatchTime.now().uptimeNanoseconds - $0.uptimeNanoseconds) / 1e6 }
     DispatchQueue.concurrentPerform(iterations: bank.count) { i in
         let p = bank[i]
         guard case .unique(let sol) = BruteForce.analyze(p.puzzle) else { return }
@@ -462,16 +462,20 @@ case "merge-drills":
             byTechnique[d.technique, default: []].append(d)
         }
     }
-    // Re-check every drill against the current solver order. If its next move is now a different
-    // technique, it becomes a drill for that one (a singles drill only when its candidates are the
-    // plain ones, since those are shown without notes).
+    // Re-check every drill against the current solver. If its next move at its technique's level
+    // is now a different technique, it becomes a drill for that one when that holds at the new
+    // technique's level too (a singles drill only when its candidates are the plain ones, since
+    // those are shown without notes).
     let all = byTechnique.values.flatMap { $0 }
     let checked = Locked<[Technique: [(drill: Drill, complexity: Int, cells: Int)]]>([:])
     let relabeled = Locked(0)
     DispatchQueue.concurrentPerform(iterations: all.count) { i in
         var d = all[i]
-        guard let s = HumanSolver().nextStep(d.board) else { return }
+        let solver = HumanSolver()
+        guard var s = solver.nextStep(d.board, level: d.technique.level) else { return }
         if s.technique != d.technique {
+            guard let again = solver.nextStep(d.board, level: s.technique.level), again.technique == s.technique else { return }
+            s = again
             if s.technique.difficulty == .beginner && Board(d.values).candidates != d.candidates { return }
             d.technique = s.technique
             relabeled.with { $0 += 1 }
@@ -720,16 +724,6 @@ case "campaign-merge":
     // keeps only what still qualifies, with fresh counts: it must still be solved by its
     // techniques, use the chapter's at least once, need them, and (mixed) still mix enough.
     // Mid-solve starts count only what happens after the cut.
-    func recheck(_ p: inout CampaignPuzzle) -> Bool {
-        guard let ch = CampaignChapter.named(p.chapter), let a = p.analysis(), a.solved, a.uses >= 1 else { return false }
-        if p.kind == .mixed && a.outside.count < ch.mixedVariety { return false }
-        let without = ch.allowed(p.kind, member: p.member).subtracting(ch.focusTechniques(p.kind, member: p.member))
-        if HumanSolver(allowing: without).solve(p.board).solved { return false }
-        p.uses = a.uses
-        p.outside = a.outside.sorted()
-        p.totalScore = a.totalScore
-        return true
-    }
     // The same givens are often mined several times; check each (chapter, kind, member, start) once.
     var unique = Set<String>()
     let loaded = pool.filter { p in
@@ -738,7 +732,7 @@ case "campaign-merge":
     let recounted = Locked<[CampaignPuzzle]>([])
     DispatchQueue.concurrentPerform(iterations: loaded.count) { i in
         var p = loaded[i]
-        if recheck(&p) { recounted.with { $0.append(p) } }
+        if CampaignRecheck.recheck(&p) { recounted.with { $0.append(p) } }
     }
     FileHandle.standardError.write("\(recounted.with { $0.count }) of \(loaded.count) distinct mined puzzles still qualify\n".data(using: .utf8)!)
     pool = recounted.with { $0 }
@@ -752,7 +746,7 @@ case "campaign-merge":
         if p.startsMidSolve {
             p.values = nil
             p.candidates = nil
-            guard recheck(&p) else { return }
+            guard CampaignRecheck.recheck(&p) else { return }
         }
         asEndless.with { $0.append(p) }
     }
@@ -881,4 +875,18 @@ case "drills":
 
 default:
     print(usage)
+}
+
+/// `campaign-merge`'s re-check of a mined puzzle against the current engine (see there).
+enum CampaignRecheck {
+    static func recheck(_ p: inout CampaignPuzzle) -> Bool {
+        guard let ch = CampaignChapter.named(p.chapter), let a = p.analysis(), a.solved, a.uses >= 1 else { return false }
+        if p.kind == .mixed && a.outside.count < ch.mixedVariety { return false }
+        let without = ch.allowed(p.kind, member: p.member).subtracting(ch.focusTechniques(p.kind, member: p.member))
+        if HumanSolver(allowing: without).solve(p.board).solved { return false }
+        p.uses = a.uses
+        p.outside = a.outside.sorted()
+        p.totalScore = a.totalScore
+        return true
+    }
 }
