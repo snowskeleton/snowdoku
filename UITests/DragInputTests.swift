@@ -28,6 +28,15 @@ final class DragInputTests: XCTestCase {
         from.press(forDuration: 0.1, thenDragTo: to)
     }
 
+    /// A quick stroke from near the edge of a cell, the way a finger moves: by the time the pan is
+    /// recognized, the touch is already in the next cell.
+    func flick(_ from: XCUIElement, _ to: XCUIElement) {
+        let dy: CGFloat = from.frame.midY < to.frame.midY ? 0.9 : 0.1
+        from.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dy))
+            .press(forDuration: 0, thenDragTo: to.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                   withVelocity: 2000, thenHoldForDuration: 0.05)
+    }
+
     func testDraggingAddsThenRemovesNotes() {
         app.buttons["Note 4"].tap()
         drag(cell(1, 3), cell(1, 7))
@@ -82,6 +91,25 @@ final class DragInputTests: XCTestCase {
         XCTAssertTrue(cell(1, 4).isSelected)
         XCTAssertFalse(cell(1, 3).isSelected)
         XCTAssertFalse(cell(1, 6).isSelected)
+    }
+
+    /// A stroke may start on a cell above a given and run down through it, as well as the other way.
+    func testDraggingDownThroughAGivenRemovesNotes() {
+        // Column 3 is . . 8 . from the top.
+        app.buttons["Note 4"].tap()
+        for r in [1, 2, 4] { cell(r, 3).tap() }
+        for r in [1, 2, 4] { XCTAssertEqual(cell(r, 3).label, "Row \(r), column 3, notes 4") }
+
+        flick(cell(2, 3), cell(4, 3))
+        XCTAssertEqual(cell(2, 3).label, "Row 2, column 3, empty", "the stroke starts by removing 4")
+        XCTAssertEqual(cell(4, 3).label, "Row 4, column 3, empty", "and keeps removing past the given")
+        XCTAssertEqual(cell(1, 3).label, "Row 1, column 3, notes 4")
+
+        // Back up the other way.
+        for r in [2, 4] { cell(r, 3).tap() }
+        flick(cell(4, 3), cell(2, 3))
+        XCTAssertEqual(cell(4, 3).label, "Row 4, column 3, empty")
+        XCTAssertEqual(cell(2, 3).label, "Row 2, column 3, empty")
     }
 
     func testABigDigitFillsTheSelectionThenClearsIt() {

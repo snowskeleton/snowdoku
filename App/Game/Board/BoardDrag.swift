@@ -15,20 +15,35 @@ enum BoardDragEvent {
 struct BoardDrag: UIGestureRecognizerRepresentable {
     let action: (BoardDragEvent) -> Void
 
-    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
-        let g = UIPanGestureRecognizer()
+    /// Remembers where the touch went down. The pan's own translation starts where it was
+    /// recognized, which on a quick stroke is already a cell or more away.
+    final class Recognizer: UIPanGestureRecognizer {
+        var touchDown: CGPoint?
+
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+            if numberOfTouches == 0 { touchDown = touches.first?.location(in: view) }
+            super.touchesBegan(touches, with: event)
+        }
+    }
+
+    func makeUIGestureRecognizer(context: Context) -> Recognizer {
+        let g = Recognizer()
         g.maximumNumberOfTouches = 1
         return g
     }
 
-    func handleUIGestureRecognizerAction(_ g: UIPanGestureRecognizer, context: Context) {
+    func handleUIGestureRecognizerAction(_ g: Recognizer, context: Context) {
         switch g.state {
-        case .began, .changed:
+        case .began, .changed, .ended:
             let p = context.converter.localLocation
-            let t = context.converter.localTranslation ?? .zero
-            action(.changed(start: CGPoint(x: p.x - t.x, y: p.y - t.y), location: p,
+            // The view's space and the board's differ only by an offset.
+            let now = g.location(in: g.view)
+            let down = g.touchDown ?? now
+            action(.changed(start: CGPoint(x: p.x - (now.x - down.x), y: p.y - (now.y - down.y)), location: p,
                             shift: g.modifierFlags.contains(.shift)))
-        case .ended, .cancelled, .failed:
+            // A quick stroke's last stretch arrives only with the end.
+            if g.state == .ended { action(.ended) }
+        case .cancelled, .failed:
             action(.ended)
         default:
             break
