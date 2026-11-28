@@ -194,6 +194,7 @@ extension Technique {
             [
                 "A unique rectangle whose two roof cells have extra candidates. To avoid the deadly pattern, at least one roof cell must take one of its extras.",
                 "So the roof's extra digits act together like a single cell. Combine that virtual cell with other cells in a shared house to form a naked subset, and the subset's digits can be removed from the rest of the house.",
+                "This works even when both roof cells have the same single extra digit Z: one of them is Z, so the virtual cell is just {Z}, and it pairs with a {Z, W} cell like any other naked pair.",
             ]
         case .uniqueRectangle4:
             [
@@ -214,6 +215,13 @@ extension Technique {
             [
                 "A deadly-pattern argument that leans on strong links instead of bare cells. One corner of the rectangle is plain {X, Y}, and the corner opposite it has a strong link on X along both of its lines (X can only go in the rectangle's cells there).",
                 "If that opposite corner held Y, those strong links would force X into both of its neighbors and Y into the rest, building the deadly pattern. So the opposite corner can't be Y.",
+            ]
+        case .uniqueRectangleMissing:
+            [
+                "The unique rectangles so far all need every corner to still show both digits. But the deadly pattern is about the **final grid**, not your notes: if the four corners ended up holding only X and Y, swapping X and Y would give a second solution, whatever notes you crossed out along the way.",
+                "So a rectangle still counts when a corner has **lost** X or Y to an earlier step. The one thing that must not have happened is a **given** ruling the digit out of that corner (a given X in its row, column or box): then the swap could never have worked in the first place.",
+                "Every rectangle type works this way. A Type 1 with a missing candidate: three corners are {X, Y}, the fourth is {X, Z} because its Y was removed earlier. It still can't be X, so it's Z.",
+                "**How to spot it:** it's hard, because the missing digit isn't on the board any more. Look for three or more corners of a rectangle on two boxes that share a pair, then check whether the odd corner's missing digit was crossed out by a step rather than blocked by a given.",
             ]
         case .avoidableRectangle:
             [

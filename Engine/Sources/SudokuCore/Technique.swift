@@ -50,7 +50,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
     case xyWing, xyzWing, wWing, wxyzWing
     // Uniqueness
     case uniqueRectangle1, uniqueRectangle2, uniqueRectangle3, uniqueRectangle4, uniqueRectangle5, uniqueRectangle6
-    case hiddenRectangle, avoidableRectangle, avoidableRectangle2, bugPlusOne
+    case hiddenRectangle, avoidableRectangle, avoidableRectangle2, bugPlusOne, uniqueRectangleMissing
     // Coloring
     case simpleColoring, colorWrap, multiColoring
     // Chains
@@ -104,6 +104,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .uniqueRectangle5: "Unique Rectangle Type 5"
         case .uniqueRectangle6: "Unique Rectangle Type 6"
         case .hiddenRectangle: "Hidden Rectangle"
+        case .uniqueRectangleMissing: "Unique Rectangle (Missing Candidate)"
         case .avoidableRectangle: "Avoidable Rectangle Type 1"
         case .avoidableRectangle2: "Avoidable Rectangle Type 2"
         case .bugPlusOne: "BUG+1"
@@ -165,6 +166,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .swordfish: 165
         case .xyzWing: 170
         case .wWing: 175
+        case .uniqueRectangleMissing: 180
         case .uniqueRectangle3: 105
         case .hiddenRectangle: 106
         case .avoidableRectangle: 107
@@ -221,7 +223,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
     public var assumesUniqueness: Bool {
         switch self {
         case .uniqueRectangle1, .uniqueRectangle2, .uniqueRectangle3, .uniqueRectangle4, .uniqueRectangle5, .uniqueRectangle6,
-             .hiddenRectangle, .avoidableRectangle, .avoidableRectangle2, .bugPlusOne: true
+             .hiddenRectangle, .avoidableRectangle, .avoidableRectangle2, .bugPlusOne, .uniqueRectangleMissing: true
         default: false
         }
     }
@@ -265,6 +267,7 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case .avoidableRectangle2: "Two solved (non-given) corners and two open corners would form a swappable rectangle unless an open corner takes its extra digit."
         case .avoidableRectangle: "Three solved (non-given) corners would let the fourth complete a swappable rectangle."
         case .hiddenRectangle: "Strong links around a rectangle force one corner to avoid the deadly pattern."
+        case .uniqueRectangleMissing: "A rectangle still counts when a corner has lost one of its two digits to an earlier step: the swap would still work."
         case .bugPlusOne: "Every cell but one is bivalue; the extra candidate in that cell must be true."
         case .simpleColoring: "Color a digit's strong-link chain in two colors; one color is true, so a cell seeing both colors loses the digit."
         case .colorWrap: "Color a digit's strong-link chain in two colors; if two cells of one color see each other, that whole color is false."

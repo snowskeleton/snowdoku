@@ -176,7 +176,7 @@ enum Hodoku {
         [.skyscraper, .twoStringKite, .turbotFish, .emptyRectangle, .xChain, .simpleColoring, .colorWrap, .multiColoring],
         [.xyWing, .xyzWing, .wWing, .wxyzWing, .remotePair, .xyChain],
         [.uniqueRectangle1, .uniqueRectangle2, .uniqueRectangle3, .uniqueRectangle4, .uniqueRectangle5, .uniqueRectangle6,
-         .hiddenRectangle, .avoidableRectangle, .avoidableRectangle2, .bugPlusOne],
+         .hiddenRectangle, .avoidableRectangle, .avoidableRectangle2, .bugPlusOne, .uniqueRectangleMissing],
         [.remotePair, .xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC],
         [.frankenFish, .mutantFish, .krakenFish],
         // HoDoKu reports a one-link Simple Colors Trap, which is just locked candidates.
