@@ -27,7 +27,7 @@ import Testing
             for m in moves.eliminations { #expect(sol[m.candidate.cell] != m.candidate.digit, "\(m.technique) \(m.candidate)") }
             for m in moves.placements + moves.eliminations {
                 #expect(m.technique == m.step.technique)
-                #expect(m.techniques == m.techniques.sorted { $0.score < $1.score })
+                #expect(m.techniques == m.techniques.sorted())
                 #expect(Set(m.techniques).count == m.techniques.count)
             }
         }

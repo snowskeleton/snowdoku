@@ -63,9 +63,8 @@ public struct Drill: Hashable, Sendable {
         var board = Board(puzzle)
         var found: [Technique: [Board]] = [:]
         var onlySingles = true
-        var level = Level.beginner1
-        while !board.isSolved, let step = solver.nextStep(board, level: level) {
-            level = max(level, step.level)
+        // Each position's easiest move, as `step` checks it (not the rating's solve path).
+        while !board.isSolved, let step = solver.nextStep(board) {
             let t = step.technique
             if wanted.contains(t) && (t.difficulty > .beginner || onlySingles) {
                 found[t, default: []].append(board)

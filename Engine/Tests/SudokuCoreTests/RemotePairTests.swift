@@ -34,7 +34,9 @@ import Testing
         #expect(Set(step.eliminations) == [Candidate(r1c9, 2), Candidate(r1c9, 8), Candidate(r5c9, 2)])
         let network: Set<Int> = [3, 22, 40, 59, 62, 66]   // r1c4 r3c5 r5c5 r7c6 r7c9 r8c4
         #expect(Set(step.highlights.map(\.cell)) == network)
-        #expect(HumanSolver().nextStep(b)?.technique == .remotePair)
+        // Remote Pair is Hard 1 now: a Finned X-Wing (Medium 1) is the easiest move here, and a
+        // 2-String Kite comes first in solve order at Hard 1, so only the step itself is checked.
+        #expect(HumanSolver().nextStep(b)?.technique == .finnedXWing)
     }
 
     @Test func eliminationsAreSound() throws {

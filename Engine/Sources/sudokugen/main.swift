@@ -716,21 +716,31 @@ case "campaign-merge":
             pool.append(p)
         }
     }
-    // Mid-solve starts count only what happens after the cut (older miners counted the whole
-    // solve); a mixed puzzle that no longer mixes enough after it is dropped.
-    let loaded = pool
+    // Every puzzle is re-checked with the current engine, so re-merging after an engine change
+    // keeps only what still qualifies, with fresh counts: it must still be solved by its
+    // techniques, use the chapter's at least once, need them, and (mixed) still mix enough.
+    // Mid-solve starts count only what happens after the cut.
+    func recheck(_ p: inout CampaignPuzzle) -> Bool {
+        guard let ch = CampaignChapter.named(p.chapter), let a = p.analysis(), a.solved, a.uses >= 1 else { return false }
+        if p.kind == .mixed && a.outside.count < ch.mixedVariety { return false }
+        let without = ch.allowed(p.kind, member: p.member).subtracting(ch.focusTechniques(p.kind, member: p.member))
+        if HumanSolver(allowing: without).solve(p.board).solved { return false }
+        p.uses = a.uses
+        p.outside = a.outside.sorted()
+        p.totalScore = a.totalScore
+        return true
+    }
+    // The same givens are often mined several times; check each (chapter, kind, member, start) once.
+    var unique = Set<String>()
+    let loaded = pool.filter { p in
+        unique.insert("\(p.chapter) \(p.kind.rawValue) \(p.member?.rawValue ?? "") \(p.puzzle.string) \(p.values?.string ?? "")").inserted
+    }
     let recounted = Locked<[CampaignPuzzle]>([])
     DispatchQueue.concurrentPerform(iterations: loaded.count) { i in
         var p = loaded[i]
-        if p.startsMidSolve {
-            guard let ch = CampaignChapter.named(p.chapter), let a = p.analysis(), a.solved, a.uses >= 1 else { return }
-            if p.kind == .mixed && a.outside.count < ch.mixedVariety { return }
-            p.uses = a.uses
-            p.outside = a.outside.sorted()
-            p.totalScore = a.totalScore
-        }
-        recounted.with { $0.append(p) }
+        if recheck(&p) { recounted.with { $0.append(p) } }
     }
+    FileHandle.standardError.write("\(recounted.with { $0.count }) of \(loaded.count) distinct mined puzzles still qualify\n".data(using: .utf8)!)
     pool = recounted.with { $0 }
     // Any practice, mixed or boss puzzle also qualifies for endless (same techniques, from its
     // givens), which fills the endless pools of rare chapters.
@@ -742,10 +752,7 @@ case "campaign-merge":
         if p.startsMidSolve {
             p.values = nil
             p.candidates = nil
-            guard let a = p.analysis(), a.solved, a.uses >= 1 else { return }
-            p.uses = a.uses
-            p.outside = a.outside.sorted()
-            p.totalScore = a.totalScore
+            guard recheck(&p) else { return }
         }
         asEndless.with { $0.append(p) }
     }

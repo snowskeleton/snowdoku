@@ -57,7 +57,7 @@ extension Daily {
     /// changes a daily. Raising a count changes every daily of that tier from then on, and players
     /// on different app versions would get different puzzles.
     public static let poolSize: [Difficulty: Int] = [
-        .beginner: 500, .easy: 499, .medium: 538, .hard: 466, .expert: 491, .master: 506, .extreme: 150,
+        .beginner: 481, .easy: 250, .medium: 250, .hard: 250, .expert: 250, .master: 250,
     ]
 
     /// The level a tier's dailies come from: its highest, so a Medium daily is Medium 4.
