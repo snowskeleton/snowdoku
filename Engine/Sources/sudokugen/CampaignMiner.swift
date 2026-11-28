@@ -111,14 +111,14 @@ enum CampaignMiner {
     /// The bundled puzzle for a mined one, cut to a mid-solve start if the target wants that.
     static func bundle(_ m: Mined, _ t: CampaignTarget) -> CampaignPuzzle {
         var p = CampaignPuzzle(chapter: t.chapter.id, kind: t.kind, member: t.member, puzzle: m.puzzle,
-                               uses: m.analysis.uses, outside: m.analysis.outside.sorted { $0.score < $1.score },
+                               uses: m.analysis.uses, outside: m.analysis.outside.sorted(),
                                totalScore: m.analysis.totalScore)
         if t.startsMidSolve, let b = m.analysis.beforeFirstUse {
             p.values = b.grid
             p.candidates = b.candidates
             // What happens before the cut no longer counts.
             if let a = p.analysis() {
-                p.outside = a.outside.sorted { $0.score < $1.score }
+                p.outside = a.outside.sorted()
                 p.totalScore = a.totalScore
             }
         }

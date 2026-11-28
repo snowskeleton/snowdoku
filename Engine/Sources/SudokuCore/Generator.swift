@@ -54,9 +54,11 @@ public enum Generator {
     /// - Parameters:
     ///   - difficulty: required tier (nil = any). Puzzles are then rated with the full technique
     ///     set by `Rater.rate(_:solution:ifIn:)`, which stops early on ones that overshoot.
+    ///   - level: required level (`Rating.level`), instead of a tier.
     ///   - requiring: a technique the solve must use (nil = any).
     ///   - solver: rates puzzles when no difficulty is given.
     public static func generate<R: RandomNumberGenerator>(difficulty: Difficulty? = nil,
+                                                          level: Level? = nil,
                                                           requiring: Technique? = nil,
                                                           symmetry: Symmetry = .none,
                                                           maxAttempts: Int = 10_000,
@@ -64,7 +66,8 @@ public enum Generator {
                                                           using rng: inout R) -> GeneratedPuzzle? {
         for _ in 0..<maxAttempts {
             let (p, s) = makePuzzle(symmetry: symmetry, using: &rng)
-            let rated = difficulty.map { Rater.rate(p, solution: s, ifIn: $0) } ?? Rater.rate(p, solution: s, solver: solver)
+            let rated = level.map { Rater.rate(p, solution: s, ifIn: $0) }
+                ?? difficulty.map { Rater.rate(p, solution: s, ifIn: $0) } ?? Rater.rate(p, solution: s, solver: solver)
             guard let rating = rated else { continue }
             if let requiring, rating.counts[requiring] == nil { continue }
             return GeneratedPuzzle(puzzle: p, solution: s, rating: rating)

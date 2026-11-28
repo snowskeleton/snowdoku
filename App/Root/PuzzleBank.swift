@@ -11,12 +11,25 @@ enum PuzzleBank {
         return Dictionary(grouping: BankedPuzzle.parse(text), by: \.difficulty)
     }()
 
-    static func hasPuzzles(_ d: Difficulty) -> Bool { all[d]?.isEmpty == false }
+    /// Puzzles by level, in file order.
+    static let byLevel: [Level: [BankedPuzzle]] = Dictionary(grouping: all.values.joined(), by: \.level)
 
-    /// A random puzzle of the tier, randomly transformed.
-    static func random(_ d: Difficulty) -> GeneratedPuzzle? {
+    static func hasPuzzles(_ d: Difficulty) -> Bool { all[d]?.isEmpty == false }
+    static func hasPuzzles(_ l: Level) -> Bool { byLevel[l]?.isEmpty == false }
+    static func count(_ l: Level) -> Int { byLevel[l]?.count ?? 0 }
+
+    /// A random puzzle of the level, randomly transformed.
+    static func random(_ l: Level) -> GeneratedPuzzle? {
         var rng = SystemRandomNumberGenerator()
-        return all[d]?.randomElement(using: &rng)?.generated(.random(using: &rng))
+        return byLevel[l]?.randomElement(using: &rng)?.generated(.random(using: &rng))
+    }
+
+    /// A random puzzle from all of a tier's levels: a level with puzzles, each equally likely
+    /// (however many puzzles it has), then a puzzle of it, randomly transformed.
+    static func random(all d: Difficulty) -> GeneratedPuzzle? {
+        var rng = SystemRandomNumberGenerator()
+        guard let level = Level.levels(in: d).filter(hasPuzzles).randomElement(using: &rng) else { return nil }
+        return byLevel[level]?.randomElement(using: &rng)?.generated(.random(using: &rng))
     }
 
     /// The daily puzzle for a `DailySchedule` day: the same for everyone, whatever the engine does.

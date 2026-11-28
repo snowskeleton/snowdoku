@@ -1,8 +1,11 @@
-/// A training position: a mid-solve board where the very next logical move is `technique`.
+/// A training position: a mid-solve board where the next move is `technique`, for a player at the
+/// technique's level (`Technique.level`): the solver at that level, in its solve order, picks it.
+/// An easier level's technique may apply too (a Skyscraper is always also a Sashimi X-Wing), but
+/// nothing the level puts first.
 ///
 /// Drills are mined offline with `sudokugen drills` and bundled with the app. The candidates are
 /// the solver's own at that moment (including eliminations from earlier steps), so the player
-/// sees exactly the position the solver saw and no easier move exists.
+/// sees exactly the position the solver saw.
 public struct Drill: Hashable, Sendable {
     public var technique: Technique
     /// The original givens.
@@ -29,9 +32,10 @@ public struct Drill: Hashable, Sendable {
     /// Singles are practiced by scanning, without notes; everything else needs candidates on the board.
     public var showsNotes: Bool { technique.difficulty > .beginner }
 
-    /// The move the solver would make next. Nil only if the engine changed since the drill was mined.
+    /// The move the solver would make next at the technique's level. Nil only if the engine changed
+    /// since the drill was mined.
     public func step(solver: HumanSolver = HumanSolver()) -> Step? {
-        let s = solver.nextStep(board)
+        let s = solver.nextStep(board, level: technique.level)
         return s?.technique == technique ? s : nil
     }
 
@@ -52,8 +56,8 @@ public struct Drill: Hashable, Sendable {
         return Drill(technique: technique, puzzle: t.apply(puzzle), values: t.apply(values), candidates: cands)
     }
 
-    /// Finds positions in a solve where the next move is one of `wanted`, at most one per technique,
-    /// picked at random among that technique's occurrences.
+    /// Finds positions in a solve where the next move at a technique's level is one of `wanted`
+    /// (see `step`), at most one per technique, picked at random among that technique's occurrences.
     ///
     /// For singles, only positions reached by singles alone qualify, since those drills are shown
     /// without notes and the player's own candidates must match the solver's.
@@ -63,16 +67,20 @@ public struct Drill: Hashable, Sendable {
         var board = Board(puzzle)
         var found: [Technique: [Board]] = [:]
         var onlySingles = true
-        while !board.isSolved, let step = solver.nextStep(board) {
+        var level = Level.beginner1
+        while !board.isSolved, let step = solver.nextStep(board, level: level) {
+            level = max(level, step.level)
             let t = step.technique
-            if wanted.contains(t) && (t.difficulty > .beginner || onlySingles) {
+            // The solve may be past the technique's level; the drill must hold at that level.
+            if wanted.contains(t) && (t.difficulty > .beginner || onlySingles)
+                && (step.level == level || solver.nextStep(board, level: t.level)?.technique == t) {
                 found[t, default: []].append(board)
             }
             if t.difficulty > .beginner { onlySingles = false }
             board.apply(step)
         }
         guard board.isSolved, board.grid == solution else { return [] }
-        return found.sorted { $0.key.score < $1.key.score }.compactMap { t, boards in
+        return found.sorted { $0.key < $1.key }.compactMap { t, boards in
             boards.randomElement(using: &rng).map { Drill(technique: t, puzzle: puzzle, board: $0) }
         }
     }

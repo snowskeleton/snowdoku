@@ -2,7 +2,7 @@ import SudokuCore
 
 extension Technique {
     /// Techniques a player can learn (brute force isn't one), easiest first.
-    static let learnable: [Technique] = allCases.filter { $0 != .bruteForce }.sorted { $0.score < $1.score }
+    static let learnable: [Technique] = allCases.filter { $0 != .bruteForce }.sorted()
 
     /// The learnable techniques by tier. Computed once.
     static let library: [Difficulty: [Technique]] = Dictionary(grouping: learnable, by: \.difficulty)
@@ -18,4 +18,11 @@ extension Technique {
 
 extension Technique: @retroactive Identifiable {
     public var id: Self { self }
+}
+
+extension Level {
+    /// "X-Wing, Finned X-Wing and Sashimi X-Wing": what the level adds.
+    var blurb: String {
+        self == .extreme ? "Forcing chains and nets, Kraken and Mutant Fish" : newTechniques.map(\.name).formatted()
+    }
 }

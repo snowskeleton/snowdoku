@@ -11,11 +11,11 @@ import Testing
     }
 
     @Test func longSolvesAreBumpedOneTier() {
-        let quick = Rating(hardest: .xWing, totalScore: 900, counts: [.xWing: 1], stepCount: 50)
+        let quick = Rating(hardest: .xWing, techniqueLevel: .medium1, totalScore: 900, counts: [.xWing: 1], stepCount: 50)
         #expect(quick.difficulty == .medium)
-        let grind = Rating(hardest: .xWing, totalScore: 2000, counts: [.xWing: 12], stepCount: 50)
+        let grind = Rating(hardest: .xWing, techniqueLevel: .medium1, totalScore: 2000, counts: [.xWing: 12], stepCount: 50)
         #expect(grind.difficulty == .hard, "one tier up, never two")
-        let master = Rating(hardest: .alsXZ, totalScore: 50_000, counts: [.alsXZ: 1], stepCount: 50)
+        let master = Rating(hardest: .alsXZ, techniqueLevel: .master2, totalScore: 50_000, counts: [.alsXZ: 1], stepCount: 50)
         #expect(master.difficulty == .master, "long Master solves don't become Extreme")
     }
 

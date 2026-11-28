@@ -96,6 +96,7 @@ struct RootView: View {
         case .chapter(let id): if let ch = CampaignChapter.named(id) { ChapterView(chapter: ch) }
         case .lesson(let t): TechniqueDetailView(technique: t)
         case .freePlay: FreePlayView()
+        case .freePlayTier(let d): FreePlayLevelsView(tier: d)
         case .game:
             if let game = store.game {
                 GameView(game: game)

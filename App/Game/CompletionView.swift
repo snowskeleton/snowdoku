@@ -48,7 +48,7 @@ struct CompletionView: View {
 
     var subtitle: String {
         if let ch = chapter, let step { return ch.title(for: step) }
-        return game.difficulty.name
+        return game.levelName
     }
 
     var campaignNote: String? {
@@ -86,7 +86,12 @@ struct CompletionView: View {
             Task { await store.drill(t) }
             return
         }
-        let d = game.difficulty
-        Task { await store.newGame(GameStore.playable.contains(d) ? d : .master) }
+        // After an "All" game, another from the whole tier.
+        if case .freePlay(let d) = store.lastActivity, d == game.difficulty, game.dailyKey == nil, game.practice == nil {
+            Task { await store.newGame(all: d) }
+            return
+        }
+        let level = game.level ?? Level.highest(in: game.difficulty)
+        Task { await store.newGame(GameStore.playableLevel(level)) }
     }
 }

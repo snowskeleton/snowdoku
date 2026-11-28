@@ -88,7 +88,7 @@ final class CampaignTests: XCTestCase {
         XCTAssertTrue(continueSubtitle(app).contains("Claiming"), continueSubtitle(app))
     }
 
-    func testContinueAfterFreePlayStartsAnotherOfThatTier() {
+    func testContinueAfterFreePlayStartsAnotherOfThatLevel() throws {
         let app = XCUIApplication()
         // A Beginner puzzle from the bank.
         app.launchArguments = ["-resetGames", "-puzzle",
@@ -96,9 +96,12 @@ final class CampaignTests: XCTestCase {
         app.launch()
         solveLastCell(app)
         app.buttons["Home"].tap()
-        XCTAssertTrue(continueSubtitle(app).contains("Beginner · new game"), continueSubtitle(app))
+        let subtitle = continueSubtitle(app).replacingOccurrences(of: "Continue, ", with: "")
+        // "Beginner 2 · new game": another game of the level just played.
+        let level = try XCTUnwrap(subtitle.components(separatedBy: " · ").first)
+        XCTAssertTrue(level.hasPrefix("Beginner ") && subtitle.hasSuffix(" · new game"), subtitle)
         app.buttons["continue"].tap()
-        XCTAssertTrue(app.navigationBars["Beginner"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars[level].waitForExistence(timeout: 10))
     }
 
     func testFreePlayListsTheTiers() {

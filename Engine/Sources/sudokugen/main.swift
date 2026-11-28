@@ -6,16 +6,18 @@ let usage = """
 sudokugen — Snowdoku puzzle tooling
 
   sudokugen solve <puzzle>                 Step-by-step human-style solve
-  sudokugen rate <puzzle|-> ...            Rate puzzles (from args or stdin, one per line)
+  sudokugen rate <puzzle|-> ...            Rate puzzles (from args or stdin, one per line): puzzle,
+                                           tier, level, hardest, total score, techniques
   sudokugen generate [options]             Generate and rate puzzles (TSV to stdout)
       --count N         number of puzzles to output (default 10)
       --difficulty D    beginner|easy|medium|hard|expert|master|extreme
+      --level L         a numbered level instead, e.g. medium3 (or extreme); see `techniques`
       --technique T     require a technique (raw name, e.g. xWing)
       --symmetry S      none|rotational180|rotational90|mirror|diagonal
       --seed N          base seed (default: random)
       --threads N       worker threads (default: all cores)
   sudokugen stats [--count N] [--seed N]   Distribution of difficulties/techniques
-  sudokugen techniques                     List techniques with scores
+  sudokugen techniques                     List techniques by level, with scores
   sudokugen census [--min D] FILE...       For each technique, how often it applies along the solver's
                                            path (avail), adds something no easier technique does
                                            (novel), and is the solver's pick (chosen). Puzzles are the
@@ -56,11 +58,13 @@ sudokugen — Snowdoku puzzle tooling
                                            Pick the bundled campaign from mined files: the best N per
                                            chapter, kind and spotlight member (default 8; endless 150)
   sudokugen bank [--per N] FILE...        Rate puzzles (first column of each line) into the bundled
-                                           bank format, easiest tier first; drops duplicates, invalid
-                                           puzzles and ones that need trial and error
-  sudokugen bank-stats [FILE]              How many bank puzzles use each technique, in all and per tier,
-                                           and how many have it as their hardest (default FILE:
-                                           App/Resources/Puzzles.tsv); lists techniques no puzzle uses
+                                           bank format, easiest tier first (input order within a tier);
+                                           drops duplicates, invalid puzzles and ones that need trial
+                                           and error; prints per-level counts to stderr
+  sudokugen bank-stats [FILE]              Puzzles per tier and level; how many bank puzzles use each
+                                           technique, in all and per tier, and how many have it as their
+                                           hardest (default FILE: App/Resources/Puzzles.tsv); lists
+                                           techniques no puzzle uses
   sudokugen chain-bench [--min D] [FILE]   Per bank puzzle (default Hard+, App/Resources/Puzzles.tsv):
                                            stored tier, hardest and total; current ones; solve ms,
                                            slowest step ms, exhaustive chain search ms, step count,
@@ -83,7 +87,7 @@ func option(_ name: String, in args: [String]) -> String? {
 
 func tsv(_ p: GeneratedPuzzle) -> String {
     let techs = p.rating.techniques.map(\.rawValue).joined(separator: ",")
-    return "\(p.puzzle.string)\t\(p.rating.difficulty.name)\t\(p.rating.hardest.rawValue)\t\(p.rating.totalScore)\t\(techs)"
+    return "\(p.puzzle.string)\t\(p.rating.difficulty.name)\t\(p.rating.level.rawValue)\t\(p.rating.hardest.rawValue)\t\(p.rating.totalScore)\t\(techs)"
 }
 
 final class Locked<T>: @unchecked Sendable {
@@ -98,8 +102,11 @@ guard let cmd = args.first else { print(usage); exit(0) }
 
 switch cmd {
 case "techniques":
-    for t in Technique.allCases.sorted(by: { $0.score < $1.score }) {
-        print("\(String(t.score).padding(toLength: 5, withPad: " ", startingAt: 0))\(t.difficulty.name.padding(toLength: 10, withPad: " ", startingAt: 0))\(t.name)  [\(t.rawValue)]")
+    for l in Level.allCases {
+        print("\(l.name) [\(l.rawValue)]")
+        for t in l.newTechniques {
+            print("  \(String(t.score).padding(toLength: 5, withPad: " ", startingAt: 0))\(t.name)  [\(t.rawValue)]")
+        }
     }
 
 case "solve":
@@ -112,7 +119,7 @@ case "solve":
         print("\(i + 1). [\(s.technique.name)] \(s.explanation)")
     }
     let r = Rater.rating(from: log.steps)
-    print("\nRating: \(r.difficulty.name), hardest \(r.hardest.name), total \(r.totalScore), \(r.stepCount) steps, \(String(format: "%.0f", Date().timeIntervalSince(start) * 1000)) ms")
+    print("\nRating: \(r.level.name)\(r.isBumped ? " (bumped from \(r.techniqueLevel.name))" : ""), hardest \(r.hardest.name), total \(r.totalScore), \(r.stepCount) steps, \(String(format: "%.0f", Date().timeIntervalSince(start) * 1000)) ms")
 
 case "rate":
     var lines = Array(args.dropFirst())
@@ -127,7 +134,7 @@ case "rate":
         let raw = raws[i]
         let line: String
         if let g = Grid(raw), let r = Rater.rate(g) {
-            line = "\(g.string)\t\(r.difficulty.name)\t\(r.hardest.rawValue)\t\(r.totalScore)\t\(r.techniques.map(\.rawValue).joined(separator: ","))"
+            line = tsv(GeneratedPuzzle(puzzle: g, solution: g, rating: r))
         } else {
             line = "\(raw)\tINVALID"
         }
@@ -142,7 +149,9 @@ case "generate", "stats":
     let symmetry = option("--symmetry", in: args).flatMap(Symmetry.init(rawValue:)) ?? .none
     let seed = UInt64(option("--seed", in: args) ?? "") ?? UInt64.random(in: 0...UInt64.max)
     let threads = Int(option("--threads", in: args) ?? "") ?? ProcessInfo.processInfo.activeProcessorCount
+    let level = option("--level", in: args).flatMap(Level.init(rawValue:))
     if option("--difficulty", in: args) != nil && difficulty == nil { fail("Unknown difficulty") }
+    if option("--level", in: args) != nil && level == nil { fail("Unknown level (e.g. medium3; see `sudokugen techniques`)") }
     if option("--technique", in: args) != nil && technique == nil { fail("Unknown technique") }
 
     let results = Locked<[GeneratedPuzzle]>([])
@@ -155,7 +164,8 @@ case "generate", "stats":
         while results.with({ $0.count }) < count {
             let (p, s) = Generator.makePuzzle(symmetry: symmetry, using: &rng)
             attempts.with { $0 += 1 }
-            let rated = difficulty.map { Rater.rate(p, solution: s, ifIn: $0) } ?? Rater.rate(p, solution: s, solver: solver)
+            let rated = level.map { Rater.rate(p, solution: s, ifIn: $0) }
+                ?? difficulty.map { Rater.rate(p, solution: s, ifIn: $0) } ?? Rater.rate(p, solution: s, solver: solver)
             guard let r = rated else { continue }
             if let technique, r.counts[technique] == nil { continue }
             let gp = GeneratedPuzzle(puzzle: p, solution: s, rating: r)
@@ -175,20 +185,20 @@ case "generate", "stats":
     let n = attempts.with { $0 }
     FileHandle.standardError.write("\(list.count) puzzles from \(n) attempts in \(String(format: "%.1f", elapsed))s (\(String(format: "%.1f", Double(n) / elapsed)) puzzles/s)\n".data(using: .utf8)!)
     if cmd == "stats" {
-        var byDiff: [Difficulty: Int] = [:]
+        var byLevel: [Level: Int] = [:]
         var byHardest: [Technique: Int] = [:]
         var used: [Technique: Int] = [:]
         for p in list {
-            byDiff[p.rating.difficulty, default: 0] += 1
+            byLevel[p.rating.level, default: 0] += 1
             byHardest[p.rating.hardest, default: 0] += 1
             for t in p.rating.techniques { used[t, default: 0] += 1 }
         }
-        print("Difficulty distribution:")
-        for d in Difficulty.allCases { print("  \(d.name.padding(toLength: 10, withPad: " ", startingAt: 0)) \(byDiff[d] ?? 0)") }
+        print("Level distribution:")
+        for l in Level.allCases { print("  \(l.name.padding(toLength: 10, withPad: " ", startingAt: 0)) \(byLevel[l] ?? 0)") }
         print("Hardest technique:")
-        for (t, c) in byHardest.sorted(by: { $0.key.score < $1.key.score }) { print("  \(t.name.padding(toLength: 28, withPad: " ", startingAt: 0)) \(c)") }
+        for (t, c) in byHardest.sorted(by: { $0.key < $1.key }) { print("  \(t.name.padding(toLength: 28, withPad: " ", startingAt: 0)) \(c)") }
         print("Puzzles using technique:")
-        for (t, c) in used.sorted(by: { $0.key.score < $1.key.score }) { print("  \(t.name.padding(toLength: 28, withPad: " ", startingAt: 0)) \(c)") }
+        for (t, c) in used.sorted(by: { $0.key < $1.key }) { print("  \(t.name.padding(toLength: 28, withPad: " ", startingAt: 0)) \(c)") }
     }
 
 case "census":
@@ -221,10 +231,10 @@ case "census":
     }
     let census = total.with { $0 }
     print("\(census.puzzles) puzzles\(minTier.map { " (\($0.name)+)" } ?? ""), \(census.stuckPositions) stuck positions on the solver's path, \(Int(Date().timeIntervalSince(start)))s")
-    print("technique".padding(toLength: 26, withPad: " ", startingAt: 0) + "score  avail  novel chosen puzzles")
+    print("technique".padding(toLength: 26, withPad: " ", startingAt: 0) + "level      avail  novel chosen puzzles")
     for t in Census.probed {
         let c = census.counts[t] ?? Census.Counts()
-        print(t.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0) + String(format: "%5d %6d %6d %6d %7d", t.score, c.available, c.novel, c.chosen, c.puzzles))
+        print(t.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0) + t.level.rawValue.padding(toLength: 9, withPad: " ", startingAt: 0) + String(format: "%6d %6d %6d %7d", c.available, c.novel, c.chosen, c.puzzles))
     }
 
 case "chain-bench":
@@ -238,7 +248,7 @@ case "chain-bench":
     let chainTechs: [Technique] = [.xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC]
     let rows = Locked<[Int: String]>([:])
     let solver = HumanSolver()
-    func ms(_ t: DispatchTime) -> Double { Double(DispatchTime.now().uptimeNanoseconds - t.uptimeNanoseconds) / 1e6 }
+    let ms: @Sendable (DispatchTime) -> Double = { Double(DispatchTime.now().uptimeNanoseconds - $0.uptimeNanoseconds) / 1e6 }
     DispatchQueue.concurrentPerform(iterations: bank.count) { i in
         let p = bank[i]
         guard case .unique(let sol) = BruteForce.analyze(p.puzzle) else { return }
@@ -249,14 +259,14 @@ case "chain-bench":
         let t0 = DispatchTime.now()
         while !board.isSolved && steps.count < 2000 {
             let ts = DispatchTime.now()
-            let next = solver.nextStep(board)
+            let next = solver.nextStep(board, level: steps.map(\.level).max() ?? .beginner1)
             maxStep = max(maxStep, ms(ts))
             let step: Step
             if let next { step = next } else {
                 let c = board.emptyCells.min { board.candidates[$0].nonzeroBitCount < board.candidates[$1].nonzeroBitCount }!
                 step = Step(.bruteForce, placements: [Candidate(c, sol[c])], explanation: "")
             }
-            if drillBoard == nil && step.technique.score >= Technique.xChain.score { drillBoard = board }
+            if drillBoard == nil && step.technique >= .xChain { drillBoard = board }
             board.apply(step)
             steps.append(step)
         }
@@ -393,7 +403,9 @@ case "bank":
     for d in Difficulty.allCases {
         let tier = ordered.filter { $0.difficulty == d }.prefix(per)
         for p in tier { print(p.line) }
-        FileHandle.standardError.write("\(d.name): \(tier.count)\n".data(using: .utf8)!)
+        let levels = Level.levels(in: d).count > 1
+            ? " (" + Level.levels(in: d).map { l in "\(l.name) \(tier.filter { $0.level == l }.count)" }.joined(separator: ", ") + ")" : ""
+        FileHandle.standardError.write("\(d.name): \(tier.count)\(levels)\n".data(using: .utf8)!)
     }
 
 case "bank-stats":
@@ -411,11 +423,22 @@ case "bank-stats":
     }
     let perTier = Dictionary(grouping: bank, by: \.difficulty).mapValues(\.count)
     print("\(bank.count) puzzles: " + tiers.map { "\($0.name) \(perTier[$0] ?? 0)" }.joined(separator: ", "))
+    let perLevel = Dictionary(grouping: bank, by: \.level).mapValues(\.count)
+    let bumped = Dictionary(grouping: bank.filter(\.rating.isBumped), by: \.level).mapValues(\.count)
+    print("Per level (bumped: a long solve moved up from the tier below):")
+    for d in tiers {
+        print("  " + Level.levels(in: d).map { l in
+            "\(l.name) \(perLevel[l] ?? 0)" + (bumped[l].map { " (\($0) bumped)" } ?? "")
+        }.joined(separator: ", "))
+    }
+    print("Daily pools pinned (dailies pick a level of the tier evenly): " + Level.allCases.filter { $0 != .extreme }.map { l in
+        "\(l.name) \(Daily.poolSize[l] ?? 0)"
+    }.joined(separator: ", ") + "\n")
     print("Puzzles using each technique (\"hardest\": it's the puzzle's hardest technique)\n")
     func col(_ s: String, _ w: Int) -> String { String(repeating: " ", count: max(0, w - s.count)) + s }
     print("technique".padding(toLength: 26, withPad: " ", startingAt: 0) + col("all", 6) + col("hardest", 9)
           + tiers.map { col(String($0.name.prefix(6)), 8) }.joined())
-    let techniques = Technique.allCases.filter { $0 != .bruteForce }.sorted { $0.score < $1.score }
+    let techniques = Technique.allCases.filter { $0 != .bruteForce }.sorted()
     for t in techniques {
         guard let u = used[t] else { continue }
         print(t.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0) + col(String(u.values.reduce(0, +)), 6)
@@ -439,16 +462,20 @@ case "merge-drills":
             byTechnique[d.technique, default: []].append(d)
         }
     }
-    // Re-check every drill against the current solver order. If its next move is now a different
-    // technique, it becomes a drill for that one (a singles drill only when its candidates are the
-    // plain ones, since those are shown without notes).
+    // Re-check every drill against the current solver. If its next move at its technique's level
+    // is now a different technique, it becomes a drill for that one when that holds at the new
+    // technique's level too (a singles drill only when its candidates are the plain ones, since
+    // those are shown without notes).
     let all = byTechnique.values.flatMap { $0 }
     let checked = Locked<[Technique: [(drill: Drill, complexity: Int, cells: Int)]]>([:])
     let relabeled = Locked(0)
     DispatchQueue.concurrentPerform(iterations: all.count) { i in
         var d = all[i]
-        guard let s = HumanSolver().nextStep(d.board) else { return }
+        let solver = HumanSolver()
+        guard var s = solver.nextStep(d.board, level: d.technique.level) else { return }
         if s.technique != d.technique {
+            guard let again = solver.nextStep(d.board, level: s.technique.level), again.technique == s.technique else { return }
+            s = again
             if s.technique.difficulty == .beginner && Board(d.values).candidates != d.candidates { return }
             d.technique = s.technique
             relabeled.with { $0 += 1 }
@@ -467,7 +494,7 @@ case "merge-drills":
     let result = ranked.with { $0 }
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
-    let list = result.keys.sorted { $0.score < $1.score }.flatMap { result[$0]! }
+    let list = result.keys.sorted().flatMap { result[$0]! }
     let lines = try list.map { String(decoding: try encoder.encode($0), as: UTF8.self) }
     print("[\n" + lines.joined(separator: ",\n") + "\n]")
     for t in Technique.allCases where t != .bruteForce {
@@ -482,7 +509,8 @@ case "mutate":
     let minutes = Double(option("--minutes", in: args) ?? "") ?? 5
     let threads = Int(option("--threads", in: args) ?? "") ?? ProcessInfo.processInfo.activeProcessorCount
     let seed = UInt64(option("--seed", in: args) ?? "") ?? UInt64.random(in: 0...UInt64.max)
-    // Gets stuck exactly when a puzzle needs a forcing technique (or trial and error).
+    // Gets stuck exactly when a puzzle needs an Extreme technique: forcing chains and nets, Kraken or
+    // Mutant Fish (or trial and error).
     let nonForcing = HumanSolver(allowing: Set(Technique.allCases.filter { $0.difficulty < .extreme }))
     let candidates = text.split(separator: "\n").compactMap { Grid(String($0.split(separator: "\t").first ?? "")) }
     let keep = Locked([Bool](repeating: false, count: candidates.count))
@@ -692,21 +720,21 @@ case "campaign-merge":
             pool.append(p)
         }
     }
-    // Mid-solve starts count only what happens after the cut (older miners counted the whole
-    // solve); a mixed puzzle that no longer mixes enough after it is dropped.
-    let loaded = pool
+    // Every puzzle is re-checked with the current engine, so re-merging after an engine change
+    // keeps only what still qualifies, with fresh counts: it must still be solved by its
+    // techniques, use the chapter's at least once, need them, and (mixed) still mix enough.
+    // Mid-solve starts count only what happens after the cut.
+    // The same givens are often mined several times; check each (chapter, kind, member, start) once.
+    var unique = Set<String>()
+    let loaded = pool.filter { p in
+        unique.insert("\(p.chapter) \(p.kind.rawValue) \(p.member?.rawValue ?? "") \(p.puzzle.string) \(p.values?.string ?? "")").inserted
+    }
     let recounted = Locked<[CampaignPuzzle]>([])
     DispatchQueue.concurrentPerform(iterations: loaded.count) { i in
         var p = loaded[i]
-        if p.startsMidSolve {
-            guard let ch = CampaignChapter.named(p.chapter), let a = p.analysis(), a.solved, a.uses >= 1 else { return }
-            if p.kind == .mixed && a.outside.count < ch.mixedVariety { return }
-            p.uses = a.uses
-            p.outside = a.outside.sorted { $0.score < $1.score }
-            p.totalScore = a.totalScore
-        }
-        recounted.with { $0.append(p) }
+        if CampaignRecheck.recheck(&p) { recounted.with { $0.append(p) } }
     }
+    FileHandle.standardError.write("\(recounted.with { $0.count }) of \(loaded.count) distinct mined puzzles still qualify\n".data(using: .utf8)!)
     pool = recounted.with { $0 }
     // Any practice, mixed or boss puzzle also qualifies for endless (same techniques, from its
     // givens), which fills the endless pools of rare chapters.
@@ -718,10 +746,7 @@ case "campaign-merge":
         if p.startsMidSolve {
             p.values = nil
             p.candidates = nil
-            guard let a = p.analysis(), a.solved, a.uses >= 1 else { return }
-            p.uses = a.uses
-            p.outside = a.outside.sorted { $0.score < $1.score }
-            p.totalScore = a.totalScore
+            guard CampaignRecheck.recheck(&p) else { return }
         }
         asEndless.with { $0.append(p) }
     }
@@ -837,17 +862,31 @@ case "drills":
         }
     }
     let all = found.with { $0 }
-    let list = wanted.sorted { $0.score < $1.score }.flatMap { all[$0] ?? [] }
+    let list = wanted.sorted().flatMap { all[$0] ?? [] }
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
     // One drill per line keeps diffs of the bundled file readable.
     let lines = try list.map { String(decoding: try encoder.encode($0), as: UTF8.self) }
     print("[\n" + lines.joined(separator: ",\n") + "\n]")
     FileHandle.standardError.write("\(list.count) drills from \(attempts.with { $0 }) puzzles in \(Int(Date().timeIntervalSince(start)))s\n".data(using: .utf8)!)
-    for t in wanted.sorted(by: { $0.score < $1.score }) where (all[t]?.count ?? 0) < per {
+    for t in wanted.sorted() where (all[t]?.count ?? 0) < per {
         FileHandle.standardError.write("  short: \(t.rawValue) \(all[t]?.count ?? 0)/\(per)\n".data(using: .utf8)!)
     }
 
 default:
     print(usage)
+}
+
+/// `campaign-merge`'s re-check of a mined puzzle against the current engine (see there).
+enum CampaignRecheck {
+    static func recheck(_ p: inout CampaignPuzzle) -> Bool {
+        guard let ch = CampaignChapter.named(p.chapter), let a = p.analysis(), a.solved, a.uses >= 1 else { return false }
+        if p.kind == .mixed && a.outside.count < ch.mixedVariety { return false }
+        let without = ch.allowed(p.kind, member: p.member).subtracting(ch.focusTechniques(p.kind, member: p.member))
+        if HumanSolver(allowing: without).solve(p.board).solved { return false }
+        p.uses = a.uses
+        p.outside = a.outside.sorted()
+        p.totalScore = a.totalScore
+        return true
+    }
 }

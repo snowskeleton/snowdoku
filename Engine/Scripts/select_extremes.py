@@ -1,7 +1,7 @@
 """Pick new Extreme bank lines.
 
 usage: select_extremes.py BANK.tsv NEED rated1.tsv [rated2.tsv ...]  > new-lines.tsv
-Candidates are rated bank lines; Extreme ones are those whose hardest technique is in EXTREME.
+Candidates are rated bank lines; Extreme ones are those whose level (last field) is extreme.
 Rejects exact duplicates and GridTransforms (band/row/stack/column shuffles, transpose,
 digit relabel) of any bank puzzle or already-picked candidate. Picks greedily for variety:
 fewest picks sharing a solution grid, then largest Hamming distance to the picks so far.
@@ -9,7 +9,7 @@ fewest picks sharing a solution grid, then largest Hamming distance to the picks
 import sys, itertools, random
 
 # Technique raw values with score >= 500 except bruteForce (`sudokugen techniques`).
-EXTREME = {"cellForcingChain", "unitForcingChain", "forcingContradiction", "forcingNet"}
+EXTREME = "extreme"  # the level, the bank line's last field
 
 def rows_of(p): return [p[r*9:r*9+9] for r in range(9)]
 def transpose(p): return "".join(p[c*9+r] for r in range(9) for c in range(9))
@@ -89,7 +89,7 @@ def main():
     bank_path, need, files = sys.argv[1], int(sys.argv[2]), sys.argv[3:]
     bank_lines = [l.split('\t') for l in open(bank_path).read().split('\n') if l]
     bank = [l[0] for l in bank_lines]
-    bank_extreme = [l[0] for l in bank_lines if l[1] in EXTREME]
+    bank_extreme = [l[0] for l in bank_lines if l[-1] == EXTREME]
     seen = {}
     for p in bank: seen.setdefault(fingerprint(p), []).append(p)
     cands, exact = [], set(bank)
@@ -97,7 +97,7 @@ def main():
         for l in open(f).read().split('\n'):
             if not l: continue
             parts = l.split('\t')
-            if parts[1] in EXTREME and parts[0] not in exact:
+            if parts[-1] == EXTREME and parts[0] not in exact:
                 exact.add(parts[0]); cands.append(l)
     print(f"{len(cands)} new Extreme candidates", file=sys.stderr)
     random.seed(7); random.shuffle(cands)

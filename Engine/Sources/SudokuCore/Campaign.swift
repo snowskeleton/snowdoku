@@ -181,10 +181,12 @@ public struct CampaignAnalysis: Sendable {
         var total = 0
         var first: Board?
         var steps = 0
-        while !b.isSolved, steps < 2000, let s = solver.nextStep(b) {
+        var level = Level.beginner1
+        while !b.isSolved, steps < 2000, let s = solver.nextStep(b, level: level) {
             steps += 1
+            level = max(level, s.level)
             total += s.score
-            if hardest.map({ s.technique.score > $0.score }) ?? true { hardest = s.technique }
+            if hardest.map({ s.technique > $0 }) ?? true { hardest = s.technique }
             b.apply(s)
             if !s.placements.isEmpty, let h = hardest {
                 if focus.contains(h) {

@@ -57,7 +57,7 @@ struct HomeView: View {
                     Label {
                         VStack(alignment: .leading) {
                             Text("Free Play").font(.headline)
-                            Text("Any difficulty, Beginner to Extreme").font(.subheadline).foregroundStyle(.secondary)
+                            Text("Any level, Beginner 1 to Extreme").font(.subheadline).foregroundStyle(.secondary)
                         }
                     } icon: {
                         Image(systemName: "square.grid.3x3")
@@ -78,7 +78,8 @@ struct HomeView: View {
         switch a {
         case .resume(let s): "\(s.title) · \(formatTime(s.record.elapsed))"
         case .campaign(let ch, let step): "\(ch.title) · \(ch.title(for: step))"
-        case .newGame(let d): "\(d.name) · new game"
+        case .newGame(let l): "\(l.name) · new game"
+        case .newGameAll(let d): "All \(d.name) · new game"
         }
     }
 

@@ -30,10 +30,13 @@ public enum HintEngine {
     /// - Parameters:
     ///   - values: the player's entered digits (0 = empty), including givens.
     ///   - notes: the player's pencil marks, or nil to use computed candidates.
+    ///   - level: the puzzle's level (`Rating.techniqueLevel`): the hint is the move the solver
+    ///     would make with that level's techniques, in its solve order, and goes beyond the level
+    ///     only if nothing within it applies (the player's own notes can make that happen).
     ///   - near: the selected cell, if any: when the next technique applies in several places,
     ///     the hint shows the one closest to it.
     public static func hint(values: [UInt8], notes: [DigitMask]?, givens: CellSet, solution: Grid,
-                            solver: HumanSolver = HumanSolver(), near: Int? = nil) -> Hint {
+                            solver: HumanSolver = HumanSolver(), level: Level = .beginner1, near: Int? = nil) -> Hint {
         let wrong = (0..<81).filter { values[$0] != 0 && Int(values[$0]) != solution[$0] }
         if !wrong.isEmpty { return .wrongValues(wrong) }
         if !values.contains(0) { return .solved }
@@ -47,7 +50,7 @@ public enum HintEngine {
             let merged = (0..<81).map { notes[$0] == 0 ? board.candidates[$0] : board.candidates[$0] & notes[$0] }
             board = Board(values: values, candidates: merged, givens: givens)
         }
-        if let s = solver.nextStep(board) { return instances(of: s, board, solver: solver, near: near) }
+        if let s = solver.nextStep(board, level: level) { return instances(of: s, board, solver: solver, near: near) }
         let c = board.emptyCells.min { board.candidates[$0].nonzeroBitCount < board.candidates[$1].nonzeroBitCount }!
         return .step(Step(.bruteForce, placements: [Candidate(c, solution[c])], houses: Geometry.housesOfCell[c],
                           highlights: [Highlight(c, solution[c], .pattern)],
