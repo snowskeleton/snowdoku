@@ -47,6 +47,9 @@ sudokugen — Snowdoku puzzle tooling
   sudokugen bank [--per N] FILE...        Rate puzzles (first column of each line) into the bundled
                                            bank format, easiest tier first; drops duplicates, invalid
                                            puzzles and ones that need trial and error
+  sudokugen bank-stats [FILE]              How many bank puzzles use each technique, in all and per tier,
+                                           and how many have it as their hardest (default FILE:
+                                           App/Resources/Puzzles.tsv); lists techniques no puzzle uses
   sudokugen merge-drills [--per N] FILE...  Combine drill files, drop broken or duplicate drills, and
                                            put the clearest example first for each technique
 """
@@ -200,6 +203,34 @@ case "bank":
         for p in tier { print(p.line) }
         FileHandle.standardError.write("\(d.name): \(tier.count)\n".data(using: .utf8)!)
     }
+
+case "bank-stats":
+    let path = args.dropFirst().first ?? "App/Resources/Puzzles.tsv"
+    guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { fail("Can't read \(path)") }
+    let lines = text.split(separator: "\n")
+    let bank = lines.compactMap(BankedPuzzle.init(line:))
+    if bank.count < lines.count { fail("\(lines.count - bank.count) lines in \(path) don't parse") }
+    let tiers = Difficulty.allCases
+    var used: [Technique: [Difficulty: Int]] = [:]
+    var hardest: [Technique: Int] = [:]
+    for b in bank {
+        for t in b.rating.counts.keys { used[t, default: [:]][b.difficulty, default: 0] += 1 }
+        hardest[b.rating.hardest, default: 0] += 1
+    }
+    let perTier = Dictionary(grouping: bank, by: \.difficulty).mapValues(\.count)
+    print("\(bank.count) puzzles: " + tiers.map { "\($0.name) \(perTier[$0] ?? 0)" }.joined(separator: ", "))
+    print("Puzzles using each technique (\"hardest\": it's the puzzle's hardest technique)\n")
+    func col(_ s: String, _ w: Int) -> String { String(repeating: " ", count: max(0, w - s.count)) + s }
+    print("technique".padding(toLength: 26, withPad: " ", startingAt: 0) + col("all", 6) + col("hardest", 9)
+          + tiers.map { col(String($0.name.prefix(6)), 8) }.joined())
+    let techniques = Technique.allCases.filter { $0 != .bruteForce }.sorted { $0.score < $1.score }
+    for t in techniques {
+        guard let u = used[t] else { continue }
+        print(t.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0) + col(String(u.values.reduce(0, +)), 6)
+              + col(String(hardest[t] ?? 0), 9) + tiers.map { col(u[$0].map(String.init) ?? "·", 8) }.joined())
+    }
+    let unused = techniques.filter { used[$0] == nil }
+    print("\nNo puzzle uses: " + (unused.isEmpty ? "none" : unused.map(\.rawValue).joined(separator: ", ")))
 
 case "merge-drills":
     let per = Int(option("--per", in: args) ?? "") ?? 20
