@@ -141,10 +141,10 @@ The version is `MARKETING_VERSION` (e.g. `0.1`) and the build number is `CURRENT
 Each TestFlight build goes through **GitHub Actions** (`.github/workflows/testflight.yml`):
 
 1. Start from a clean, pushed `main`. Bump `CURRENT_PROJECT_VERSION` in `project.yml` to one more than the highest build in App Store Connect (`asc GET '/v1/builds?filter[app]=<app id>&sort=-version&limit=1'`, see the app-store-connect skill), run `xcodegen generate`, and commit and push the bump.
-2. Tag `build-<N>` on that commit and push the tag. That starts the workflow, which then **waits for the user's approval** (the `app-store` environment). Tell the user it's waiting, with the run's link (`gh run list --workflow testflight.yml -L 1`).
-3. Once approved, it checks the tag (on `main`, N equals `CURRENT_PROJECT_VERSION`), archives for iOS on the `xcode-27` runner, uploads, waits for processing, adds the external group and submits for beta review (`.github/scripts/testflight.sh`). Watch it with `gh run watch <id> --exit-status` in the background and report how it ended.
+2. Tag `build-<N>` on that commit and push the tag. That starts the workflow (`gh run list --workflow testflight.yml -L 1` for its link).
+3. It checks the tag (on `main`, N equals `CURRENT_PROJECT_VERSION`), archives for iOS on the `xcode-27` runner, uploads, waits for processing, adds the external group and submits for beta review (`.github/scripts/testflight.sh`). Watch it with `gh run watch <id> --exit-status` in the background and report how it ended.
 
-How it's locked down: the Admin API key (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`) exists only as secrets of the `app-store` environment. That environment requires the user's approval for every run and accepts deployments only from `build-*` tags. The workflow has a read-only token and pins its actions by commit SHA. Don't loosen any of this, or add another workflow that uses the environment, without asking.
+How it's locked down: the Admin API key (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`) exists only as secrets of the `app-store` environment, which accepts deployments only from `build-*` tags. It has no approval step: the user dropped it on purpose, as the only writer to the repo, and isn't worried about the key. The ruleset "Shipped build tags" keeps `build-*` and `v*` tags from being moved or deleted, so a mistaken build gets the next number, never a re-tag. The workflow has a read-only token and pins its actions by commit SHA. Don't loosen any of this, or add another workflow that uses the environment, without asking.
 
 **Fallback without CI** (the runner can't build, or Xcode needs a version the runner lacks), from step 2 on:
 

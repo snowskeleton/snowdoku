@@ -2,9 +2,9 @@
 #
 # Locked down:
 # - Runs only from build-* tags, and only in the app-store environment, which
-#   allows deployments from build-* tags alone and waits for the owner's
-#   approval before the job starts. The App Store Connect key lives only in that
-#   environment's secrets, so nothing else can read it.
+#   allows deployments from build-* tags alone. The App Store Connect key lives
+#   only in that environment's secrets, so nothing else can read it. A ruleset
+#   keeps build-* and v* tags from being moved or deleted.
 # - Read-only GITHUB_TOKEN, third-party actions pinned by commit SHA.
 # - The tag must point at a commit on main, and N must match
 #   CURRENT_PROJECT_VERSION in project.yml.
