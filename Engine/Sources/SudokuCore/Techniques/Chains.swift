@@ -49,7 +49,8 @@ struct ChainStrategy: Strategy {
         var parent = [Int32](repeating: -1, count: n * 2)
         var dist = [Int32](repeating: -1, count: n * 2)
         var queue = [Int32](repeating: 0, count: n * 2)
-        for s in 0..<n where !g.nodes[s].isGroup {
+        // Grouped chains may start at a group too, or a chain with a group at each end is never found.
+        for s in 0..<n where mode == .grouped || !g.nodes[s].isGroup {
             if mode == .xy {
                 // Starts in a bivalue cell.
                 guard g.strong[s].contains(where: { g.nodes[$0].cells == g.nodes[s].cells }) else { continue }
@@ -150,12 +151,20 @@ struct ChainStrategy: Strategy {
     func conclusions(_ s: Int, _ e: Int, _ g: ChainGraph, _ b: Board) -> ([Candidate], [Candidate]) {
         let A = g.nodes[s], B = g.nodes[e]
         if s == e {
-            // s off => ... => s on: s must be true.
-            return ([], [Candidate(A.cells.first!, A.digit)])
+            // s off => ... => s on: s must be true (for a group, only that the digit is in it).
+            return A.isGroup ? ([], []) : ([], [Candidate(A.cells.first!, A.digit)])
         }
         if A.digit == B.digit {
             let targets = Geometry.commonPeers(A.cells | B.cells)
             return (b.filter(targets, A.digit).map { Candidate($0, A.digit) }, [])
+        }
+        if A.isGroup != B.isGroup {
+            // A group of digit x and a cell of digit y: if the cell sees the whole group, either way
+            // it isn't x.
+            let (group, single) = A.isGroup ? (A, B) : (B, A)
+            let c = single.cells.first!
+            guard Geometry.commonPeers(group.cells).contains(c), b.has(c, group.digit) else { return ([], []) }
+            return ([Candidate(c, group.digit)], [])
         }
         guard !A.isGroup, !B.isGroup else { return ([], []) }
         let a = A.cells.first!, c = B.cells.first!
@@ -268,17 +277,25 @@ struct ChainGraph {
                         let p = pos.array
                         link(index[Key(cells: CellSet([p[0]]), digit: d)], index[Key(cells: CellSet([p[1]]), digit: d)])
                     } else if mode == .grouped && pos.count >= 3 {
-                        // Partition the house's candidates into two box/line segments.
-                        let partitions: [[CellSet]]
                         if h < 18 {
-                            partitions = [(0..<9).map { pos & Geometry.houseSets[18 + $0] }]
+                            // A line's candidates split into exactly two box segments.
+                            let nonEmpty = (0..<9).map { pos & Geometry.houseSets[18 + $0] }.filter { !$0.isEmpty }
+                            if nonEmpty.count == 2 {
+                                link(index[Key(cells: nonEmpty[0], digit: d)], index[Key(cells: nonEmpty[1], digit: d)])
+                            }
                         } else {
-                            partitions = [(0..<9).map { pos & Geometry.houseSets[$0] }, (0..<9).map { pos & Geometry.houseSets[9 + $0] }]
-                        }
-                        for parts in partitions {
-                            let nonEmpty = parts.filter { !$0.isEmpty }
-                            guard nonEmpty.count == 2 else { continue }
-                            link(index[Key(cells: nonEmpty[0], digit: d)], index[Key(cells: nonEmpty[1], digit: d)])
+                            // A box's candidates covered by two disjoint nodes (cells or line segments,
+                            // which may run in different directions, e.g. r45c5 and r6c46).
+                            var parts: [CellSet] = pos.array.map { CellSet([$0]) }
+                            for line in 0..<18 {
+                                let seg = pos & Geometry.houseSets[line]
+                                if seg.count >= 2 { parts.append(seg) }
+                            }
+                            for i in 0..<parts.count {
+                                for j in (i + 1)..<parts.count where parts[i].isDisjoint(with: parts[j]) && (parts[i] | parts[j]) == pos {
+                                    link(index[Key(cells: parts[i], digit: d)], index[Key(cells: parts[j], digit: d)])
+                                }
+                            }
                         }
                     }
                 }
