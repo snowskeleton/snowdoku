@@ -30,4 +30,6 @@ struct GameRecord: Codable {
     var campaign: CampaignContext?
     /// A singles drill's or lesson's question.
     var spotlight: Spotlight?
+    /// The opening run of one digit (missing in older saves).
+    var firstRun: FirstDigitRun?
 }

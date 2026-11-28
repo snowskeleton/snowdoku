@@ -1,0 +1,61 @@
+id	kind	title	points	hidden	before	after
+snowdoku.part.1	part	It's Dangerous to Go Alone	1	no	Finish every chapter in part 1, Singles.	Finished part 1, Singles.
+snowdoku.part.2	part	Player 2 Has Entered the Game	5	no	Finish every chapter in part 2, Notes.	Finished part 2, Notes.
+snowdoku.part.3	part	Now You're Solving with Portals	10	no	Finish every chapter in part 3, Patterns.	Finished part 3, Patterns.
+snowdoku.part.4	part	There's Always a Bigger Fish	15	no	Finish every chapter in part 4, Wings & Fish.	Finished part 4, Wings & Fish.
+snowdoku.part.5	part	A Chain Link to the Past	20	no	Finish every chapter in part 5, Chains.	Finished part 5, Chains.
+snowdoku.part.6	part	Locked and Loaded	25	no	Finish every chapter in part 6, Master.	Finished part 6, Master.
+snowdoku.part.7	part	The Cake Is a Lie	30	no	Finish every chapter in part 7, Extreme.	Finished part 7, Extreme.
+snowdoku.campaign.complete	campaign	Grandmaster	50	no	Finish the whole campaign, from Full House to Forcing Nets.	Finished the whole campaign, from Full House to Forcing Nets.
+snowdoku.daily.first	daily	Hello, World	1	no	Solve a daily puzzle.	Solved your first daily puzzle.
+snowdoku.daily.streak7	daily	Eight Days a Week	7	no	Solve the daily puzzle 7 days in a row.	Solved the daily 7 days in a row.
+snowdoku.daily.streak30	daily	Just One More Puzzle...	30	no	Solve the daily puzzle 30 days in a row.	Solved the daily 30 days in a row.
+snowdoku.daily.streak365	daily	You Should Probably Take a Break	50	no	Solve the daily puzzle 365 days in a row.	Solved the daily 365 days in a row.
+snowdoku.solve.first.beginner	first	Tutorial Complete	1	no	Solve a Beginner puzzle.	Solved your first Beginner puzzle.
+snowdoku.solve.first.easy	first	Easy Peasy	1	no	Solve an Easy puzzle.	Solved your first Easy puzzle.
+snowdoku.solve.first.medium	first	Medium Rare	1	no	Solve a Medium puzzle.	Solved your first Medium puzzle.
+snowdoku.solve.first.hard	first	Hard Mode	1	no	Solve a Hard puzzle.	Solved your first Hard puzzle.
+snowdoku.solve.first.expert	first	Expert Witness	1	no	Solve an Expert puzzle.	Solved your first Expert puzzle.
+snowdoku.solve.first.master	first	Master Class	1	no	Solve a Master puzzle.	Solved your first Master puzzle.
+snowdoku.solve.first.extreme	first	Extreme Measures	1	no	Solve an Extreme puzzle.	Solved your first Extreme puzzle.
+snowdoku.solve.everyTier	everyTier	Jack of All Trades	15	no	Solve a puzzle at every tier from Beginner to Master.	Solved a puzzle at every tier from Beginner to Master.
+snowdoku.solve.easy.10	count	Making It Look Easy	2	no	Solve 10 Easy puzzles.	Solved 10 Easy puzzles.
+snowdoku.solve.easy.50	count	Easy Come	5	no	Solve 50 Easy puzzles.	Solved 50 Easy puzzles.
+snowdoku.solve.easy.100	count	Easy Go	10	no	Solve 100 Easy puzzles.	Solved 100 Easy puzzles.
+snowdoku.solve.easy.250	count	Easier Said than Done	20	no	Solve 250 Easy puzzles.	Solved 250 Easy puzzles.
+snowdoku.solve.easy.500	count	It's Not Easy Being Green	30	no	Solve 500 Easy puzzles.	Solved 500 Easy puzzles.
+snowdoku.solve.medium.10	count	Happy Medium	2	no	Solve 10 Medium puzzles.	Solved 10 Medium puzzles.
+snowdoku.solve.medium.50	count	Medium Well	5	no	Solve 50 Medium puzzles.	Solved 50 Medium puzzles.
+snowdoku.solve.medium.100	count	The Medium Is the Message	10	no	Solve 100 Medium puzzles.	Solved 100 Medium puzzles.
+snowdoku.solve.medium.250	count	I See Dead Cells	20	no	Solve 250 Medium puzzles.	Solved 250 Medium puzzles.
+snowdoku.solve.medium.500	count	Call Me the Witch of Endor	30	no	Solve 500 Medium puzzles.	Solved 500 Medium puzzles.
+snowdoku.solve.hard.10	count	Live Free	2	no	Solve 10 Hard puzzles.	Solved 10 Hard puzzles.
+snowdoku.solve.hard.50	count	Die Hard	5	no	Solve 50 Hard puzzles.	Solved 50 Hard puzzles.
+snowdoku.solve.hard.100	count	It's a Hard Knock Life	10	no	Solve 100 Hard puzzles.	Solved 100 Hard puzzles.
+snowdoku.solve.hard.250	count	A Hard Day's Night	20	no	Solve 250 Hard puzzles.	Solved 250 Hard puzzles.
+snowdoku.solve.hard.500	count	Harder?! I Hardly Know 'er!	30	no	Solve 500 Hard puzzles.	Solved 500 Hard puzzles.
+snowdoku.solve.expert.10	count	Self-Proclaimed Expert	2	no	Solve 10 Expert puzzles.	Solved 10 Expert puzzles.
+snowdoku.solve.expert.50	count	Expert Opinion	5	no	Solve 50 Expert puzzles.	Solved 50 Expert puzzles.
+snowdoku.solve.expert.100	count	Subject Matter Expert	10	no	Solve 100 Expert puzzles.	Solved 100 Expert puzzles.
+snowdoku.solve.expert.250	count	Don't Try This at Home	20	no	Solve 250 Expert puzzles.	Solved 250 Expert puzzles.
+snowdoku.solve.expert.500	count	Expert Times Call for Expert Measures	30	no	Solve 500 Expert puzzles.	Solved 500 Expert puzzles.
+snowdoku.solve.master.10	count	Master of None	2	no	Solve 10 Master puzzles.	Solved 10 Master puzzles.
+snowdoku.solve.master.50	count	Master of Solves	5	no	Solve 50 Master puzzles.	Solved 50 Master puzzles.
+snowdoku.solve.master.100	count	Master of Puppets	10	no	Solve 100 Master puzzles.	Solved 100 Master puzzles.
+snowdoku.solve.master.250	count	Master of the Mind	20	no	Solve 250 Master puzzles.	Solved 250 Master puzzles.
+snowdoku.solve.master.500	count	Master of the House	30	no	Solve 500 Master puzzles.	Solved 500 Master puzzles.
+snowdoku.solve.extreme.10	count	Kick It Up a Notch	2	no	Solve 10 Extreme puzzles.	Solved 10 Extreme puzzles.
+snowdoku.solve.extreme.50	count	Maximum Overdrive	5	no	Solve 50 Extreme puzzles.	Solved 50 Extreme puzzles.
+snowdoku.solve.extreme.100	count	Ludicrous Speed	10	no	Solve 100 Extreme puzzles.	Solved 100 Extreme puzzles.
+snowdoku.solve.extreme.250	count	These Go to Eleven	20	no	Solve 250 Extreme puzzles.	Solved 250 Extreme puzzles.
+snowdoku.solve.extreme.500	count	They've Gone to Plaid!	30	no	Solve 500 Extreme puzzles.	Solved 500 Extreme puzzles.
+snowdoku.secret.first.1	secret	One Is the Loneliest Number	5	yes	A hidden achievement.	Placed every 1 before any other number or note.
+snowdoku.secret.first.2	secret	Two's Company	5	yes	A hidden achievement.	Placed every 2 before any other number or note.
+snowdoku.secret.first.3	secret	Three's a Crowd	5	yes	A hidden achievement.	Placed every 3 before any other number or note.
+snowdoku.secret.first.4	secret	May the Fours Be with You	5	yes	A hidden achievement.	Placed every 4 before any other number or note.
+snowdoku.secret.first.5	secret	Five for Your Life!	5	yes	A hidden achievement.	Placed every 5 before any other number or note.
+snowdoku.secret.first.6	secret	Battle of the Sixes	5	yes	A hidden achievement.	Placed every 6 before any other number or note.
+snowdoku.secret.first.7	secret	The Most Magically Powerful Number	5	yes	A hidden achievement.	Placed every 7 before any other number or note.
+snowdoku.secret.first.8	secret	You're Doing Gr-eight!	5	yes	A hidden achievement.	Placed every 8 before any other number or note.
+snowdoku.secret.first.9	secret	A Nine of the Times	5	yes	A hidden achievement.	Placed every 9 before any other number or note.
+snowdoku.drills.all	drills	Drill Sergeant	15	no	Complete a drill for every technique that has drills.	Completed a drill for every technique.

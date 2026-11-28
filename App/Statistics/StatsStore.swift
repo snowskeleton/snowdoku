@@ -42,6 +42,24 @@ final class StatsStore {
             stats.lastDaily = key
         }
         save()
+        GameCenter.shared.reportStats(self)
+    }
+
+    /// The player placed every copy of a digit before any other digit, note or hint (Free Play and
+    /// dailies; drills and campaign levels start mid-solve).
+    func recordDigitFirst(_ digit: Int) {
+        guard !stats.digitsFirst.contains(digit) else { return }
+        stats.digitsFirst.insert(digit)
+        save()
+        GameCenter.shared.reportStats(self)
+    }
+
+    /// A drill's move was made (any drill but a lesson question).
+    func recordDrill(_ technique: Technique) {
+        guard !stats.drilled.contains(technique) else { return }
+        stats.drilled.insert(technique)
+        save()
+        GameCenter.shared.reportStats(self)
     }
 
     /// Adds a finished game's (or found drill's) moves to the technique skills, and queues its

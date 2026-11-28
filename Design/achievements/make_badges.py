@@ -1,66 +1,33 @@
 #!/usr/bin/env python3
 """Draws the Game Center badge art and writes the Game Center configuration spec.
 
-For every campaign chapter (from `sudokugen campaign-chapters`) a 512x512 badge: a medallion in its
-part's color with a small board showing the technique's shape (the cells an X-Wing's rectangle or a
-chain's path would use). Also badges for each part, the whole campaign, the hidden boss-skip
-achievements, and the two leaderboards. SVGs are rasterized with headless Chrome, like the app icon.
+The achievements themselves (ids, titles, points, descriptions) live in `Achievements.tsv`, the
+list designed with the user. Each gets a 512x512 medallion badge: the part's or tier's color, with a
+number, calendar, digit or small board. Also badges for the two leaderboards. SVGs are rasterized
+with headless Chrome, like the app icon.
 
 Writes:
   Design/achievements/badges/*.png   the art (512x512, as App Store Connect wants)
   Design/achievements/GameCenter.json  every achievement and leaderboard: id, title, descriptions,
                                        points, image; the identifiers `App/Shared/GameCenter.swift` reports
 
-Run: python3 Design/achievements/make_badges.py   (needs Engine/.build/release/sudokugen)
+Run: python3 Design/achievements/make_badges.py   (needs Google Chrome)
 """
-import json, os, subprocess, sys, tempfile
+import json, os, subprocess, tempfile
 from xml.sax.saxutils import escape
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.join(HERE, "..", "..")
 OUT = os.path.join(HERE, "badges")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-SUDOKUGEN = os.path.join(ROOT, "Engine", ".build", "release", "sudokugen")
 FONT = "-apple-system, 'SF Pro Rounded', 'Helvetica Neue', sans-serif"
 
 # One color per part: Singles … Extreme, getting deeper as the campaign goes on.
 PART_COLORS = ["#3FA34D", "#2A9D8F", "#2563D4", "#5B4BD6", "#9C3FC4", "#C2367A", "#C8322B"]
 GOLD = "#D4A12A"
 
-# Each chapter's motif: cells (row, col, 0-8) to highlight on a 9x9 board, and optional links
-# (pairs of cells) drawn as lines. Rough shapes, meant to be recognizable rather than exact.
 R = lambda r, c: (r, c)
-MOTIFS = {
-    "fullHouse": ([R(4, c) for c in range(9)], []),
-    "hiddenSingleBox": ([R(r, c) for r in range(3, 6) for c in range(3, 6)], []),
-    "nakedSingle": ([R(4, 4)], [(R(4, 4), R(4, 0)), (R(4, 4), R(4, 8)), (R(4, 4), R(0, 4)), (R(4, 4), R(8, 4))]),
-    "hiddenSingleLine": ([R(2, c) for c in range(9)], []),
-    "pointing": ([R(3, 3), R(3, 4), R(3, 6), R(3, 8)], []),
-    "claiming": ([R(5, 0), R(5, 1), R(5, 2)], []),
-    "nakedPair": ([R(1, 2), R(1, 6)], [(R(1, 2), R(1, 6))]),
-    "hiddenPair": ([R(6, 1), R(6, 4)], [(R(6, 1), R(6, 4))]),
-    "triples": ([R(4, 1), R(4, 4), R(4, 7)], [(R(4, 1), R(4, 4)), (R(4, 4), R(4, 7))]),
-    "xWing": ([R(1, 1), R(1, 7), R(7, 1), R(7, 7)], [(R(1, 1), R(1, 7)), (R(7, 1), R(7, 7))]),
-    "skyscraper": ([R(1, 2), R(7, 2), R(2, 6), R(7, 6)], [(R(1, 2), R(7, 2)), (R(2, 6), R(7, 6))]),
-    "twoStringKite": ([R(1, 1), R(1, 7), R(2, 2), R(7, 2)], [(R(1, 1), R(1, 7)), (R(2, 2), R(7, 2))]),
-    "turbotFish": ([R(0, 1), R(0, 6), R(4, 6), R(4, 3)], [(R(0, 1), R(0, 6)), (R(0, 6), R(4, 6)), (R(4, 6), R(4, 3))]),
-    "finnedXWing": ([R(1, 1), R(1, 7), R(7, 1), R(7, 7), R(8, 8)], [(R(1, 1), R(1, 7)), (R(7, 1), R(7, 7))]),
-    "remotePair": ([R(1, 1), R(1, 5), R(4, 5), R(4, 8)], [(R(1, 1), R(1, 5)), (R(1, 5), R(4, 5)), (R(4, 5), R(4, 8))]),
-    "uniqueness": ([R(2, 1), R(2, 4), R(6, 1), R(6, 4)], [(R(2, 1), R(2, 4)), (R(2, 4), R(6, 4)), (R(6, 4), R(6, 1)), (R(6, 1), R(2, 1))]),
-    "xyWing": ([R(2, 2), R(2, 6), R(6, 2)], [(R(2, 2), R(2, 6)), (R(2, 2), R(6, 2))]),
-    "xyzWing": ([R(2, 2), R(2, 6), R(1, 1)], [(R(2, 2), R(2, 6)), (R(2, 2), R(1, 1))]),
-    "wWing": ([R(1, 1), R(7, 6), R(1, 6)], [(R(1, 1), R(1, 6)), (R(1, 6), R(7, 6))]),
-    "emptyRectangle": ([R(3, 4), R(4, 3), R(4, 4), R(4, 5), R(5, 4), R(4, 8), R(0, 4)], [(R(4, 5), R(4, 8))]),
-    "swordfish": ([R(1, 1), R(1, 4), R(4, 4), R(4, 7), R(7, 1), R(7, 7)], [(R(1, 1), R(1, 4)), (R(4, 4), R(4, 7)), (R(7, 1), R(7, 7))]),
-    "xChain": ([R(0, 1), R(0, 5), R(3, 5), R(3, 8), R(7, 8)], [(R(0, 1), R(0, 5)), (R(0, 5), R(3, 5)), (R(3, 5), R(3, 8)), (R(3, 8), R(7, 8))]),
-    "xyChain": ([R(1, 0), R(1, 4), R(5, 4), R(5, 7), R(8, 7)], [(R(1, 0), R(1, 4)), (R(1, 4), R(5, 4)), (R(5, 4), R(5, 7)), (R(5, 7), R(8, 7))]),
-    "wxyzWing": ([R(3, 3), R(3, 7), R(5, 4), R(1, 4)], [(R(3, 3), R(3, 7)), (R(3, 3), R(5, 4)), (R(3, 3), R(1, 4))]),
-    "finnedSwordfish": ([R(1, 1), R(1, 4), R(4, 4), R(4, 7), R(7, 1), R(7, 7), R(8, 8)], [(R(1, 1), R(1, 4)), (R(4, 4), R(4, 7)), (R(7, 1), R(7, 7))]),
-    "aic": ([R(1, 1), R(1, 6), R(4, 6), R(4, 2), R(7, 2), R(7, 7)], [(R(1, 1), R(1, 6)), (R(1, 6), R(4, 6)), (R(4, 6), R(4, 2)), (R(4, 2), R(7, 2)), (R(7, 2), R(7, 7))]),
-    "als": ([R(3, 0), R(3, 1), R(3, 2), R(6, 5), R(7, 5)], [(R(3, 2), R(6, 5))]),
-    "forcingChain": ([R(4, 4), R(1, 4), R(4, 1), R(7, 7)], [(R(4, 4), R(1, 4)), (R(4, 4), R(4, 1)), (R(1, 4), R(7, 7)), (R(4, 1), R(7, 7))]),
-    "forcingNet": ([R(4, 4), R(1, 1), R(1, 7), R(7, 1), R(7, 7), R(4, 8)], [(R(4, 4), R(1, 1)), (R(4, 4), R(1, 7)), (R(4, 4), R(7, 1)), (R(4, 4), R(7, 7)), (R(1, 7), R(4, 8)), (R(7, 7), R(4, 8))]),
-}
+TIERS = ["Beginner", "Easy", "Medium", "Hard", "Expert", "Master", "Extreme"]
+PARTS = ["Singles", "Notes", "Patterns", "Wings & Fish", "Chains", "Master", "Extreme"]
 
 
 def medallion(color, inner, label=None, locked_ring=False):
@@ -125,43 +92,62 @@ def rasterize(svgs):
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def main():
-    chapters = json.loads(subprocess.check_output([SUDOKUGEN, "campaign-chapters"], text=True))
-    parts = sorted({(c["part"], c["partName"]) for c in chapters})
-    svgs, achievements = {}, []
+def big_text(text, color, size=150, y=300):
+    return (f'<text x="256" y="{y}" text-anchor="middle" font-family="{FONT}" font-weight="800" font-size="{size}" '
+            f'fill="{color}">{escape(text)}</text>')
 
-    def achievement(id, title, before, after, points, image, hidden=False):
-        achievements.append({"id": id, "title": title, "beforeEarned": before, "afterEarned": after,
-                             "points": points, "hidden": hidden, "repeatable": False, "image": f"badges/{image}.png"})
 
-    for i, ch in enumerate(chapters):
-        color = PART_COLORS[ch["part"] - 1]
-        cells, links = MOTIFS[ch["id"]]
-        name = f"chapter-{i + 1:02d}-{ch['id']}"
-        svgs[name] = medallion(color, board(color, cells, links), ch["title"])
-        achievement(f"snowdoku.chapter.{ch['id']}", ch["title"], f"Finish chapter {i + 1} of the campaign: {ch['title']}.",
-                    f"Finished chapter {i + 1}: {ch['title']}.", 15, name)
+def calendar(color, text):
+    return (f'<rect x="146" y="130" width="220" height="210" rx="22" fill="#1F232C" stroke="{color}" stroke-width="10"/>'
+            f'<rect x="146" y="130" width="220" height="52" rx="22" fill="{color}"/>'
+            f'<rect x="146" y="160" width="220" height="22" fill="{color}"/>'
+            f'<rect x="190" y="110" width="16" height="44" rx="8" fill="#FFFFFF"/>'
+            f'<rect x="306" y="110" width="16" height="44" rx="8" fill="#FFFFFF"/>'
+            + big_text(text, "#FFFFFF", 96 if len(text) <= 2 else 74, 300))
 
-    for n, pname in parts:
+
+def art(kind, id, n):
+    """The badge for one achievement: (image name, svg)."""
+    tail = id.split(".")
+    if kind == "part":
         color = PART_COLORS[n - 1]
-        inner = (f'<text x="256" y="300" text-anchor="middle" font-family="{FONT}" font-weight="800" font-size="150" '
-                 f'fill="{color}">{n}</text>')
-        name = f"part-{n}"
-        svgs[name] = medallion(color, inner, pname)
-        achievement(f"snowdoku.part.{n}", f"Part {n}: {pname}", f"Finish every chapter in part {n}, {pname}.",
-                    f"Finished part {n}, {pname}.", 30, name)
+        return f"part-{n}", medallion(color, big_text(str(n), color), PARTS[n - 1])
+    if kind == "campaign":
+        return "campaign-complete", medallion(GOLD, star(256, 250, 130, GOLD), "Campaign")
+    if kind == "daily":
+        days = "1" if tail[-1] == "first" else tail[-1].removeprefix("streak")
+        return f"daily-{days}", medallion("#2563D4", calendar("#2563D4", days), "Daily" if days == "1" else f"{days} Days")
+    if kind == "first":
+        tier = tail[-1].capitalize()
+        color = PART_COLORS[TIERS.index(tier)]
+        return f"first-{tail[-1]}", medallion(color, big_text("1st", color, 120), tier)
+    if kind == "everyTier":
+        bars = "".join(f'<rect x="{150 + i * 30}" y="{320 - (i + 1) * 26}" width="24" height="{(i + 1) * 26}" rx="5" fill="{PART_COLORS[i]}"/>'
+                       for i in range(6))
+        return "every-tier", medallion(GOLD, bars, "Every Tier")
+    if kind == "count":
+        tier, count = tail[-2].capitalize(), tail[-1]
+        color = PART_COLORS[TIERS.index(tier)]
+        return f"solved-{tail[-2]}-{count}", medallion(color, big_text(count, color, 130 if len(count) <= 2 else 110), tier)
+    if kind == "secret":
+        return f"secret-{n}", medallion("#6B7280", big_text(str(n), "#E5E7EB", 190, 320), "Secret", locked_ring=True)
+    if kind == "drills":
+        cells = [R(1, 1), R(1, 7), R(7, 1), R(7, 7)]
+        return "drills", medallion("#2A9D8F", board("#2A9D8F", cells, [(R(1, 1), R(1, 7)), (R(7, 1), R(7, 7))]), "Drills")
+    raise ValueError(f"unknown kind {kind!r} for {id}")
 
-    svgs["campaign-complete"] = medallion(GOLD, star(256, 250, 130, GOLD), "Campaign")
-    achievement("snowdoku.campaign.complete", "Grandmaster", "Finish the whole campaign, from Full House to Forcing Nets.",
-                "Finished the whole campaign, from Full House to Forcing Nets.", 100, "campaign-complete")
 
-    for i, ch in enumerate(chapters):
-        color = PART_COLORS[ch["part"] - 1]
-        name = f"skip-{i + 1:02d}-{ch['id']}"
-        svgs[name] = medallion(color, crown(color), ch["title"], locked_ring=True)
-        achievement(f"snowdoku.boss.{ch['id']}.skip", f"Straight to the Boss: {ch['title']}",
-                    "A hidden achievement.", f"Beat the {ch['title']} boss without hints before playing any other level of the chapter.",
-                    5, name, hidden=True)
+def main():
+    with open(os.path.join(HERE, "Achievements.tsv")) as f:
+        rows = [dict(zip(header, line.rstrip("\n").split("\t"))) for header in [f.readline().rstrip("\n").split("\t")] for line in f if line.strip()]
+    svgs, achievements = {}, []
+    for r in rows:
+        last = r["id"].split(".")[-1]
+        name, svg = art(r["kind"], r["id"], int(last) if last.isdigit() else 0)
+        svgs[name] = svg
+        achievements.append({"id": r["id"], "title": r["title"], "beforeEarned": r["before"], "afterEarned": r["after"],
+                             "points": int(r["points"]), "hidden": r["hidden"] == "yes", "repeatable": False,
+                             "image": f"badges/{name}.png"})
 
     svgs["leaderboard-chapters"] = medallion(GOLD, board(GOLD, [R(r, c) for r in range(9) for c in range(9) if (r + c) % 4 == 0], []), "Chapters")
     svgs["leaderboard-daily"] = medallion("#2563D4", (
@@ -169,19 +155,21 @@ def main():
         '<line x1="256" y1="230" x2="256" y2="160" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>'
         '<line x1="256" y1="230" x2="306" y2="250" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>'), "Daily")
 
+    ids = [a["id"] for a in achievements]
+    assert len(ids) == len(set(ids)), "duplicate achievement ids"
     total = sum(a["points"] for a in achievements)
     assert total <= 1000, f"{total} achievement points; Game Center allows 1000"
     assert len(achievements) <= 100, f"{len(achievements)} achievements; Game Center allows 100"
 
     spec = {
         "note": "Game Center configuration for Snowdoku. Identifiers must match App/Shared/GameCenter.swift. "
-                "Generated by Design/achievements/make_badges.py; enter it in Xcode's GameKit configuration "
-                "(File > New > File > GameKit Bundle) or App Store Connect.",
+                "Generated by Design/achievements/make_badges.py from Achievements.tsv; enter it in Xcode's Game Center "
+                "configuration (File > New > File > Game Center Configuration) or App Store Connect.",
         "totalPoints": total,
         "achievements": achievements,
         "leaderboards": [
             {"id": "snowdoku.chapters", "title": "Chapters Completed", "type": "classic", "sort": "high-to-low",
-             "format": "integer", "suffix": " chapters", "suffixSingular": " chapter", "scoreRange": [0, len(chapters)],
+             "format": "integer", "suffix": " chapters", "suffixSingular": " chapter", "scoreRange": [0, 29],
              "image": "badges/leaderboard-chapters.png"},
             {"id": "snowdoku.daily", "title": "Daily Puzzle", "type": "recurring", "recurrence": "daily, starting at 00:00 UTC",
              "sort": "low-to-high", "format": "elapsed time (seconds)", "note": "Only no-hint solves are reported.",
@@ -200,6 +188,9 @@ def main():
     with open(os.path.join(HERE, "GameCenter.json"), "w") as f:
         json.dump(spec, f, indent=2)
         f.write("\n")
+    for old in os.listdir(OUT) if os.path.isdir(OUT) else []:
+        if old.endswith(".png"):
+            os.remove(os.path.join(OUT, old))
     rasterize(svgs)
     print(f"{len(achievements)} achievements, {total} points, {len(svgs)} images in {OUT}")
 
