@@ -39,7 +39,7 @@ Decided so far (Nov 27, 2026):
 - [x] **Sue de Coq:** HoDoKu's extended forms (extra digits outside the intersection, a digit in both parts, the spare intersection cell in either part, up to 4 cells per part) are supported; MISSED went from 224 to 2.
 - [ ] **Tier scale:** tiers match HoDoKu's exactly through our Medium. HoDoKu caps Unfair at a total of 1,800, so it calls 82% of our Master and a third of our Expert "Extreme", by score alone (never because a forcing chain was needed). Probably keep ours (Extreme = forcing chains is a v1 decision), but note the disagreement.
 - [x] **Patterns HoDoKu rejects:** our size-n fish included ones whose *complement* is smaller. With U lines missing the digit, the lines outside a fish's cover hold it only in the lines outside its base (plus the same fins), so they form a fish of size U - n with the same eliminations; HoDoKu reports only the smaller one. A "Jellyfish" on a digit with 6 unsolved lines is an X-Wing seen from the other side. `Fish` now leaves those to the smaller fish (or, at size 1, to a single or claiming), unless the complement has a line without candidates, where the big fish is the real one. No bank rating moved (the smaller fish always came first in the solve), and every fish's MISSED is 0.
-- [ ] **Campaign fish spotlights were degenerate:** 44 campaign puzzles fail `bundledCampaignStillWorks` after the fix, nearly all spotlights (singles plus one fish), where the "fish" was a smaller one in disguise: all 8 Jellyfish, all 8 Sashimi Jellyfish and 7 of 8 Finned Jellyfish spotlights, 7 Swordfish and 10 Finned/Sashimi Swordfish ones. Re-mine them; genuine Jellyfish need 8+ unsolved lines and may be rare in singles-only puzzles (the Medium+ census never chooses a Sashimi Jellyfish), so the chapter may need to drop those spotlight members.
+- [x] **Campaign fish spotlights were degenerate:** re-merged from the archive and re-mined on the cluster (2 h): every Swordfish/Jellyfish family spotlight has 8 genuine puzzles again.
 
 ## Difficulty levels (decided Nov 28, 2026; built: `Level`, Free Play tier → level)
 
@@ -79,14 +79,5 @@ Also decided:
 ## Campaign puzzles
 
 - [ ] **Campaign vs. the new levels: investigate the options, not decided.** The campaign skips techniques some levels need (UR Types 3 and 6, Avoidable Rectangles, quads, coloring, Sue de Coq, Franken Fish, Death Blossom), and Remote Pair moves from Medium to Hard. Options: add chapters, accept library-only techniques, or line campaign parts up with levels ("finish these chapters and you're ready for Medium 2").
-- [ ] **Finned Swordfish endless:** only 50 base puzzles; the target is ≥ 100. Its context and mixed puzzles also use the technique only about twice each. To top it up, mine on the cluster, then merge with the archive (see CLAUDE.md):
-
-  ```bash
-  G=Engine/.build/release/sudokugen
-  $G campaign --chapter finnedSwordfish --kind endless,context,mixed --minutes 240 --bank App/Resources/Puzzles.tsv > more.jsonl
-  xz -dc Engine/Data/campaign-mined.jsonl.xz > old.jsonl
-  $G campaign-merge old.jsonl more.jsonl > App/Resources/Campaign.json
-  ```
-
-  The archive doesn't include the Full House puzzles (mined on the Mac). Add a quick `$G campaign --chapter fullHouse --minutes 10 --bank App/Resources/Puzzles.tsv > fh.jsonl` to the merge, or that chapter loses its pools. Run `swift test` afterwards to check.
-- [ ] Forcing Chains endless is at 101 puzzles; the other chapters have 150.
+- [x] **Finned Swordfish endless:** 150 now (campaign-merge reuses practice and boss puzzles, re-checked).
+- [x] Forcing Chains endless: 150 now.
