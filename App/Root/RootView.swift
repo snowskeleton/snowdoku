@@ -75,6 +75,7 @@ struct RootView: View {
         .task {
             let args = ProcessInfo.processInfo.arguments
             if args.contains("-statsTab") { tab = .statistics }
+            if args.contains("-techniquesTab") { tab = .techniques }
             if let i = args.firstIndex(of: "-technique"), i + 1 < args.count, let t = Technique(rawValue: args[i + 1]) {
                 tab = .techniques
                 techniquePath = [t]

@@ -1,7 +1,7 @@
 import SwiftUI
 import SudokuCore
 
-/// A technique in the library: name and summary, plus its tier when the list isn't grouped by tier.
+/// A technique in the library: name and summary, plus its level ("Hard 2") when the list isn't grouped by level.
 struct TechniqueRow: View {
     let technique: Technique
     let showsDifficulty: Bool
@@ -13,7 +13,7 @@ struct TechniqueRow: View {
                     Text(technique.name)
                     Spacer(minLength: 8)
                     if showsDifficulty {
-                        Text(technique.difficulty.name)
+                        Text(technique.level.name)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

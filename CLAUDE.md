@@ -123,7 +123,7 @@ sleep 5; xcrun simctl io "$SIM" screenshot <scratchpad>/shot.png
 - `-arm <digit>`: with `-demo`, arm a big digit (digit-first mode)
 - `-puzzle <81 chars>`: start a specific puzzle (no generation wait; UI tests use this)
 - `-prefill <n> [-wrong]`: with `-puzzle`, fill all but the last n empty cells from the solution, optionally with one wrong value
-- `-technique <technique>`: open that technique's page
+- `-technique <technique>`: open that technique's page; `-techniquesTab` / `-statsTab`: open the library or Statistics tab
 - `-drill <technique> [-hint level]`: start a drill from the bundled bank (raw technique name, e.g. `xWing`), optionally advancing the hint
 - `-campaign <chapterId> <stepKey>`: start a campaign step (`lesson0`, `spotlight0`, `context1`, `mixed0`, `drills`, `boss`, `endless`); works with `-prefill`
 - `-campaignDone <n>`: the first n chapters finished; `-resetCampaign` clears progress; `-resetGames` clears saved games and what Continue resumes
@@ -187,7 +187,7 @@ HoDoKu (GPL, Java) is a design reference only: read it for ideas, but never tran
 - Mac keyboard: number = value, Shift+number = note, arrows move, Option+arrow jumps a box, Command+arrow jumps to the edge, Delete erases, H = hint, Cmd+Z / Shift+Cmd+Z = undo/redo.
 - Pointer (iPad and Mac, each a Settings toggle): with a digit armed, Shift-click toggles it as a note even when the big digit is armed, and right-click removes that note. Board taps go through `BoardClick` (a UIKit recognizer on iOS, for modifier flags and the secondary button); the Mac reads Shift from `NSEvent` and has right-click only on macOS 26+, where AppKit recognizers can attach to SwiftUI views.
 - Highlighting: the selected cell plus its peers, matching digits, and cells whose **notes** contain the highlighted digit (whole-cell tint, bold note).
-- Technique library: a segmented control switches between grouping by difficulty and by category (`TechniqueCategory`, HoDoKu's families; each row shows its tier). The choice is remembered.
+- Technique library: a segmented control switches between grouping by difficulty (one section per level, "Hard 2") and by category (`TechniqueCategory`, HoDoKu's families; each row shows its level). The choice is remembered.
 - Technique pages: summary, a hand-written "How it works" guide, a worked example (the bank's first drill, drawn like an answer-level hint), and two practice buttons: a drill ("the next move is X") and a full puzzle that needs it.
 - Drills start mid-solve with the solver's own candidates as notes (singles drills have no notes). **Singles drills are spotlit** (`Spotlight` in the engine, `Game.spotlight`): an opening position has many valid singles, so a singles drill names one area (a house, or a naked single's box) and only moves there count. Cells outside are grayed and take no input; a move inside that isn't the answer bounces back (the board is unchanged) with a coach card (`CoachPanel`) naming the clash ("There's already a 5 in row 3"), or saying it's right but a different single or not forced yet. Only wrong digits count as mistakes. The header says what to find, with no timer. Making any instance of the move shows a floating result card (Keep solving / Next drill). Drills don't count toward statistics.
 - Controls (Undo, Erase, Fill, Hint) sit above the pads, in wide layouts too; never in the toolbar. The one-pad layout has no controls row: Undo, Fill and Hint are its last column of keys (`ActionKey`), and it has no Erase (tapping a cell's digit again clears it; Delete still works).

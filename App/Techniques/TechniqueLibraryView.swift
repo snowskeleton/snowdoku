@@ -46,9 +46,9 @@ struct TechniqueLibraryView: View {
 
         switch grouping {
         case .difficulty:
-            ForEach(Difficulty.allCases, id: \.self) { d in
-                if let list = Technique.library[d] {
-                    Section(d.name) {
+            ForEach(Level.allCases, id: \.self) { level in
+                if let list = Technique.libraryByLevel[level] {
+                    Section(level.name) {
                         ForEach(list, id: \.self) { TechniqueRow(technique: $0, showsDifficulty: false) }
                     }
                 }

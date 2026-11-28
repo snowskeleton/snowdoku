@@ -7,6 +7,9 @@ extension Technique {
     /// The learnable techniques by tier. Computed once.
     static let library: [Difficulty: [Technique]] = Dictionary(grouping: learnable, by: \.difficulty)
 
+    /// The learnable techniques by the level that introduces them, easiest first. Computed once.
+    static let libraryByLevel: [Level: [Technique]] = Dictionary(grouping: learnable, by: \.level)
+
     /// The learnable techniques by family, easiest first within each. Computed once.
     static let libraryByCategory: [TechniqueCategory: [Technique]] = Dictionary(grouping: learnable, by: \.category)
 
