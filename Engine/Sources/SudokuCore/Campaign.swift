@@ -183,7 +183,7 @@ public struct CampaignAnalysis: Sendable {
         var steps = 0
         while !b.isSolved, steps < 2000, let s = solver.nextStep(b) {
             steps += 1
-            total += s.technique.score
+            total += s.score
             if hardest.map({ s.technique.score > $0.score }) ?? true { hardest = s.technique }
             b.apply(s)
             if !s.placements.isEmpty, let h = hardest {

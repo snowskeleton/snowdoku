@@ -2,10 +2,15 @@
 public struct Rating: Hashable, Sendable, Codable {
     /// Hardest technique required.
     public var hardest: Technique
-    /// The puzzle's tier: the hardest technique's tier, or one tier higher when the total score
+    /// The tier of the hardest step, when that's above the hardest technique's tier: a long chain
+    /// counts as a harder move (`Step.difficulty`). Nil otherwise.
+    public var hardestStep: Difficulty?
+    /// The tier of the hardest move: the hardest technique's tier, or a long chain's.
+    public var baseDifficulty: Difficulty { max(hardest.difficulty, hardestStep ?? .beginner) }
+    /// The puzzle's tier: the hardest move's tier, or one tier higher when the total score
     /// is over that tier's `maxScore` (a long, grinding solve). The same idea as HoDoKu's rating.
     public var difficulty: Difficulty {
-        let base = hardest.difficulty
+        let base = baseDifficulty
         guard let max = base.maxScore, totalScore > max else { return base }
         return Difficulty(rawValue: base.rawValue + 1) ?? base
     }
@@ -45,12 +50,13 @@ public enum Rater {
             return r.difficulty == tier ? r : nil
         }
         var total = 0
-        var hardest = Technique.fullHouse
+        var hardest = Difficulty.beginner
         let log = HumanSolver.upTo(tier).solve(Board(puzzle)) { step in
-            total += step.technique.score
-            if step.technique.score > hardest.score { hardest = step.technique }
-            // The hardest technique only gets harder and the total only grows.
-            return hardest.difficulty == tier && tier.maxScore.map { total > $0 } == true
+            total += step.score
+            hardest = max(hardest, step.difficulty)
+            // The hardest move only gets harder and the total only grows. (A long chain can be
+            // harder than the tier even though its technique isn't.)
+            return hardest > tier || (hardest == tier && tier.maxScore.map { total > $0 } == true)
         }
         guard log.solved else { return nil }
         let r = rating(from: log.steps)
@@ -61,11 +67,14 @@ public enum Rater {
         var counts: [Technique: Int] = [:]
         var total = 0
         var hardest = Technique.fullHouse
+        var hardestStep = Difficulty.beginner
         for s in steps {
             counts[s.technique, default: 0] += 1
-            total += s.technique.score
+            total += s.score
             if s.technique.score > hardest.score { hardest = s.technique }
+            hardestStep = max(hardestStep, s.difficulty)
         }
-        return Rating(hardest: hardest, totalScore: total, counts: counts, stepCount: steps.count)
+        return Rating(hardest: hardest, hardestStep: hardestStep > hardest.difficulty ? hardestStep : nil,
+                      totalScore: total, counts: counts, stepCount: steps.count)
     }
 }

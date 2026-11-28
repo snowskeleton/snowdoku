@@ -61,6 +61,12 @@ sudokugen — Snowdoku puzzle tooling
   sudokugen bank-stats [FILE]              How many bank puzzles use each technique, in all and per tier,
                                            and how many have it as their hardest (default FILE:
                                            App/Resources/Puzzles.tsv); lists techniques no puzzle uses
+  sudokugen chain-bench [--min D] [FILE]   Per bank puzzle (default Hard+, App/Resources/Puzzles.tsv):
+                                           stored tier, hardest and total; current ones; solve ms,
+                                           slowest step ms, exhaustive chain search ms, step count,
+                                           technique counts, chain lengths (TSV)
+  sudokugen chain-lengths POSITIONS        Longest chain each chain technique finds in find-all mode,
+                                           per HoDoKu library position (histograms)
   sudokugen merge-drills [--per N] FILE...  Combine drill files, drop broken or duplicate drills, and
                                            put the clearest example first for each technique
 """
@@ -220,6 +226,72 @@ case "census":
         let c = census.counts[t] ?? Census.Counts()
         print(t.rawValue.padding(toLength: 26, withPad: " ", startingAt: 0) + String(format: "%5d %6d %6d %6d %7d", t.score, c.available, c.novel, c.chosen, c.puzzles))
     }
+
+case "chain-bench":
+    // Per bank puzzle of tier --min and up: its stored and current rating, solve time, the slowest
+    // single solver step (a hint lookup), an exhaustive chain search (a drill), and chain lengths.
+    let minName = option("--min", in: args) ?? "hard"
+    guard let minTier = Difficulty.allCases.first(where: { $0.name.lowercased() == minName.lowercased() }) else { fail("Unknown difficulty") }
+    let path = args.dropFirst().last ?? "App/Resources/Puzzles.tsv"
+    guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { fail("Can't read \(path)") }
+    let bank = text.split(separator: "\n").compactMap(BankedPuzzle.init(line:)).filter { $0.difficulty >= minTier }
+    let chainTechs: [Technique] = [.xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC]
+    let rows = Locked<[Int: String]>([:])
+    let solver = HumanSolver()
+    func ms(_ t: DispatchTime) -> Double { Double(DispatchTime.now().uptimeNanoseconds - t.uptimeNanoseconds) / 1e6 }
+    DispatchQueue.concurrentPerform(iterations: bank.count) { i in
+        let p = bank[i]
+        guard case .unique(let sol) = BruteForce.analyze(p.puzzle) else { return }
+        var board = Board(p.puzzle)
+        var steps: [Step] = []
+        var maxStep = 0.0
+        var drillBoard: Board?
+        let t0 = DispatchTime.now()
+        while !board.isSolved && steps.count < 2000 {
+            let ts = DispatchTime.now()
+            let next = solver.nextStep(board)
+            maxStep = max(maxStep, ms(ts))
+            let step: Step
+            if let next { step = next } else {
+                let c = board.emptyCells.min { board.candidates[$0].nonzeroBitCount < board.candidates[$1].nonzeroBitCount }!
+                step = Step(.bruteForce, placements: [Candidate(c, sol[c])], explanation: "")
+            }
+            if drillBoard == nil && step.technique.score >= Technique.xChain.score { drillBoard = board }
+            board.apply(step)
+            steps.append(step)
+        }
+        let solveMs = ms(t0)
+        var drillMs = 0.0
+        if let drillBoard {
+            let td = DispatchTime.now()
+            for t in chainTechs { _ = solver.allSteps(drillBoard, technique: t) }
+            drillMs = ms(td)
+        }
+        let r = Rater.rating(from: steps)
+        let chainLens = steps.filter { chainTechs.contains($0.technique) }.map { "\($0.technique.rawValue):\($0.links.count)" }.joined(separator: ",")
+        let counts = r.counts.map { "\($0.key.rawValue):\($0.value)" }.sorted().joined(separator: ",")
+        let row = [p.puzzle.string, p.difficulty.name, p.rating.hardest.rawValue, String(p.rating.totalScore),
+                   r.difficulty.name, r.hardest.rawValue, String(r.totalScore), String(format: "%.1f", solveMs),
+                   String(format: "%.2f", maxStep), String(format: "%.2f", drillMs), String(steps.count), counts, chainLens].joined(separator: "\t")
+        rows.with { $0[i] = row }
+    }
+    let all = rows.with { $0 }
+    for k in all.keys.sorted() { print(all[k]!) }
+
+case "chain-lengths":
+    // Longest chain each chain technique finds in find-all mode, over HoDoKu library positions.
+    guard let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { fail("Can't read") }
+    let lines = text.split(separator: "\n")
+    let hist = Locked<[Technique: [Int: Int]]>([:])
+    let solver = HumanSolver()
+    DispatchQueue.concurrentPerform(iterations: lines.count) { i in
+        guard let b = Hodoku.board(fromLibraryLine: lines[i]) else { return }
+        for t in [Technique.xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC] {
+            let m = solver.allSteps(b, technique: t).map(\.links.count).max() ?? 0
+            hist.with { $0[t, default: [:]][m, default: 0] += 1 }
+        }
+    }
+    for (t, h) in hist.with({ $0 }) { print(t.rawValue, h.sorted { $0.key < $1.key }.map { "\($0.key):\($0.value)" }.joined(separator: " ")) }
 
 case "bank-tiers":
     guard args.count > 1, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { fail("Usage: sudokugen bank-tiers FILE") }

@@ -76,7 +76,7 @@ extension Step {
     /// Text for a given hint level. `instances` is how many places the technique applies
     /// (`Hint.step`); when it's more than one, the nudge and technique levels say so.
     public func hintText(_ level: HintLevel, instances: Int = 1) -> String {
-        let tier = technique.difficulty.name.lowercased()
+        let tier = difficulty.name.lowercased()
         switch level {
         case .nudge where instances > 1:
             return placements.isEmpty
@@ -86,8 +86,8 @@ extension Step {
             return "Try a \(technique.name). There are \(instances) on the board. \(technique.summary)"
         case .nudge:
             return placements.isEmpty
-                ? "There's a candidate you can eliminate. Look for a \(technique.difficulty.name.lowercased())-level move."
-                : "There's a digit you can place. Look for a \(technique.difficulty.name.lowercased())-level move."
+                ? "There's a candidate you can eliminate. Look for a \(tier)-level move."
+                : "There's a digit you can place. Look for a \(tier)-level move."
         case .technique:
             return "Try a \(technique.name). \(technique.summary)"
         case .region:

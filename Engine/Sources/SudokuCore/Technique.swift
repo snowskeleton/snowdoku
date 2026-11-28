@@ -207,8 +207,13 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    public var difficulty: Difficulty {
-        switch score {
+    public var difficulty: Difficulty { Difficulty(score: score) }
+}
+
+extension Difficulty {
+    /// The tier a technique (or a step, `Step.difficulty`) with this score belongs to.
+    public init(score: Int) {
+        self = switch score {
         case ..<20: .beginner
         case ..<100: .easy
         case ..<150: .medium
@@ -216,6 +221,18 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         case ..<300: .expert
         case ..<500: .master
         default: .extreme
+        }
+    }
+}
+
+extension Technique {
+
+    /// The alternating inference chains (`ChainStrategy`), whose steps cost more the longer they are
+    /// (`Step.score`).
+    public var isChain: Bool {
+        switch self {
+        case .xChain, .xyChain, .niceLoop, .discontinuousNiceLoop, .aic, .groupedAIC: true
+        default: false
         }
     }
 
