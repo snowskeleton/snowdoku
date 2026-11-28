@@ -36,12 +36,13 @@ import Testing
         let levels = Dictionary(grouping: bank, by: \.level).mapValues(\.count)
         for d in Difficulty.allCases {
             #expect((tiers[d] ?? 0) >= 500, "\(d.name) has \(tiers[d] ?? 0) puzzles")
-            // Dailies draw from the first `Daily.poolSize` puzzles of a tier's daily level, so that
-            // level must never shrink below it.
-            let daily = Daily.level(for: d)
-            #expect((levels[daily] ?? 0) >= Daily.poolSize[d] ?? 0, "\(daily.name) is smaller than its daily pool")
         }
-        for l in Level.allCases { #expect((levels[l] ?? 0) > 0, "\(l.name) has no puzzles") }
+        for l in Level.allCases {
+            #expect((levels[l] ?? 0) > 0, "\(l.name) has no puzzles")
+            // Dailies draw from the first `Daily.poolSize` puzzles of each level, so a level must
+            // never shrink below it.
+            #expect((levels[l] ?? 0) >= Daily.poolSize[l] ?? 0, "\(l.name) is smaller than its daily pool")
+        }
         let mismatches = Locked<[String]>([])
         DispatchQueue.concurrentPerform(iterations: bank.count) { i in
             let b = bank[i]

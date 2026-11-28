@@ -79,6 +79,7 @@ struct HomeView: View {
         case .resume(let s): "\(s.title) · \(formatTime(s.record.elapsed))"
         case .campaign(let ch, let step): "\(ch.title) · \(ch.title(for: step))"
         case .newGame(let l): "\(l.name) · new game"
+        case .newGameAll(let d): "All \(d.name) · new game"
         }
     }
 
@@ -89,7 +90,7 @@ struct HomeView: View {
     }
 
     var dailySubtitle: String {
-        let level = Daily.level(for: DailySchedule.difficulty()).name
+        let level = DailySchedule.difficulty().name
         return stats.stats.streak > 0 ? "\(level) · \(stats.stats.streak)-day streak" : level
     }
 

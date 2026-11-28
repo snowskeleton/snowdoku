@@ -5,7 +5,7 @@ import SudokuCore
 /// play at a level. Dailies and library drills don't change it. Shared by every window.
 enum LastActivity: Codable, Equatable {
     case campaign
-    /// Saved before levels existed: free play at a tier.
+    /// Free play at all of a tier's levels ("All Medium"; also what saves from before levels mean).
     case freePlay(Difficulty)
     case freePlayLevel(Level)
 

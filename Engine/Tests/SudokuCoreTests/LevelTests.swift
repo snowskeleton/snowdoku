@@ -26,7 +26,7 @@ import Testing
         #expect(Level.levels(in: .hard).count == 4 && Level.levels(in: .expert).count == 4 && Level.levels(in: .master).count == 3)
         #expect(Level.levels(in: .extreme) == [.extreme])
         #expect(Level.medium3.name == "Medium 3" && Level.extreme.name == "Extreme")
-        #expect(Daily.level(for: .medium) == .medium4)
+        #expect(Set(Daily.poolSize.keys) == Set(Level.allCases.filter { $0 != .extreme }))
         #expect(Technique.krakenFish.difficulty == .extreme && Technique.mutantFish.difficulty == .extreme)
         #expect(Technique.remotePair.level == .hard1 && Technique.finnedXWing.level == .medium1)
     }
@@ -82,5 +82,27 @@ import Testing
         #expect(r.isBumped && r.level == .hard1 && r.difficulty == .hard)
         let m = Rating(hardest: .alsXZ, techniqueLevel: .master2, totalScore: 50000, counts: [.alsXZ: 1], stepCount: 1)
         #expect(!m.isBumped && m.level == .master2)
+    }
+}
+
+@Suite struct DailyLevelTests {
+    /// A tier's dailies come from all its levels, about equally often, whatever their pool sizes.
+    @Test func dailiesSpreadOverTheLevels() throws {
+        var rng = SplitMix64(seed: 4)
+        var tier: [BankedPuzzle] = []
+        // Medium 1 gets far more puzzles than the other levels.
+        for (l, n) in [(Level.medium1, 30), (.medium2, 3), (.medium3, 3), (.medium4, 3)] {
+            while tier.filter({ $0.level == l }).count < n {
+                let (p, s) = Generator.makePuzzle(using: &rng)
+                if let r = Rater.rate(p, solution: s, ifIn: l) { tier.append(BankedPuzzle(puzzle: p, rating: r)) }
+            }
+        }
+        var seen: [Level: Int] = [:]
+        for day in 1...400 {
+            let p = try #require(Daily.pick(from: tier, difficulty: .medium, seed: UInt64(day) &* 0x9E37_79B9_7F4A_7C15))
+            #expect(Daily.pick(from: tier, difficulty: .medium, seed: UInt64(day) &* 0x9E37_79B9_7F4A_7C15) == p)
+            seen[p.rating.level, default: 0] += 1
+        }
+        for l in Level.levels(in: .medium) { #expect((60...140).contains(seen[l] ?? 0), "\(l.name): \(seen[l] ?? 0)") }
     }
 }

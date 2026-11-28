@@ -431,8 +431,8 @@ case "bank-stats":
             "\(l.name) \(perLevel[l] ?? 0)" + (bumped[l].map { " (\($0) bumped)" } ?? "")
         }.joined(separator: ", "))
     }
-    print("Daily pools: " + tiers.filter { $0 != .extreme }.map { d in
-        let l = Daily.level(for: d); return "\(l.name) \(perLevel[l] ?? 0) (pinned \(Daily.poolSize[d] ?? 0))"
+    print("Daily pools pinned (dailies pick a level of the tier evenly): " + Level.allCases.filter { $0 != .extreme }.map { l in
+        "\(l.name) \(Daily.poolSize[l] ?? 0)"
     }.joined(separator: ", ") + "\n")
     print("Puzzles using each technique (\"hardest\": it's the puzzle's hardest technique)\n")
     func col(_ s: String, _ w: Int) -> String { String(repeating: " ", count: max(0, w - s.count)) + s }

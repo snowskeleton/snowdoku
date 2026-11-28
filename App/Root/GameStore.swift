@@ -146,6 +146,13 @@ final class GameStore {
         start(p)
     }
 
+    /// Serves a puzzle from all of a tier's levels, each level equally likely ("All Medium").
+    func newGame(all difficulty: Difficulty) async {
+        defer { lastActivity = .freePlay(difficulty) }
+        if let p = PuzzleBank.random(all: difficulty) { start(p); return }
+        await newGame(Level.levels(in: difficulty).randomElement() ?? .master3)
+    }
+
     /// A puzzle that requires a specific technique, for practice from the technique library.
     func practice(_ technique: Technique) async {
         generating = "Finding a puzzle that needs \(technique.name)…"
@@ -290,6 +297,7 @@ final class GameStore {
         case resume(SavedGame)
         case campaign(CampaignChapter, CampaignStep)
         case newGame(Level)
+        case newGameAll(Difficulty)
     }
 
     var continueAction: ContinueAction? {
@@ -299,7 +307,7 @@ final class GameStore {
             if let n = campaign.nextStep { return .campaign(n.chapter, n.step) }
         case .freePlay(let d):
             if let s = savedGame(.random(d)) { return .resume(s) }
-            return .newGame(GameStore.playableLevel(Level.highest(in: d)))
+            return GameStore.playable.contains(d) ? .newGameAll(d) : .newGameAll(.master)
         case .freePlayLevel(let l):
             if let s = savedGame(.random(l.tier)) { return .resume(s) }
             return .newGame(GameStore.playableLevel(l))
@@ -314,7 +322,8 @@ final class GameStore {
         switch continueAction {
         case .resume(let s): continueGame(s.record.slot)
         case .campaign(let ch, let step): await playCampaign(ch, step)
-        case .newGame(let d): await newGame(d)
+        case .newGame(let l): await newGame(l)
+        case .newGameAll(let d): await newGame(all: d)
         case nil: break
         }
     }
@@ -330,7 +339,8 @@ final class GameStore {
         defer { generating = nil }
         let p = await Task.detached(priority: .userInitiated) { () -> GeneratedPuzzle? in
             var rng = SplitMix64(seed: seed)
-            return Generator.generate(level: Daily.level(for: difficulty), maxAttempts: 4000, using: &rng)
+            let level = Level.levels(in: difficulty).randomElement(using: &rng) ?? .medium1
+            return Generator.generate(level: level, maxAttempts: 4000, using: &rng)
         }.value
         guard let p else { errorMessage = "Couldn't prepare today's puzzle."; return }
         start(p, dailyKey: key)

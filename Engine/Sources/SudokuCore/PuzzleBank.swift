@@ -52,30 +52,42 @@ public struct BankedPuzzle: Hashable, Sendable {
 }
 
 extension Daily {
-    /// How many puzzles (the first ones, in bank order) of each tier's daily level
-    /// (`Level.highest(in:)`) dailies draw from. Pinned, so appending puzzles to the bank never
-    /// changes a daily. Raising a count changes every daily of that tier from then on, and players
-    /// on different app versions would get different puzzles.
-    public static let poolSize: [Difficulty: Int] = [
-        .beginner: 481, .easy: 250, .medium: 250, .hard: 250, .expert: 250, .master: 250,
+    /// How many puzzles (the first ones, in bank order) of each level dailies draw from. Pinned,
+    /// so appending puzzles to the bank never changes a daily. Raising a count changes every
+    /// daily that lands on that level from then on, and players on different app versions would
+    /// get different puzzles.
+    public static let poolSize: [Level: Int] = [
+        .beginner1: 250, .beginner2: 481,
+        .easy1: 323, .easy2: 250, .easy3: 250,
+        .medium1: 359, .medium2: 250, .medium3: 250, .medium4: 250,
+        .hard1: 328, .hard2: 252, .hard3: 249, .hard4: 250,
+        .expert1: 248, .expert2: 250, .expert3: 367, .expert4: 251,
+        .master1: 477, .master2: 250, .master3: 250,
     ]
 
-    /// The level a tier's dailies come from: its highest, so a Medium daily is Medium 4.
-    public static func level(for tier: Difficulty) -> Level { Level.highest(in: tier) }
-
-    /// Today's pick from a whole tier of the bank (any order of levels), drawing only from the first
-    /// `poolSize` puzzles of the tier's daily level.
+    /// Today's pick from a whole tier of the bank (its puzzles in bank order, any mix of levels):
+    /// a level of the tier, each equally likely, then a puzzle among the first `poolSize` of
+    /// that level. Levels with no puzzles are skipped.
     public static func pick(from tier: [BankedPuzzle], difficulty: Difficulty, seed: UInt64) -> GeneratedPuzzle? {
-        let level = level(for: difficulty)
-        let pool = tier.filter { $0.level == level }
-        return pick(from: Array(pool.prefix(poolSize[difficulty] ?? pool.count)), seed: seed)
+        let pools = Level.levels(in: difficulty).map { l in
+            let all = tier.filter { $0.level == l }
+            return Array(all.prefix(poolSize[l] ?? all.count))
+        }.filter { !$0.isEmpty }
+        guard !pools.isEmpty else { return nil }
+        var rng = SplitMix64(seed: seed)
+        let pool = pools[Int(rng.next() % UInt64(pools.count))]
+        return pick(from: pool, using: &rng)
     }
 
     /// Today's pick from a pool of the bank: the same puzzle and transform for everyone on `seed`'s
     /// day, and unaffected by engine changes as long as the bank's lines keep their order.
     public static func pick(from pool: [BankedPuzzle], seed: UInt64) -> GeneratedPuzzle? {
-        guard !pool.isEmpty else { return nil }
         var rng = SplitMix64(seed: seed)
+        return pick(from: pool, using: &rng)
+    }
+
+    static func pick(from pool: [BankedPuzzle], using rng: inout SplitMix64) -> GeneratedPuzzle? {
+        guard !pool.isEmpty else { return nil }
         let index = Int(rng.next() % UInt64(pool.count))
         return pool[index].generated(.random(using: &rng))
     }

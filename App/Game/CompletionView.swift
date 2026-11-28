@@ -86,6 +86,11 @@ struct CompletionView: View {
             Task { await store.drill(t) }
             return
         }
+        // After an "All" game, another from the whole tier.
+        if case .freePlay(let d) = store.lastActivity, d == game.difficulty, game.dailyKey == nil, game.practice == nil {
+            Task { await store.newGame(all: d) }
+            return
+        }
         let level = game.level ?? Level.highest(in: game.difficulty)
         Task { await store.newGame(GameStore.playableLevel(level)) }
     }

@@ -14,7 +14,7 @@ struct FreePlayView: View {
                     NavigationLink(value: PlayRoute.freePlayTier(d)) { row(d) }
                         .accessibilityIdentifier("tier.\(d.name)")
                 } else {
-                    Button { newGame.tap(Level.first(in: d), store: store) } label: { row(d) }
+                    Button { newGame.tap(.level(Level.first(in: d)), store: store) } label: { row(d) }
                         .accessibilityIdentifier("tier.\(d.name)")
                 }
             }
@@ -54,8 +54,17 @@ struct FreePlayLevelsView: View {
     var body: some View {
         List {
             Section {
+                Button { newGame.tap(.all(tier), store: store) } label: {
+                    VStack(alignment: .leading) {
+                        Text("All \(tier.name)").font(.headline)
+                        Text("A puzzle from any \(tier.name) level, each equally likely").font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    }
+                }
+                .accessibilityIdentifier("level.\(tier.name.lowercased()).all")
+            }
+            Section {
                 ForEach(GameStore.playableLevels(tier), id: \.self) { l in
-                    Button { newGame.tap(l, store: store) } label: {
+                    Button { newGame.tap(.level(l), store: store) } label: {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading) {
                                 Text(l.name).font(.headline)
@@ -80,18 +89,41 @@ struct FreePlayLevelsView: View {
     }
 }
 
-/// Starting a random game at a level, asking first when its tier has an unfinished game (which
-/// a new game replaces).
-struct NewGameChoice {
-    /// The level whose "Continue or new game?" question is showing.
-    var asking: Level?
+/// What a Free Play row starts: one level, or all of a tier's levels.
+enum FreePlayPick: Hashable {
+    case level(Level)
+    case all(Difficulty)
 
-    @MainActor mutating func tap(_ level: Level, store: GameStore) {
-        if store.savedGame(.random(level.tier)) != nil { asking = level } else { Self.start(level, store: store) }
+    var tier: Difficulty {
+        switch self {
+        case .level(let l): l.tier
+        case .all(let d): d
+        }
     }
 
-    @MainActor static func start(_ level: Level, store: GameStore) {
-        Task { await store.newGame(level) }
+    var name: String {
+        switch self {
+        case .level(let l): l.name
+        case .all(let d): "All \(d.name)"
+        }
+    }
+}
+
+/// Starting a random game, asking first when its tier has an unfinished game (which a new game
+/// replaces).
+struct NewGameChoice {
+    /// The pick whose "Continue or new game?" question is showing.
+    var asking: FreePlayPick?
+
+    @MainActor mutating func tap(_ pick: FreePlayPick, store: GameStore) {
+        if store.savedGame(.random(pick.tier)) != nil { asking = pick } else { Self.start(pick, store: store) }
+    }
+
+    @MainActor static func start(_ pick: FreePlayPick, store: GameStore) {
+        switch pick {
+        case .level(let l): Task { await store.newGame(l) }
+        case .all(let d): Task { await store.newGame(all: d) }
+        }
     }
 }
 

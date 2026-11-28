@@ -141,4 +141,22 @@ final class SavedGamesTests: XCTestCase {
         back(app, to: "Free Play")
         XCTAssertTrue(app.buttons["tier.Medium"].label.contains("In progress"), app.buttons["tier.Medium"].label)
     }
+
+    /// "All Medium" serves a puzzle from one of Medium's levels, and the board names that level.
+    func testAllOfATier() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-resetGames"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Today's puzzle"].waitForExistence(timeout: 10))
+        openFreePlay(app)
+        openTier(app, "Medium")
+        tapRow(app, "level.medium.all")
+        let board = app.navigationBars.matching(NSPredicate(format: "identifier BEGINSWITH 'Medium '")).firstMatch
+        XCTAssertTrue(board.waitForExistence(timeout: 30), "a Medium level's board")
+        XCTAssertTrue(["Medium 1", "Medium 2", "Medium 3", "Medium 4"].contains(board.identifier), board.identifier)
+        back(app, to: "Medium")
+        // The tier's game is in progress, so All asks too.
+        tapRow(app, "level.medium.all")
+        XCTAssertTrue(app.buttons["New All Medium game"].waitForExistence(timeout: 5))
+    }
 }
