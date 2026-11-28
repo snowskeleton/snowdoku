@@ -41,7 +41,17 @@ final class StatsStore {
             stats.streak = stats.lastDaily == yesterday ? stats.streak + 1 : 1
             stats.lastDaily = key
         }
+        if g.hintsUsed == 0, let d = g.digitFirst { stats.digitsFirst.insert(d) }
         save()
+        GameCenter.shared.reportStats(self)
+    }
+
+    /// A drill's move was made (any drill but a lesson question).
+    func recordDrill(_ technique: Technique) {
+        guard !stats.drilled.contains(technique) else { return }
+        stats.drilled.insert(technique)
+        save()
+        GameCenter.shared.reportStats(self)
     }
 
     /// Adds a finished game's (or found drill's) moves to the technique skills, and queues its

@@ -14,6 +14,11 @@ struct Stats: Codable, Equatable {
     var solves: [SolveRecord] = []
     /// How the player does on each technique, from the moves that needed it (drills included).
     var skills: [Technique: TechniqueSkill] = [:]
+    /// Techniques with at least one drill done (library or campaign), for Game Center.
+    var drilled: Set<Technique> = []
+    /// Digits whose every missing copy the player placed first in a puzzle they then solved without
+    /// hints (Game Center's hidden "first" achievements).
+    var digitsFirst: Set<Int> = []
 
     init() {}
 
@@ -29,5 +34,7 @@ struct Stats: Codable, Equatable {
         lastDaily = try c.decodeIfPresent(String.self, forKey: .lastDaily)
         solves = (try? c.decodeIfPresent([SolveRecord].self, forKey: .solves)) ?? []
         skills = (try? c.decodeIfPresent([Technique: TechniqueSkill].self, forKey: .skills)) ?? [:]
+        drilled = (try? c.decodeIfPresent(Set<Technique>.self, forKey: .drilled)) ?? []
+        digitsFirst = (try? c.decodeIfPresent(Set<Int>.self, forKey: .digitsFirst)) ?? []
     }
 }

@@ -60,7 +60,10 @@ struct GameView: View {
             if s == .found {
                 store.recordCampaignDrill(game)
                 // Lesson questions point at the answer's area, so their times say little about skill.
-                if !game.isLesson { Task { await stats.recordMoves(game) } }
+                if !game.isLesson {
+                    if let t = game.drill?.technique { stats.recordDrill(t) }
+                    Task { await stats.recordMoves(game) }
+                }
             }
         }
         .onChange(of: game.values) { store.save() }

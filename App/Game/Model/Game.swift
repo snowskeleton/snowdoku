@@ -93,6 +93,10 @@ final class Game {
     private var pendingMoves: [Task<Void, Never>] = []
     /// Set once the moves have gone to the statistics, so they're counted once.
     var movesRecorded = false
+    /// The player's opening run of one digit, for Game Center's hidden "first" achievements.
+    private var firstRun: FirstDigitRun?
+    /// The digit whose every missing copy the player placed before any other digit.
+    var digitFirst: Int? { firstRun?.done == true ? firstRun?.digit : nil }
 
     private struct Snapshot { var values: [UInt8]; var notes: [DigitMask]; var centered: CellSet; var auto: CellSet }
     private var snapshot: Snapshot { Snapshot(values: values, notes: notes, centered: centeredNotes, auto: autoNotes) }
@@ -207,6 +211,7 @@ final class Game {
         accumulated = r.elapsed
         resumedAt = r.completed ? nil : Date.now
         moves = r.moves ?? []
+        firstRun = r.firstRun
         refreshAutoComplete()
         if let d = drill, drillState == .searching {
             if spotlight != nil { drillTargets = d.targets(); prepareSpotlight() } else { loadDrillTargets() }
@@ -219,7 +224,7 @@ final class Game {
                    mistakes: mistakes, hintsUsed: hintsUsed, difficulty: difficulty, hardest: hardest,
                    techniques: techniques, dailyKey: dailyKey, practice: practice, completed: isComplete,
                    drill: drill, drillState: drill == nil ? nil : drillState, moves: moves, campaign: campaign,
-                   spotlight: spotlight)
+                   spotlight: spotlight, firstRun: firstRun)
     }
 
     var title: String {
@@ -365,8 +370,23 @@ final class Game {
             for p in Geometry.peers[c] { notes[p] &= bit }
         }
         if d != solution[c] { mistakes += 1; segment?.mistakes += 1 }
+        trackFirstRun(d, at: c)
         flashIfCompleted(d)
         checkComplete()
+    }
+
+    /// The first digit the player places starts a run; it's done once every copy of that digit is on
+    /// the board, and broken by any other digit before then or a wrong copy.
+    private func trackFirstRun(_ d: Int, at c: Int) {
+        guard !untracked else { return }
+        var run = firstRun ?? FirstDigitRun(digit: d)
+        guard !run.broken, !run.done else { return }
+        if d != run.digit || d != solution[c] {
+            run.broken = true
+        } else if (0..<81).allSatisfy({ solution[$0] != d || values[$0] == UInt8(d) }) {
+            run.done = true
+        }
+        firstRun = run
     }
 
     /// Right-click: remove the armed digit's note from a cell (never adds one).
