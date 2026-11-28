@@ -80,16 +80,33 @@ def crown(fill):
             f'<rect x="150" y="305" width="212" height="28" rx="8" fill="{fill}"/>')
 
 
-def rasterize(svgs):
+def wide(badge, title, subtitle):
+    """Challenge and activity art: 3840x2160, opaque, the badge beside a title."""
+    inner = badge.split(">", 1)[1].rsplit("</svg>", 1)[0]
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">'
+            f'<rect width="3840" height="2160" fill="#0E1015"/>'
+            f'<g transform="translate(360 568) scale(2)">{inner}</g>'
+            f'<text x="1640" y="1050" font-family="{FONT}" font-weight="800" font-size="180" fill="#FFFFFF">{escape(title)}</text>'
+            f'<text x="1640" y="1230" font-family="{FONT}" font-weight="500" font-size="100" fill="#AEB4C0">{escape(subtitle)}</text>'
+            f'</svg>')
+
+
+def rasterize(svgs, size=512):
+    """PNGs with transparency; at another size, opaque JPEGs (Game Center rejects alpha there)."""
     os.makedirs(OUT, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         for name, svg in svgs.items():
             src = os.path.join(tmp, name + ".svg")
+            png = os.path.join(OUT if size == 512 else tmp, name + ".png")
             with open(src, "w") as f:
                 f.write(svg)
+            w, h = (size, size) if size == 512 else size
             subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--default-background-color=00000000",
-                            "--window-size=512,512", f"--screenshot={os.path.join(OUT, name + '.png')}", "file://" + src],
+                            "--force-device-scale-factor=1", f"--window-size={w},{h}", f"--screenshot={png}", "file://" + src],
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if size != 512:
+                subprocess.run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "90", png, "--out", os.path.join(OUT, name + ".jpg")],
+                               check=True, stdout=subprocess.DEVNULL)
 
 
 def big_text(text, color, size=150, y=300):
@@ -182,22 +199,30 @@ def main():
         ],
         "challenges": [
             {"id": "snowdoku.challenge.daily", "title": "Race Today's Puzzle", "leaderboard": "snowdoku.daily",
+             "description": "Who can solve today's daily the fastest, without hints?", "image": "badges/challenge-daily.jpg",
              "note": "iOS/macOS 26: friends race the day's puzzle; needs no code beyond the daily score."},
         ],
         "activities": [
             {"id": "snowdoku.activity.chapter", "title": "Campaign Chapter", "properties": {"chapter": "fullHouse"},
+             "description": "Play a chapter of the campaign.", "image": "badges/activity-chapter.jpg",
              "note": "Opens a campaign chapter; set the property to the chapter id."},
-            {"id": "snowdoku.activity.daily", "title": "Today's Puzzle", "note": "Starts the day's puzzle."},
+            {"id": "snowdoku.activity.daily", "title": "Today's Puzzle", "description": "Solve today's daily puzzle.",
+             "image": "badges/activity-daily.jpg", "note": "Starts the day's puzzle."},
         ],
     }
     with open(os.path.join(HERE, "GameCenter.json"), "w") as f:
         json.dump(spec, f, indent=2)
         f.write("\n")
     for old in os.listdir(OUT) if os.path.isdir(OUT) else []:
-        if old.endswith(".png"):
+        if old.endswith((".png", ".jpg")):
             os.remove(os.path.join(OUT, old))
     rasterize(svgs)
-    print(f"{len(achievements)} achievements, {total} points, {len(svgs)} images in {OUT}")
+    rasterize({
+        "challenge-daily": wide(svgs["leaderboard-daily"], "Race Today's Puzzle", "Fastest daily solve, no hints"),
+        "activity-daily": wide(svgs["daily-1"], "Today's Puzzle", "Solve the daily puzzle"),
+        "activity-chapter": wide(svgs["campaign-complete"], "Campaign Chapter", "Learn a technique, then beat the boss"),
+    }, size=(3840, 2160))
+    print(f"{len(achievements)} achievements, {total} points, {len(svgs) + 3} images in {OUT}")
 
 
 if __name__ == "__main__":

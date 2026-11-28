@@ -635,6 +635,8 @@
       "id": "snowdoku.challenge.daily",
       "title": "Race Today's Puzzle",
       "leaderboard": "snowdoku.daily",
+      "description": "Who can solve today's daily the fastest, without hints?",
+      "image": "badges/challenge-daily.jpg",
       "note": "iOS/macOS 26: friends race the day's puzzle; needs no code beyond the daily score."
     }
   ],
@@ -645,11 +647,15 @@
       "properties": {
         "chapter": "fullHouse"
       },
+      "description": "Play a chapter of the campaign.",
+      "image": "badges/activity-chapter.jpg",
       "note": "Opens a campaign chapter; set the property to the chapter id."
     },
     {
       "id": "snowdoku.activity.daily",
       "title": "Today's Puzzle",
+      "description": "Solve today's daily puzzle.",
+      "image": "badges/activity-daily.jpg",
       "note": "Starts the day's puzzle."
     }
   ]

@@ -5,15 +5,11 @@
 The app code is done (`App/Shared/GameCenter.swift`) and reports everything, but nothing shows up in Game Center until it's configured on Apple's side. Everything to enter is in `Design/achievements/GameCenter.json`, with badge art in `Design/achievements/badges/`. Identifiers must match exactly.
 
 - [ ] **Xcode signing:** the team (`PK7HCG46US`) is in `project.yml`; check in Xcode that the Game Center capability (`Snowdoku.entitlements`) is accepted for iOS and macOS.
-- [ ] **App Store Connect → Snowdoku → Game Center:** enable Game Center for the app version. Optionally create a group so iOS and macOS share achievements and leaderboards.
-- [ ] **60 achievements, 728 points:** for each, enter the id, title, the before-earned and after-earned text, points, hidden flag and a 512×512 image from `badges/`. That's 7 parts, the whole campaign, 4 dailies, 7 first solves, every tier, 30 solve counts, 9 hidden digit runs and the drills one. Alternatively, create Xcode 26's Game Center configuration file (File → New → Game Center Configuration) and enter them there, then push it to App Store Connect from Xcode.
-- [ ] **2 leaderboards:**
-  - `snowdoku.daily`: recurring daily, starting 00:00 UTC, low to high, elapsed time in seconds.
-  - `snowdoku.streak`: classic, high to low, integer score, suffix " days" (longest daily streak).
-- [ ] **iOS/macOS 26 challenge:** `snowdoku.challenge.daily` on the daily leaderboard.
-- [ ] **iOS/macOS 26 activities:**
-  - `snowdoku.activity.chapter`, with a `chapter` property set to a chapter id (e.g. `fullHouse`).
-  - `snowdoku.activity.daily`.
+- [x] **App Store Connect → Snowdoku → Game Center:** enabled (Nov 28, 2026), and turned on for the 1.0 App Store version. iOS and macOS share one app record, so no group is needed.
+- [ ] **Achievements:** 56 of 60 are in App Store Connect with en-US text and badges. Four titles are over Game Center's 30-character limit and wait for shorter titles: `snowdoku.part.3` (created, no localization yet), `snowdoku.daily.streak365`, `snowdoku.solve.expert.500`, `snowdoku.secret.first.7` (not created).
+- [x] **2 leaderboards** (`snowdoku.daily`, recurring daily from Nov 29, 2026, 00:00 UTC; `snowdoku.streak`, classic), with text and badges.
+- [ ] **iOS/macOS 26 challenge:** `snowdoku.challenge.daily` is created on the daily leaderboard with its text; its first image upload failed (wrong size) and has to be deleted before `badges/challenge-daily.jpg` can go up.
+- [x] **iOS/macOS 26 activities:** `snowdoku.activity.chapter` (property `chapter`, e.g. `fullHouse`) and `snowdoku.activity.daily`, with text and art.
 - [ ] **Sandbox test:** sign in with a sandbox Game Center account on a device or simulator, run a **Release** build, and check that sign-in, achievements and the leaderboards work. Debug builds stay quiet and skip Game Center under the DEBUG launch arguments.
 - [ ] **Signed Mac build:** after the team is set, build macOS without `CODE_SIGN_ENTITLEMENTS=` (ad-hoc signing can't carry the Game Center entitlement).
 
