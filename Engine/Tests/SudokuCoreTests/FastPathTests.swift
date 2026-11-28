@@ -43,6 +43,22 @@ import Testing
         #expect(seen.count >= 5)
     }
 
+    /// The same for levels, including bumped puzzles, which land on a tier's first level.
+    @Test func levelRatingMatchesFullRating() {
+        var rng = SplitMix64(seed: 8)
+        var seen = Set<Level>()
+        for _ in 0..<60 {
+            let (p, s) = Generator.makePuzzle(using: &rng)
+            let full = Rater.rate(p, solution: s)
+            seen.insert(full.level)
+            for level in Level.allCases where level != .extreme {
+                let quick = Rater.rate(p, solution: s, ifIn: level)
+                #expect(quick == (full.level == level ? full : nil), "\(p.string) as \(level.name)")
+            }
+        }
+        #expect(seen.count >= 6)
+    }
+
     /// The per-digit cell sets stay in step with the candidate masks through a whole solve.
     @Test func digitCellsTrackCandidates() {
         var rng = SplitMix64(seed: 3)

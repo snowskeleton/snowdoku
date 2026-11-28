@@ -27,17 +27,19 @@ public struct Census: Sendable {
     /// The techniques a census probes: everything but the singles, forcing chains and nets, and
     /// trial and error, easiest first.
     public static let probed: [Technique] = Technique.allCases
-        .filter { $0.score < Technique.cellForcingChain.score && !singles.contains($0) }
-        .sorted { $0.score < $1.score }
+        .filter { $0 < .cellForcingChain && !singles.contains($0) }
+        .sorted()
 
     /// The positions along the solver's path through `puzzle` whose next step is neither a single
     /// nor a forcing chain, with that step.
     public static func stuckPositions(of puzzle: Grid, solver: HumanSolver = HumanSolver()) -> [(board: Board, next: Step)] {
         var out: [(Board, Step)] = []
         var board = Board(puzzle)
+        var level = Level.beginner1
         for _ in 0..<1000 {
-            guard !board.isSolved, let step = solver.nextStep(board) else { break }
-            if !singles.contains(step.technique) && step.technique.score < Technique.cellForcingChain.score {
+            guard !board.isSolved, let step = solver.nextStep(board, level: level) else { break }
+            level = max(level, step.level)
+            if !singles.contains(step.technique) && step.technique < .cellForcingChain {
                 out.append((board, step))
             }
             board.apply(step)
@@ -65,7 +67,7 @@ public struct Census: Sendable {
             census.stuckPositions += 1
             census.counts[next.technique, default: Counts()].chosen += 1
             var covered = Set<Candidate>()
-            for t in probe.availableTechniques(board) {   // easiest first
+            for t in probe.availableTechniques(board).sorted() {   // easiest first
                 census.counts[t, default: Counts()].available += 1
                 seen.insert(t)
                 let mine = findings(board, t, probe: probe)

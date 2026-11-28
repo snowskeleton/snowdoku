@@ -63,7 +63,9 @@ public struct Drill: Hashable, Sendable {
         var board = Board(puzzle)
         var found: [Technique: [Board]] = [:]
         var onlySingles = true
-        while !board.isSolved, let step = solver.nextStep(board) {
+        var level = Level.beginner1
+        while !board.isSolved, let step = solver.nextStep(board, level: level) {
+            level = max(level, step.level)
             let t = step.technique
             if wanted.contains(t) && (t.difficulty > .beginner || onlySingles) {
                 found[t, default: []].append(board)
@@ -72,7 +74,7 @@ public struct Drill: Hashable, Sendable {
             board.apply(step)
         }
         guard board.isSolved, board.grid == solution else { return [] }
-        return found.sorted { $0.key.score < $1.key.score }.compactMap { t, boards in
+        return found.sorted { $0.key < $1.key }.compactMap { t, boards in
             boards.randomElement(using: &rng).map { Drill(technique: t, puzzle: puzzle, board: $0) }
         }
     }

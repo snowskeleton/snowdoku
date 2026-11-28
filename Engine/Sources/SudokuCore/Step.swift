@@ -71,14 +71,18 @@ public struct Step: Sendable {
         guard technique.isChain, links.count > Self.freeChainLinks else { return technique.score }
         return technique.score + (links.count - Self.freeChainLinks) * Self.pointsPerExtraLink
     }
-    /// The tier of this step: its technique's, except that a long chain counts as harder, by the tier
-    /// of its `score` (so an X-Chain of 14 links or more, or an XY-Chain of 12, is a Master move). A
-    /// chain is never more than Master: Extreme is for forcing chains and nets.
-    public var difficulty: Difficulty {
-        let base = technique.difficulty
+    /// The level of this step: its technique's, except that a long chain counts as harder. A chain
+    /// whose `score` reaches 300 (an X-Chain of 14 links, an XY-Chain of 12) is a Master 1 move, and
+    /// one that reaches 400 (an AIC of 19 links) is Master 3. So each level's chain techniques come
+    /// with a length limit. A chain is never Extreme: that is for forcing chains and nets.
+    public var level: Level {
+        let base = technique.level
         guard technique.isChain else { return base }
-        return max(base, min(.master, Difficulty(score: score)))
+        let s = score
+        return s >= 400 ? max(base, .master3) : s >= 300 ? max(base, .master1) : base
     }
+    /// The tier of the step's level.
+    public var difficulty: Difficulty { level.tier }
     /// Links a chain can have before it costs extra (most chains the solver picks have 5–9).
     public static let freeChainLinks = 9
     public static let pointsPerExtraLink = 10

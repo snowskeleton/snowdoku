@@ -33,11 +33,15 @@ import Testing
             .appending(path: "../../../App/Resources/Puzzles.tsv").standardized
         let bank = BankedPuzzle.parse(try String(contentsOf: url, encoding: .utf8))
         let tiers = Dictionary(grouping: bank, by: \.difficulty).mapValues(\.count)
+        let levels = Dictionary(grouping: bank, by: \.level).mapValues(\.count)
         for d in Difficulty.allCases {
             #expect((tiers[d] ?? 0) >= 500, "\(d.name) has \(tiers[d] ?? 0) puzzles")
-            // Dailies draw from the first `Daily.poolSize` puzzles of a tier, so a tier must never shrink below it.
-            #expect((tiers[d] ?? 0) >= Daily.poolSize[d] ?? 0, "\(d.name) is smaller than its daily pool")
+            // Dailies draw from the first `Daily.poolSize` puzzles of a tier's daily level, so that
+            // level must never shrink below it.
+            let daily = Daily.level(for: d)
+            #expect((levels[daily] ?? 0) >= Daily.poolSize[d] ?? 0, "\(daily.name) is smaller than its daily pool")
         }
+        for l in Level.allCases { #expect((levels[l] ?? 0) > 0, "\(l.name) has no puzzles") }
         let mismatches = Locked<[String]>([])
         DispatchQueue.concurrentPerform(iterations: bank.count) { i in
             let b = bank[i]

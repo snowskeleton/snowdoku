@@ -3,11 +3,11 @@
 ///
 /// The bank is a text file with one puzzle per line, tab-separated:
 ///
-///     <81-char givens>  <hardest>  <total score>  <step count>  <technique:count,technique:count,…>  [<hardest step's tier>]
+///     <81-char givens>  <hardest>  <total score>  <step count>  <technique:count,technique:count,…>  <technique level>
 ///
-/// Techniques are raw names, easiest first. The tier follows from the hardest move and the total
-/// score, so it isn't stored. The hardest move is the hardest technique, unless a long chain counts
-/// as harder (`Rating.hardestStep`); only then is there a sixth field, that tier's raw value.
+/// Techniques are raw names, easiest first. The technique level (`Rating.techniqueLevel`, a raw
+/// `Level` name) is stored because a long chain can raise it above the hardest technique's level;
+/// the puzzle's level and tier follow from it and the total score.
 public struct BankedPuzzle: Hashable, Sendable {
     public var puzzle: Grid
     public var rating: Rating
@@ -18,29 +18,24 @@ public struct BankedPuzzle: Hashable, Sendable {
     }
 
     public var difficulty: Difficulty { rating.difficulty }
+    public var level: Level { rating.level }
 
     public init?(line: Substring) {
         let f = line.split(separator: "\t", omittingEmptySubsequences: false)
-        guard f.count == 5 || f.count == 6, let g = Grid(String(f[0])), let hardest = Technique(rawValue: String(f[1])),
-              let total = Int(f[2]), let steps = Int(f[3]) else { return nil }
+        guard f.count == 6, let g = Grid(String(f[0])), let hardest = Technique(rawValue: String(f[1])),
+              let total = Int(f[2]), let steps = Int(f[3]), let level = Level(rawValue: String(f[5])) else { return nil }
         var counts: [Technique: Int] = [:]
         for pair in f[4].split(separator: ",") {
             let kv = pair.split(separator: ":")
             guard kv.count == 2, let t = Technique(rawValue: String(kv[0])), let n = Int(kv[1]) else { return nil }
             counts[t] = n
         }
-        var hardestStep: Difficulty?
-        if f.count == 6 {
-            guard let raw = Int(f[5]), let d = Difficulty(rawValue: raw) else { return nil }
-            hardestStep = d
-        }
-        self.init(puzzle: g, rating: Rating(hardest: hardest, hardestStep: hardestStep, totalScore: total, counts: counts, stepCount: steps))
+        self.init(puzzle: g, rating: Rating(hardest: hardest, techniqueLevel: level, totalScore: total, counts: counts, stepCount: steps))
     }
 
     public var line: String {
         let counts = rating.techniques.map { "\($0.rawValue):\(rating.counts[$0]!)" }.joined(separator: ",")
-        let line = "\(puzzle.string)\t\(rating.hardest.rawValue)\t\(rating.totalScore)\t\(rating.stepCount)\t\(counts)"
-        return rating.hardestStep.map { line + "\t\($0.rawValue)" } ?? line
+        return "\(puzzle.string)\t\(rating.hardest.rawValue)\t\(rating.totalScore)\t\(rating.stepCount)\t\(counts)\t\(rating.techniqueLevel.rawValue)"
     }
 
     /// The puzzle, relabeled and reshuffled by `transform`, with its solution. Nil if it isn't unique.
@@ -57,19 +52,26 @@ public struct BankedPuzzle: Hashable, Sendable {
 }
 
 extension Daily {
-    /// How many of each tier's puzzles (the first ones, in bank order) dailies draw from. Pinned, so
-    /// appending puzzles to the bank never changes a daily. Raising a count changes every daily of
-    /// that tier from then on, and players on different app versions would get different puzzles.
+    /// How many puzzles (the first ones, in bank order) of each tier's daily level
+    /// (`Level.highest(in:)`) dailies draw from. Pinned, so appending puzzles to the bank never
+    /// changes a daily. Raising a count changes every daily of that tier from then on, and players
+    /// on different app versions would get different puzzles.
     public static let poolSize: [Difficulty: Int] = [
         .beginner: 500, .easy: 499, .medium: 538, .hard: 466, .expert: 491, .master: 506, .extreme: 150,
     ]
 
-    /// Today's pick from a whole tier of the bank, drawing only from its first `poolSize` puzzles.
+    /// The level a tier's dailies come from: its highest, so a Medium daily is Medium 4.
+    public static func level(for tier: Difficulty) -> Level { Level.highest(in: tier) }
+
+    /// Today's pick from a whole tier of the bank (any order of levels), drawing only from the first
+    /// `poolSize` puzzles of the tier's daily level.
     public static func pick(from tier: [BankedPuzzle], difficulty: Difficulty, seed: UInt64) -> GeneratedPuzzle? {
-        pick(from: Array(tier.prefix(poolSize[difficulty] ?? tier.count)), seed: seed)
+        let level = level(for: difficulty)
+        let pool = tier.filter { $0.level == level }
+        return pick(from: Array(pool.prefix(poolSize[difficulty] ?? pool.count)), seed: seed)
     }
 
-    /// Today's pick from a tier of the bank: the same puzzle and transform for everyone on `seed`'s
+    /// Today's pick from a pool of the bank: the same puzzle and transform for everyone on `seed`'s
     /// day, and unaffected by engine changes as long as the bank's lines keep their order.
     public static func pick(from pool: [BankedPuzzle], seed: UInt64) -> GeneratedPuzzle? {
         guard !pool.isEmpty else { return nil }

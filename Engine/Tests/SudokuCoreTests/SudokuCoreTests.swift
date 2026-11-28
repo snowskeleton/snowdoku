@@ -211,9 +211,9 @@ func assertSound(_ puzzle: Grid, solution: Grid, solver: HumanSolver = HumanSolv
         var hardest = try #require(solver.nextPlacementBottleneck(Board(g)))
         for p in log.steps.flatMap(\.placements) {
             values[p.cell] = UInt8(p.digit)
-            if let t = solver.nextPlacementBottleneck(Board(Grid(cells: values))), t.score > hardest.score { hardest = t }
+            if let t = solver.nextPlacementBottleneck(Board(Grid(cells: values))), t > hardest { hardest = t }
         }
-        let rated = try #require(log.steps.map(\.technique).max { $0.score < $1.score })
+        let rated = try #require(log.steps.map(\.technique).max())
         #expect(hardest == rated)
     }
 }

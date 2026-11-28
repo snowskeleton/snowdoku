@@ -5,7 +5,7 @@ public struct Move: Sendable {
     public var candidate: Candidate
     /// True for a placement, false for an elimination.
     public var isPlacement: Bool
-    /// Every technique that reaches this conclusion, easiest first (by score, then solver order).
+    /// Every technique that reaches this conclusion, easiest first (by teaching order, `Technique.rank`).
     public var techniques: [Technique]
     /// The easiest step that reaches it.
     public var step: Step
@@ -54,7 +54,7 @@ extension HumanSolver {
         var seen = Set<Key>()
         let chosen = strategies.enumerated()
             .filter { s in (includeChains || !s.element.ranked) && s.element.technique.difficulty <= tier }
-            .sorted { ($0.element.technique.score, $0.offset) < ($1.element.technique.score, $1.offset) }
+            .sorted { ($0.element.technique.rank, $0.offset) < ($1.element.technique.rank, $1.offset) }
             .map(\.element)
         for s in chosen {
             var out = StepCollector(findAll: true, exhaustive: true)
@@ -95,21 +95,23 @@ extension HumanSolver {
             return out.steps.contains { $0.placements.contains { $0.cell == cell } }
         }
         let singles = strategies.filter { $0.technique.difficulty == .beginner && !$0.ranked }
-            .sorted { $0.technique.score < $1.technique.score }
+            .sorted { $0.technique < $1.technique }
         if let s = singles.first(where: placesDirectly) { return s.technique }
 
         // Solve on until the cell is placed: an upper bound.
         var b = board
         var hardest: Technique?
         var reached = false
+        var level = Level.beginner1
         for _ in 0..<maxSteps {
-            guard let s = nextStep(b) else { break }
-            if hardest.map({ s.technique.score > $0.score }) ?? true { hardest = s.technique }
+            guard let s = nextStep(b, level: level) else { break }
+            level = max(level, s.level)
+            if hardest.map({ s.technique > $0 }) ?? true { hardest = s.technique }
             b.apply(s)
             if !b.isEmpty(cell) { reached = true; break }
         }
         var best = reached ? hardest! : .bruteForce
-        for s in strategies where s.technique.difficulty > .beginner && s.technique.score < best.score && placesDirectly(s) {
+        for s in strategies where s.technique.difficulty > .beginner && s.technique < best && placesDirectly(s) {
             best = s.technique
         }
         return best

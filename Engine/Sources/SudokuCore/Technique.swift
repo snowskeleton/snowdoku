@@ -1,5 +1,6 @@
-/// Difficulty tiers. A puzzle's tier is the tier of the hardest technique it needs, bumped up one
-/// tier when the whole solve is unusually long for that tier (see `maxScore`).
+/// Difficulty tiers, the headline names. Each tier is split into numbered levels (`Level`). A
+/// puzzle's tier is its level's tier, bumped up one tier when the whole solve is unusually long for
+/// that tier (see `maxScore`).
 public enum Difficulty: Int, Comparable, CaseIterable, Codable, Sendable {
     case beginner = 1, easy, medium, hard, expert, master, extreme
 
@@ -134,9 +135,9 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    /// Relative difficulty used to order the solver and rate puzzles. Our own scale and tiers, with
-    /// the relative order following HoDoKu's defaults where the two disagreed: Remote Pair, finned
-    /// and sashimi X-Wings, Turbot Fish, the uniqueness family, Jellyfish, Multi-Coloring and singles.
+    /// What one use of the technique adds to a puzzle's total score (`Rating.totalScore`), which
+    /// bumps a long solve up a tier (`Difficulty.maxScore`). It no longer orders the solver
+    /// (`HumanSolver.allStrategies` has its own order) or sets the tier (`level` does).
     public var score: Int {
         switch self {
         case .fullHouse: 4
@@ -207,22 +208,8 @@ public enum Technique: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    public var difficulty: Difficulty { Difficulty(score: score) }
-}
-
-extension Difficulty {
-    /// The tier a technique (or a step, `Step.difficulty`) with this score belongs to.
-    public init(score: Int) {
-        self = switch score {
-        case ..<20: .beginner
-        case ..<100: .easy
-        case ..<150: .medium
-        case ..<200: .hard
-        case ..<300: .expert
-        case ..<500: .master
-        default: .extreme
-        }
-    }
+    /// The tier of the technique's level.
+    public var difficulty: Difficulty { level.tier }
 }
 
 extension Technique {
