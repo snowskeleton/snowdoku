@@ -24,6 +24,7 @@ Found with `Engine/Tools/hodoku-compare.sh` (Nov 2026). Each change moves rating
 Decided so far (Nov 27, 2026):
 - **Avoid techniques of last resort in our puzzles** (Sudopedia's list: Forcing Net, Tabling, GEM, Bowman Bingo, Trial & Error, Nishio, Templating, Guessing). Today every Extreme puzzle needs a forcing chain or net (tabling) by definition, and 32 Master puzzles need Kraken Fish (a fish plus tabling).
 - **Separate solving order from difficulty**, as HoDoKu does: a move can be worth looking for early, but a puzzle that can be solved without a technique is easier than one that needs it.
+- **Keep the Extreme tier** (forcing chains and nets), but nothing else should expect those techniques to be used (campaign, drills, hints for lower tiers). When the solver improves and an Extreme puzzle no longer needs a forcing step, it moves down a tier: re-rating hands those puzzles to the lower tiers.
 - **Keep the score bump as is:** a long solve with easy techniques stays easier (don't adopt HoDoKu's lower caps).
 - **Close HoDoKu's detector gaps** (doubly-linked ALS-XZ, extended Sue de Coq, larger ALSs) and **lengthen chains**.
 - **Missing-candidate URs:** try them as a separate, harder technique and test how they play.
