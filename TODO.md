@@ -70,6 +70,7 @@ Easy to Medium added 19 techniques at once. Instead, each headline tier gets num
 Also decided:
 - **Free Play:** pick the headline tier first, then the level within it.
 - **Achievements and dailies stay per headline tier.** A daily of a tier draws from that tier's highest level (a Medium daily is Medium 4). The 500-puzzle minimum is per headline tier; each level needs enough to play (~200), which means targeted mining for thin ones (Medium 4's quads, Expert 2's coloring, Expert 4, Master 3).
+- [ ] **Revisit: 500-puzzle minimum per headline tier, not per level.** Chosen because achievements count solves per headline tier. With ~200 per level, a player who sticks to one level runs out sooner. Revisit once the levels are mined and we know how many puzzles each level actually gets.
 - Long chains (PR #8 makes very long chains Master) mean a level's chain techniques come with a length limit.
 - Measure after re-rating; a level with too few puzzles that truly need its techniques may merge with a neighbor.
 
