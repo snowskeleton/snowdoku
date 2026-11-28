@@ -1,11 +1,13 @@
 #!/bin/bash
-# testflight.sh <build number>: after an upload, wait for App Store Connect to
-# process the build, then give it to external testers: add it to the external
-# group and submit it for beta app review. Internal testers get every build
+# testflight.sh <build number> [notes file]: after an upload, wait for App Store
+# Connect to process the build, set its "What to Test" notes (en-US) from the
+# notes file, then give it to external testers: add it to the external group
+# and submit it for beta app review. Internal testers get every build
 # automatically. Uses asc.sh (same environment variables).
 set -euo pipefail
 
-BUILD="${1:?usage: testflight.sh <build number>}"
+BUILD="${1:?usage: testflight.sh <build number> [notes file]}"
+NOTES="${2:-}"
 APP_ID=6839805704                                   # Snowdoku
 EXTERNAL_GROUP=c5011a94-47c7-4885-9ec5-e6ca22a70917 # "All Users - External"
 ASC="$(dirname "$0")/asc.sh"
@@ -36,6 +38,12 @@ for _ in $(seq 1 60); do
   sleep 30
 done
 [[ -n "${BUILD_ID:-}" ]] || { echo "::error::build $BUILD still not processed after 30 minutes"; exit 1; }
+
+if [[ -n "$NOTES" ]] && grep -q '[^[:space:]]' "$NOTES"; then
+  bash "$(dirname "$0")/whats-new.sh" "$BUILD_ID" "$NOTES"
+else
+  echo "::warning::no What to Test notes in the tag message"
+fi
 
 printf '{"data":[{"type":"betaGroups","id":"%s"}]}' "$EXTERNAL_GROUP" > "$TMP/group.json"
 call POST "/v1/builds/$BUILD_ID/relationships/betaGroups" "$TMP/group.json"

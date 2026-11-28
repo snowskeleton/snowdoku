@@ -43,6 +43,10 @@ jobs:
           [[ "$build" == "$version" ]] || { echo "::error::tag says build $build, project.yml says $version"; exit 1; }
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
           echo "build=$build" >> "$GITHUB_OUTPUT"
+          # The annotated tag's body (after its subject line) is the What to Test notes.
+          git fetch --quiet --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          git tag -l --format='%(contents:body)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.txt"
+          echo "What to Test:"; cat "$RUNNER_TEMP/notes.txt"
 
       - name: Install API key
         env:
@@ -85,7 +89,7 @@ jobs:
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-        run: bash .github/scripts/testflight.sh "${{ steps.tag.outputs.build }}"
+        run: bash .github/scripts/testflight.sh "${{ steps.tag.outputs.build }}" "$RUNNER_TEMP/notes.txt"
 
       - name: Remove API key
         if: always()
